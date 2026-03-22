@@ -1,10 +1,6 @@
 import { env } from '$env/dynamic/private';
 
 const DEFAULT_GHOST_URL = 'https://lowvelocity.org';
-const ghostCacheFiles = import.meta.glob('/data/ghost-posts.json', {
-	import: 'default',
-	eager: true
-}) as Record<string, { posts?: unknown }>;
 const LIVE_GHOST_CACHE_TTL_MS = 1000 * 60 * 5;
 const INCLUDED_TAGS = new Set([
 	'field-notes',
@@ -21,6 +17,7 @@ const INCLUDED_TAGS = new Set([
 	'hash-section-blog'
 ]);
 const EXCLUDED_TAGS = new Set(['status', 'afterword', 'now', 'listening', 'books']);
+const GHOST_FILTER = `status:published+tag:[${[...INCLUDED_TAGS].join(',')}]`;
 let livePostsCache:
 	| {
 			expiresAt: number;
@@ -236,15 +233,6 @@ function shouldIncludePost(post: BlogPost) {
 	return [...tags].some((tag) => INCLUDED_TAGS.has(tag));
 }
 
-function loadCachedPosts() {
-	try {
-		const data = ghostCacheFiles['/data/ghost-posts.json'] || {};
-		return Array.isArray(data.posts) ? (data.posts as Record<string, unknown>[]) : [];
-	} catch {
-		return [] as Record<string, unknown>[];
-	}
-}
-
 function base64UrlEncodeBytes(bytes: Uint8Array) {
 	let binary = '';
 	for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -323,7 +311,7 @@ async function fetchPostsFromAdminApi(siteUrl: string) {
 			include: 'tags,authors',
 			limit: '100',
 			page: String(page),
-			filter: 'status:published'
+			filter: GHOST_FILTER
 		});
 		const response = await fetch(`${siteUrl}/ghost/api/admin/posts/?${params.toString()}`, {
 			headers: {
@@ -362,7 +350,7 @@ async function fetchPostsFromContentApi(siteUrl: string) {
 
 	const params = new URLSearchParams({
 		key,
-		filter: 'status:published',
+		filter: GHOST_FILTER,
 		include: 'tags,authors',
 		formats: 'html',
 		limit: 'all'
@@ -407,7 +395,7 @@ async function loadLivePosts(siteUrl: string) {
 export async function getBlogPosts(): Promise<BlogPost[]> {
 	const siteUrl = getGhostUrl();
 	const livePosts = await loadLivePosts(siteUrl);
-	const rawPosts = livePosts.length ? livePosts : loadCachedPosts();
+	const rawPosts = livePosts;
 
 	const posts = rawPosts
 		.map((post: Record<string, unknown>) => normalizePost(post, siteUrl))
