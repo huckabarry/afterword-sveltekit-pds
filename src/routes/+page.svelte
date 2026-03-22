@@ -175,13 +175,13 @@
 										Bluesky
 									</a>
 								</div>
-								<div class="status-row__footer">
-									<span class="status-row__position">{currentStatusIndex + 1} / {data.statuses.length}</span>
-								</div>
 							</div>
 						</article>
 					{/if}
 				{/each}
+			</div>
+			<div class="home-updates__position-row" aria-hidden="true">
+				<span class="status-row__position">{currentStatusIndex + 1} / {data.statuses.length}</span>
 			</div>
 			<div class="home-stream-tags">
 				<a class="tag-pill" href="/status">Status</a>
@@ -254,21 +254,19 @@
 		height: 9rem;
 	}
 
-	.status-row__footer {
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: 1rem;
-		margin-top: 0.9rem;
-		padding-top: 0.15rem;
-	}
-
 	.status-row__position {
 		display: inline-flex;
 		align-items: center;
 		color: var(--muted);
 		font-size: 0.82rem;
 		line-height: 1;
+	}
+
+	.home-updates__position-row {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: 0.5rem;
+		padding-right: 0.15rem;
 	}
 
 	.empty-state {
@@ -286,10 +284,5 @@
 			height: auto;
 		}
 
-		.status-row__footer {
-			flex-direction: row;
-			align-items: center;
-			justify-content: flex-end;
-		}
 	}
 </style>
