@@ -7,7 +7,7 @@
 	let {
 		data
 	}: {
-		data: { statuses: StatusPost[]; blogPosts: BlogPost[] };
+		data: { statuses: StatusPost[]; planningPosts: BlogPost[]; fieldNotesPosts: BlogPost[] };
 	} = $props();
 	let currentStatusIndex = $state(0);
 	let activeCardEl = $state<HTMLElement | null>(null);
@@ -193,10 +193,10 @@
 	</section>
 
 	<section class="section-block section-block-writing">
-		<h2 class="section-title">Field Notes</h2>
-		{#if data.blogPosts.length}
+		<h2 class="section-title">Planning</h2>
+		{#if data.planningPosts.length}
 			<section class="blog-list">
-				{#each data.blogPosts as post}
+				{#each data.planningPosts as post}
 					<article class="blog-row">
 						<a class="blog-row__link" href={blogUrl(post.slug)}>
 							<time class="blog-row__date" datetime={post.publishedAt.toISOString()}>
@@ -209,7 +209,32 @@
 				{/each}
 			</section>
 			<div class="home-stream-tags">
-				<a class="tag-pill" href="/blog">Field Notes</a>
+				<a class="tag-pill" href="/tags/urbanism">Planning</a>
+				<a class="home-updates__more-link" href="/blog">Read more planning posts <span aria-hidden="true">→</span></a>
+			</div>
+		{:else}
+			<p class="empty-state">No planning posts are available yet.</p>
+		{/if}
+	</section>
+
+	<section class="section-block section-block-writing">
+		<h2 class="section-title">Field Notes</h2>
+		{#if data.fieldNotesPosts.length}
+			<section class="blog-list">
+				{#each data.fieldNotesPosts as post}
+					<article class="blog-row">
+						<a class="blog-row__link" href={blogUrl(post.slug)}>
+							<time class="blog-row__date" datetime={post.publishedAt.toISOString()}>
+								{formatDate(post.publishedAt)}
+							</time>
+							<h3>{post.title}</h3>
+							<p>{post.excerpt}</p>
+						</a>
+					</article>
+				{/each}
+			</section>
+			<div class="home-stream-tags">
+				<a class="tag-pill" href="/tags/field-notes">Field Notes</a>
 				<a class="home-updates__more-link" href="/blog">Read more field notes <span aria-hidden="true">→</span></a>
 			</div>
 		{:else}

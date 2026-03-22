@@ -31,6 +31,7 @@
 	<article class="content content-page">
 		<div class="post-full-content">
 			<section class="content-body">
+				<p>{data.intro.description}</p>
 				{#if data.nowPost}
 					<div class="entry__meta">
 						<time datetime={data.nowPost.publishedAt.toISOString()}>
