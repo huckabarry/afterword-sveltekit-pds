@@ -3,6 +3,11 @@
 		data
 	}: {
 		data: {
+			tag: {
+				slug: string;
+				label: string;
+				path: string;
+			};
 			posts: Array<{
 				title: string;
 				excerpt: string;
@@ -19,17 +24,15 @@
 </script>
 
 <svelte:head>
-	<title>Blog | Bryan Robb</title>
+	<title>{data.tag.label} | Bryan Robb</title>
 </svelte:head>
 
 <section class="stream-head">
-	<h1 class="stream-head__title">Latest writing</h1>
-	<p class="stream-head__lede">
-		A compact archive for field notes, gallery posts, and urbanism writing.
-	</p>
+	<h1 class="stream-head__title">{data.tag.label}</h1>
+	<p class="stream-head__lede">Posts tagged {data.tag.label}.</p>
 </section>
 
-<section class="blog-list blog-list--archive" aria-label="Blog posts">
+<section class="blog-list blog-list--archive" aria-label="Tagged posts">
 	{#each data.posts as post}
 		<article class="blog-row">
 			<a class="blog-row__link" href={post.path}>
@@ -54,7 +57,7 @@
 		</article>
 	{:else}
 		<article class="blog-row">
-			<p>No blog posts are available yet.</p>
+			<p>No posts are available for this tag yet.</p>
 		</article>
 	{/each}
 </section>

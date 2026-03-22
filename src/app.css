@@ -319,6 +319,32 @@ p:last-child {
 	font-style: normal;
 }
 
+.blog-row__tags,
+.entry__tags,
+.tag-archive {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.blog-row__tags {
+	margin: 0.2rem 0 0.45rem;
+}
+
+.entry__tags {
+	margin: 0 0 0.95rem;
+}
+
+.tag-archive {
+	margin-top: 0.35rem;
+}
+
+.blog-row__tag,
+.entry__tag,
+.tag-archive__tag {
+	text-decoration: none;
+}
+
 .blog-row h2 {
 	margin: 0 0 0.24rem;
 	font-size: 1rem;

@@ -25,9 +25,16 @@ const INCLUDED_TAGS = new Set([
 	'hash-section-blog'
 ]);
 const EXCLUDED_TAGS = new Set(['status', 'afterword', 'now', 'listening', 'books']);
+const INTERNAL_TAG_PREFIX = 'hash-';
 const GHOST_FILTER = `status:published+tag:[${[...INCLUDED_TAGS].join(',')}]`;
 const NOW_FILTER = 'status:published+tag:now';
 const livePostsCache = new Map<string, { expiresAt: number; posts: Record<string, unknown>[] }>();
+
+export type GhostTag = {
+	slug: string;
+	label: string;
+	path: string;
+};
 
 export type BlogPost = {
 	id: string;
@@ -42,6 +49,7 @@ export type BlogPost = {
 	coverImage: string | null;
 	tags: string[];
 	primaryTag: string | null;
+	publicTags: GhostTag[];
 };
 
 export type PhotoItem = {
@@ -148,6 +156,28 @@ function rewriteInternalLinks(html: string, sourceMap: Map<string, string>, site
 	});
 }
 
+function formatTagLabel(slug: string) {
+	return String(slug || '')
+		.split('-')
+		.filter(Boolean)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(' ');
+}
+
+function toPublicTag(slug: string): GhostTag | null {
+	const normalized = String(slug || '').trim();
+
+	if (!normalized || normalized.startsWith(INTERNAL_TAG_PREFIX) || EXCLUDED_TAGS.has(normalized)) {
+		return null;
+	}
+
+	return {
+		slug: normalized,
+		label: formatTagLabel(normalized),
+		path: `/tags/${normalized}`
+	};
+}
+
 function normalizePost(post: Record<string, any>, siteUrl: string): BlogPost {
 	const title = String(post.title || '').trim() || 'Untitled';
 	const slug = String(post.slug || '').trim() || slugify(title);
@@ -171,7 +201,8 @@ function normalizePost(post: Record<string, any>, siteUrl: string): BlogPost {
 		tags: Array.isArray(post.tags)
 			? post.tags.map((tag: Record<string, any>) => String(tag.slug || '').trim()).filter(Boolean)
 			: [],
-		primaryTag: (post.primary_tag && String(post.primary_tag.slug || '').trim()) || null
+		primaryTag: (post.primary_tag && String(post.primary_tag.slug || '').trim()) || null,
+		publicTags: []
 	};
 }
 
@@ -433,7 +464,10 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
 
 	return posts.map((post: BlogPost) => ({
 		...post,
-		html: rewriteInternalLinks(post.html, sourceMap, siteUrl)
+		html: rewriteInternalLinks(post.html, sourceMap, siteUrl),
+		publicTags: post.tags
+			.map((tag: string) => toPublicTag(tag))
+			.filter((tag: GhostTag | null): tag is GhostTag => Boolean(tag))
 	}));
 }
 
@@ -451,6 +485,27 @@ export async function getLatestNowPost(): Promise<BlogPost | null> {
 		.sort((a: BlogPost, b: BlogPost) => b.publishedAt.getTime() - a.publishedAt.getTime());
 
 	return posts[0] || null;
+}
+
+export async function getPublicTags() {
+	const posts = await getBlogPosts();
+	const tags = new Map<string, GhostTag>();
+
+	for (const post of posts) {
+		for (const tag of post.publicTags) {
+			if (!tags.has(tag.slug)) {
+				tags.set(tag.slug, tag);
+			}
+		}
+	}
+
+	return [...tags.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export async function getBlogPostsByTag(tagSlug: string) {
+	const normalized = String(tagSlug || '').trim().toLowerCase();
+	const posts = await getBlogPosts();
+	return posts.filter((post) => post.publicTags.some((tag) => tag.slug === normalized));
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {

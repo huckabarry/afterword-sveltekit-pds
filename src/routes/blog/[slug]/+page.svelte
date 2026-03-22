@@ -24,6 +24,14 @@
 
 	<h1 class="entry__title">{data.post.title}</h1>
 
+	{#if data.post.publicTags.length}
+		<div class="entry__tags">
+			{#each data.post.publicTags as tag}
+				<a class="tag-pill entry__tag" href={tag.path}>{tag.label}</a>
+			{/each}
+		</div>
+	{/if}
+
 	{#if data.post.coverImage}
 		<figure class="entry__figure">
 			<img src={data.post.coverImage} alt={data.post.title} />
