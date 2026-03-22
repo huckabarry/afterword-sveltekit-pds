@@ -5,6 +5,10 @@ const ghostFallbackFiles = import.meta.glob('/data/ghost-posts-lite.json', {
 	import: 'default',
 	eager: true
 }) as Record<string, { posts?: unknown }>;
+const ghostNowFallbackFiles = import.meta.glob('/data/ghost-now-lite.json', {
+	import: 'default',
+	eager: true
+}) as Record<string, { posts?: unknown }>;
 const LIVE_GHOST_CACHE_TTL_MS = 1000 * 60 * 5;
 const INCLUDED_TAGS = new Set([
 	'field-notes',
@@ -22,12 +26,8 @@ const INCLUDED_TAGS = new Set([
 ]);
 const EXCLUDED_TAGS = new Set(['status', 'afterword', 'now', 'listening', 'books']);
 const GHOST_FILTER = `status:published+tag:[${[...INCLUDED_TAGS].join(',')}]`;
-let livePostsCache:
-	| {
-			expiresAt: number;
-			posts: Record<string, unknown>[];
-	  }
-	| null = null;
+const NOW_FILTER = 'status:published+tag:now';
+const livePostsCache = new Map<string, { expiresAt: number; posts: Record<string, unknown>[] }>();
 
 export type BlogPost = {
 	id: string;
@@ -246,6 +246,15 @@ function loadFallbackPosts() {
 	}
 }
 
+function loadNowFallbackPosts() {
+	try {
+		const data = ghostNowFallbackFiles['/data/ghost-now-lite.json'] || {};
+		return Array.isArray(data.posts) ? (data.posts as Record<string, unknown>[]) : [];
+	} catch {
+		return [] as Record<string, unknown>[];
+	}
+}
+
 function base64UrlEncodeBytes(bytes: Uint8Array) {
 	let binary = '';
 	for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -308,7 +317,7 @@ async function createGhostAdminToken(key: string) {
 	return `${signingInput}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
 }
 
-async function fetchPostsFromAdminApi(siteUrl: string) {
+async function fetchPostsFromAdminApi(siteUrl: string, filter: string) {
 	const key = getGhostAdminKey();
 
 	if (!key || !siteUrl) {
@@ -324,7 +333,7 @@ async function fetchPostsFromAdminApi(siteUrl: string) {
 			include: 'tags,authors',
 			limit: '100',
 			page: String(page),
-			filter: GHOST_FILTER
+			filter
 		});
 		const response = await fetch(`${siteUrl}/ghost/api/admin/posts/?${params.toString()}`, {
 			headers: {
@@ -354,7 +363,7 @@ async function fetchPostsFromAdminApi(siteUrl: string) {
 	return posts;
 }
 
-async function fetchPostsFromContentApi(siteUrl: string) {
+async function fetchPostsFromContentApi(siteUrl: string, filter: string) {
 	const key = getGhostContentKey();
 
 	if (!key || !siteUrl) {
@@ -363,7 +372,7 @@ async function fetchPostsFromContentApi(siteUrl: string) {
 
 	const params = new URLSearchParams({
 		key,
-		filter: GHOST_FILTER,
+		filter,
 		include: 'tags,authors',
 		formats: 'html',
 		limit: 'all'
@@ -382,18 +391,20 @@ async function fetchPostsFromContentApi(siteUrl: string) {
 	return Array.isArray(payload.posts) ? payload.posts : [];
 }
 
-async function loadLivePosts(siteUrl: string) {
-	if (livePostsCache && livePostsCache.expiresAt > Date.now()) {
-		return livePostsCache.posts;
+async function loadLivePosts(siteUrl: string, filter: string) {
+	const cached = livePostsCache.get(filter);
+	if (cached && cached.expiresAt > Date.now()) {
+		return cached.posts;
 	}
 
 	try {
-		const posts = (await fetchPostsFromAdminApi(siteUrl)) || (await fetchPostsFromContentApi(siteUrl));
+		const posts =
+			(await fetchPostsFromAdminApi(siteUrl, filter)) || (await fetchPostsFromContentApi(siteUrl, filter));
 		if (posts && posts.length) {
-			livePostsCache = {
+			livePostsCache.set(filter, {
 				expiresAt: Date.now() + LIVE_GHOST_CACHE_TTL_MS,
 				posts
-			};
+			});
 			return posts;
 		}
 	} catch (error) {
@@ -407,7 +418,7 @@ async function loadLivePosts(siteUrl: string) {
 
 export async function getBlogPosts(): Promise<BlogPost[]> {
 	const siteUrl = getGhostUrl();
-	const livePosts = await loadLivePosts(siteUrl);
+	const livePosts = await loadLivePosts(siteUrl, GHOST_FILTER);
 	const rawPosts = livePosts.length ? livePosts : loadFallbackPosts();
 
 	const posts = rawPosts
@@ -424,6 +435,22 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
 		...post,
 		html: rewriteInternalLinks(post.html, sourceMap, siteUrl)
 	}));
+}
+
+export async function getLatestNowPost(): Promise<BlogPost | null> {
+	const siteUrl = getGhostUrl();
+	const livePosts = await loadLivePosts(siteUrl, NOW_FILTER);
+	const rawPosts = livePosts.length ? livePosts : loadNowFallbackPosts();
+
+	const posts = rawPosts
+		.map((post: Record<string, unknown>) => normalizePost(post, siteUrl))
+		.filter((post: BlogPost) => {
+			const tags = new Set((post.tags || []).filter(Boolean));
+			return tags.has('now');
+		})
+		.sort((a: BlogPost, b: BlogPost) => b.publishedAt.getTime() - a.publishedAt.getTime());
+
+	return posts[0] || null;
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {

@@ -2,6 +2,7 @@
 	import type { Checkin } from '$lib/server/atproto';
 	import { formatDate } from '$lib/format';
 	import CheckinMap from '$lib/components/CheckinMap.svelte';
+	import type { BlogPost } from '$lib/server/ghost';
 	import type { AlbumEntry, TrackEntry } from '$lib/server/music';
 
 	let {
@@ -13,6 +14,7 @@
 				description: string;
 				paragraphs: string[];
 			};
+			nowPost: BlogPost | null;
 			latestCheckin: Checkin | null;
 			albums: AlbumEntry[];
 			tracks: TrackEntry[];
@@ -21,17 +23,28 @@
 </script>
 
 <svelte:head>
-	<title>{data.intro.title} | Bryan Robb</title>
+	<title>{data.nowPost?.title || data.intro.title} | Bryan Robb</title>
 </svelte:head>
 
 <section class="section-block">
-	<h1 class="section-title">{data.intro.title}</h1>
+	<h1 class="section-title">{data.nowPost?.title || data.intro.title}</h1>
 	<article class="content content-page">
 		<div class="post-full-content">
 			<section class="content-body">
-				{#each data.intro.paragraphs as paragraph}
-					<p>{paragraph}</p>
-				{/each}
+				{#if data.nowPost}
+					<div class="entry__meta">
+						<time datetime={data.nowPost.publishedAt.toISOString()}>
+							{formatDate(data.nowPost.publishedAt)}
+						</time>
+					</div>
+					<div class="entry__content">
+						{@html data.nowPost.html}
+					</div>
+				{:else}
+					{#each data.intro.paragraphs as paragraph}
+						<p>{paragraph}</p>
+					{/each}
+				{/if}
 			</section>
 		</div>
 	</article>
