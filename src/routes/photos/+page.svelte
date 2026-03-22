@@ -283,12 +283,6 @@
 			margin: 0 0 0.55rem;
 		}
 
-		.photo-card__overlay,
-		.photo-card::after {
-			opacity: 1;
-			transform: translateY(0);
-		}
-
 		.lightbox__dialog {
 			margin: 2vh auto;
 			padding: 1rem;
