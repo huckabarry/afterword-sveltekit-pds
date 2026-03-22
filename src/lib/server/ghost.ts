@@ -1,8 +1,11 @@
+import { env } from '$env/dynamic/private';
+
 const DEFAULT_GHOST_URL = 'https://lowvelocity.org';
 const ghostCacheFiles = import.meta.glob('/data/ghost-posts.json', {
 	import: 'default',
 	eager: true
 }) as Record<string, { posts?: unknown }>;
+const LIVE_GHOST_CACHE_TTL_MS = 1000 * 60 * 5;
 const INCLUDED_TAGS = new Set([
 	'field-notes',
 	'gallery',
@@ -18,6 +21,12 @@ const INCLUDED_TAGS = new Set([
 	'hash-section-blog'
 ]);
 const EXCLUDED_TAGS = new Set(['status', 'afterword', 'now', 'listening', 'books']);
+let livePostsCache:
+	| {
+			expiresAt: number;
+			posts: Record<string, unknown>[];
+	  }
+	| null = null;
 
 export type BlogPost = {
 	id: string;
@@ -47,10 +56,18 @@ export type PhotoItem = {
 };
 
 function getGhostUrl() {
-	return String(process.env.GHOST_URL || process.env.GHOST_ADMIN_URL || DEFAULT_GHOST_URL)
+	return String(env.GHOST_URL || env.GHOST_ADMIN_URL || DEFAULT_GHOST_URL)
 		.trim()
 		.replace(/\/+$/, '')
 		.replace(/\/ghost$/i, '');
+}
+
+function getGhostAdminKey() {
+	return String(env.GHOST_ADMIN_KEY || '').trim();
+}
+
+function getGhostContentKey() {
+	return String(env.GHOST_CONTENT_API_KEY || '').trim();
 }
 
 function slugify(value: string) {
@@ -228,9 +245,169 @@ function loadCachedPosts() {
 	}
 }
 
+function base64UrlEncodeBytes(bytes: Uint8Array) {
+	let binary = '';
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlEncodeText(value: string) {
+	return base64UrlEncodeBytes(new TextEncoder().encode(value));
+}
+
+function hexToBytes(hex: string) {
+	const normalized = hex.trim();
+	if (!normalized || normalized.length % 2 !== 0) {
+		throw new Error('Invalid Ghost admin secret');
+	}
+
+	const bytes = new Uint8Array(normalized.length / 2);
+	for (let i = 0; i < normalized.length; i += 2) {
+		bytes[i / 2] = Number.parseInt(normalized.slice(i, i + 2), 16);
+	}
+	return bytes;
+}
+
+async function createGhostAdminToken(key: string) {
+	const [id, secret] = key.split(':');
+
+	if (!id || !secret) {
+		throw new Error('Invalid Ghost admin key');
+	}
+
+	const now = Math.floor(Date.now() / 1000);
+	const header = {
+		alg: 'HS256',
+		kid: id,
+		typ: 'JWT'
+	};
+	const payload = {
+		iat: now,
+		exp: now + 5 * 60,
+		aud: '/admin/'
+	};
+
+	const encodedHeader = base64UrlEncodeText(JSON.stringify(header));
+	const encodedPayload = base64UrlEncodeText(JSON.stringify(payload));
+	const signingInput = `${encodedHeader}.${encodedPayload}`;
+
+	const cryptoKey = await crypto.subtle.importKey(
+		'raw',
+		hexToBytes(secret),
+		{ name: 'HMAC', hash: 'SHA-256' },
+		false,
+		['sign']
+	);
+	const signature = await crypto.subtle.sign(
+		'HMAC',
+		cryptoKey,
+		new TextEncoder().encode(signingInput)
+	);
+
+	return `${signingInput}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
+}
+
+async function fetchPostsFromAdminApi(siteUrl: string) {
+	const key = getGhostAdminKey();
+
+	if (!key || !siteUrl) {
+		return null;
+	}
+
+	const token = await createGhostAdminToken(key);
+	const posts: Record<string, unknown>[] = [];
+
+	for (let page = 1; page <= 100; page += 1) {
+		const params = new URLSearchParams({
+			formats: 'html',
+			include: 'tags,authors',
+			limit: '100',
+			page: String(page),
+			filter: 'status:published'
+		});
+		const response = await fetch(`${siteUrl}/ghost/api/admin/posts/?${params.toString()}`, {
+			headers: {
+				Accept: 'application/json',
+				Authorization: `Ghost ${token}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`Ghost Admin API request failed with ${response.status}`);
+		}
+
+		const payload = (await response.json()) as { posts?: Record<string, unknown>[] };
+		const batch = Array.isArray(payload.posts) ? payload.posts : [];
+
+		if (!batch.length) {
+			break;
+		}
+
+		posts.push(...batch);
+
+		if (batch.length < 100) {
+			break;
+		}
+	}
+
+	return posts;
+}
+
+async function fetchPostsFromContentApi(siteUrl: string) {
+	const key = getGhostContentKey();
+
+	if (!key || !siteUrl) {
+		return null;
+	}
+
+	const params = new URLSearchParams({
+		key,
+		filter: 'status:published',
+		include: 'tags,authors',
+		formats: 'html',
+		limit: 'all'
+	});
+	const response = await fetch(`${siteUrl}/ghost/api/content/posts/?${params.toString()}`, {
+		headers: {
+			Accept: 'application/json'
+		}
+	});
+
+	if (!response.ok) {
+		throw new Error(`Ghost Content API request failed with ${response.status}`);
+	}
+
+	const payload = (await response.json()) as { posts?: Record<string, unknown>[] };
+	return Array.isArray(payload.posts) ? payload.posts : [];
+}
+
+async function loadLivePosts(siteUrl: string) {
+	if (livePostsCache && livePostsCache.expiresAt > Date.now()) {
+		return livePostsCache.posts;
+	}
+
+	try {
+		const posts = (await fetchPostsFromAdminApi(siteUrl)) || (await fetchPostsFromContentApi(siteUrl));
+		if (posts && posts.length) {
+			livePostsCache = {
+				expiresAt: Date.now() + LIVE_GHOST_CACHE_TTL_MS,
+				posts
+			};
+			return posts;
+		}
+	} catch (error) {
+		console.warn(
+			`[ghost] Live Ghost API fetch failed: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+
+	return [];
+}
+
 export async function getBlogPosts(): Promise<BlogPost[]> {
 	const siteUrl = getGhostUrl();
-	const rawPosts = loadCachedPosts();
+	const livePosts = await loadLivePosts(siteUrl);
+	const rawPosts = livePosts.length ? livePosts : loadCachedPosts();
 
 	const posts = rawPosts
 		.map((post: Record<string, unknown>) => normalizePost(post, siteUrl))
