@@ -22,7 +22,7 @@
 		<a class="site-header-avatar-link" href="/">
 			<img
 				class="avatar"
-				src="https://afterword.blog/assets/images/status-avatar.jpg"
+				src="/assets/images/status-avatar.jpg"
 				alt="Bryan Robb"
 			/>
 		</a>

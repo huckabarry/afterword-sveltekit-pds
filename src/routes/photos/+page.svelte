@@ -44,7 +44,7 @@
 <section class="stream-head">
 	<h1 class="stream-head__title">Visual Notes</h1>
 	<p class="stream-head__lede">
-		A masonry view of every image pulled from gallery-tagged Ghost posts on Low Velocity.
+		A masonry view of every image pulled from gallery-tagged posts.
 	</p>
 </section>
 
@@ -64,7 +64,7 @@
 						<time class="photo-card__date">
 							{new Date(photo.postPublishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
 						</time>
-						<span class="photo-card__source">Low Velocity</span>
+						<span class="photo-card__source">View post</span>
 					</span>
 				</span>
 			</button>

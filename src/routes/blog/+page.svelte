@@ -42,7 +42,7 @@
 		</article>
 	{:else}
 		<article class="blog-row">
-			<p>No Low Velocity posts are available yet.</p>
+			<p>No blog posts are available yet.</p>
 		</article>
 	{/each}
 </section>
