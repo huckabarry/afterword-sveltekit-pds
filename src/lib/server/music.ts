@@ -1,11 +1,15 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
-const ARCHIVE_ROOT = path.join(process.cwd(), 'data', 'archive');
-const ALBUMWHALE_ARCHIVE = path.join(ARCHIVE_ROOT, 'albumwhale');
-const CRUCIAL_TRACKS_ARCHIVE = path.join(ARCHIVE_ROOT, 'crucial-tracks');
 const ALBUMWHALE_LIST_URL = 'https://albumwhale.com/bryan/listening-now';
 const CRUCIAL_TRACKS_FEED_URL = 'https://www.crucialtracks.org/profile/bryan/feed.json';
+const albumArchiveFiles = import.meta.glob('/data/archive/albumwhale/**/*.md', {
+	query: '?raw',
+	import: 'default',
+	eager: true
+}) as Record<string, string>;
+const trackArchiveFiles = import.meta.glob('/data/archive/crucial-tracks/**/*.md', {
+	query: '?raw',
+	import: 'default',
+	eager: true
+}) as Record<string, string>;
 
 type Frontmatter = Record<string, string | boolean | number | null>;
 
@@ -68,21 +72,7 @@ let albumWhaleLinksPromise: Promise<Map<string, ListenLink[]>> | null = null;
 let crucialTracksDetailsPromise: Promise<CrucialTrackFeedIndex> | null = null;
 
 function walkMarkdownFiles(root: string): string[] {
-	if (!fs.existsSync(root)) {
-		return [];
-	}
-
-	const entries = fs.readdirSync(root, { withFileTypes: true });
-	return entries.flatMap((entry) => {
-		const fullPath = path.join(root, entry.name);
-		if (entry.isDirectory()) {
-			return walkMarkdownFiles(fullPath);
-		}
-		if (entry.isFile() && fullPath.endsWith('.md')) {
-			return [fullPath];
-		}
-		return [];
-	});
+	return Object.keys(root === 'albumwhale' ? albumArchiveFiles : trackArchiveFiles).sort();
 }
 
 function parseFrontmatter(source: string): { data: Frontmatter; content: string } {
@@ -319,9 +309,9 @@ async function getAlbumWhaleListenLinks(): Promise<Map<string, ListenLink[]>> {
 export async function getAlbums(): Promise<AlbumEntry[]> {
 	const listenLinksByAlbumId = await getAlbumWhaleListenLinks();
 
-	return walkMarkdownFiles(ALBUMWHALE_ARCHIVE)
+	return walkMarkdownFiles('albumwhale')
 		.map((filePath) => {
-			const raw = fs.readFileSync(filePath, 'utf8');
+			const raw = albumArchiveFiles[filePath] || '';
 			const { data, content } = parseFrontmatter(raw);
 			const { title, artist } = splitTitleAndArtist(String(data.title || 'Untitled'));
 			const publishedAt = new Date(String(data.published || Date.now()));
@@ -433,13 +423,13 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 export async function getTracks(): Promise<TrackEntry[]> {
 	const trackDetails = await getCrucialTrackDetails();
 
-	return walkMarkdownFiles(CRUCIAL_TRACKS_ARCHIVE)
+	return walkMarkdownFiles('crucial-tracks')
 		.map((filePath) => {
-			const raw = fs.readFileSync(filePath, 'utf8');
+			const raw = trackArchiveFiles[filePath] || '';
 			const { data, content } = parseFrontmatter(raw);
 			const parsed = extractTrackBody(content);
 			const publishedAt = new Date(String(data.published || Date.now()));
-			const fileBase = path.basename(filePath, '.md');
+			const fileBase = filePath.split('/').pop()?.replace(/\.md$/, '') || 'track';
 			const slug = `${slugify(fileBase)}-${slugify(`${parsed.trackTitle}-${parsed.artist}`)}`;
 			const sourceUrl = String(data.original_url || '');
 			const enriched =

@@ -1,7 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 const DEFAULT_GHOST_URL = 'https://lowvelocity.org';
+const ghostCacheFiles = import.meta.glob('/data/ghost-posts.json', {
+	import: 'default',
+	eager: true
+}) as Record<string, { posts?: unknown }>;
 const INCLUDED_TAGS = new Set([
 	'field-notes',
 	'gallery',
@@ -218,25 +219,9 @@ function shouldIncludePost(post: BlogPost) {
 	return [...tags].some((tag) => INCLUDED_TAGS.has(tag));
 }
 
-function resolveCachePath() {
-	const localCache = path.join(process.cwd(), 'data', 'ghost-posts.json');
-
-	if (fs.existsSync(localCache)) {
-		return localCache;
-	}
-
-	return null;
-}
-
 function loadCachedPosts() {
-	const cachePath = resolveCachePath();
-
-	if (!cachePath) {
-		return [] as Record<string, unknown>[];
-	}
-
 	try {
-		const data = JSON.parse(fs.readFileSync(cachePath, 'utf8')) as { posts?: unknown };
+		const data = ghostCacheFiles['/data/ghost-posts.json'] || {};
 		return Array.isArray(data.posts) ? (data.posts as Record<string, unknown>[]) : [];
 	} catch {
 		return [] as Record<string, unknown>[];

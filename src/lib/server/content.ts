@@ -1,7 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
-const CONTENT_ROOT = path.join(process.cwd(), 'src', 'content');
+const contentFiles = import.meta.glob('/src/content/*.md', {
+	query: '?raw',
+	import: 'default',
+	eager: true
+}) as Record<string, string>;
 
 type FrontmatterValue = string | string[];
 
@@ -72,7 +73,8 @@ function parseFrontmatter(source: string): ParsedContent {
 }
 
 function readContentFile(name: string) {
-	return fs.readFileSync(path.join(CONTENT_ROOT, name), 'utf8');
+	const key = `/src/content/${name}`;
+	return contentFiles[key] || '';
 }
 
 function bodyToParagraphs(body: string) {
