@@ -275,7 +275,12 @@
 	@media (max-width: 640px) {
 		.photo-grid {
 			column-width: auto;
-			columns: 1;
+			columns: 2;
+			column-gap: 0.55rem;
+		}
+
+		.photo-card {
+			margin: 0 0 0.55rem;
 		}
 
 		.photo-card__overlay,

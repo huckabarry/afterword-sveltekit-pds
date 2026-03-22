@@ -276,12 +276,17 @@
 
 	@media (max-width: 640px) {
 		.section-head {
-			align-items: flex-start;
-			flex-direction: column;
+			align-items: center;
+			flex-direction: row;
+			flex-wrap: wrap;
 		}
 
 		.section-block-status__card .status-row__image img {
 			height: auto;
+		}
+
+		.home-updates__controls {
+			margin-left: auto;
 		}
 
 	}
