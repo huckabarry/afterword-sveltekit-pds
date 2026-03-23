@@ -199,7 +199,7 @@
 	</section>
 
 	<section class="section-block section-block-writing">
-		<h2 class="section-title">Planning</h2>
+		<h2 class="section-title">Planning & Urbanism</h2>
 		{#if data.planningPosts.length}
 			<section class="blog-list">
 				{#each data.planningPosts as post}
@@ -215,8 +215,8 @@
 				{/each}
 			</section>
 			<div class="home-stream-tags">
-				<a class="tag-pill" href="/tags/urbanism">Planning</a>
-				<a class="home-updates__more-link" href="/planning">Read more planning posts <span aria-hidden="true">→</span></a>
+				<a class="tag-pill" href="/tags/urbanism">Urbanism</a>
+				<a class="home-updates__more-link" href="/planning">Read more planning & urbanism posts <span aria-hidden="true">→</span></a>
 			</div>
 		{:else}
 			<p class="empty-state">No planning posts are available yet.</p>

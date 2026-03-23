@@ -19,11 +19,11 @@
 </script>
 
 <svelte:head>
-	<title>Planning | Bryan Robb</title>
+	<title>Planning & Urbanism | Bryan Robb</title>
 </svelte:head>
 
 <section class="stream-head">
-	<h1 class="stream-head__title">Planning</h1>
+	<h1 class="stream-head__title">Planning & Urbanism</h1>
 	<p class="stream-head__lede">Urbanism, transportation, housing, and public finance writing.</p>
 </section>
 
