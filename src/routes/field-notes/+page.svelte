@@ -68,9 +68,6 @@
 		display: block;
 		width: 100%;
 		height: auto;
-		max-height: 24rem;
-		object-fit: contain;
-		object-position: top;
 		border-radius: 0.5rem;
 	}
 
