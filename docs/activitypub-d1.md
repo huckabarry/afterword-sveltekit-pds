@@ -1,6 +1,6 @@
 # ActivityPub D1 Setup
 
-This repo is prepared to use a Cloudflare D1 database for ActivityPub follower storage.
+This repo is prepared to use a Cloudflare D1 database for ActivityPub follower storage and outbound delivery tracking.
 
 ## 1. Create the database
 
@@ -31,18 +31,20 @@ Run:
 
 ```bash
 npx wrangler d1 execute d1-database --remote --file migrations/0001_activitypub_followers.sql
+npx wrangler d1 execute d1-database --remote --file migrations/0002_activitypub_deliveries.sql
 ```
 
 This creates:
 
 - `ap_followers`
+- `ap_deliveries`
 
 ## 4. What it is for
 
 The first intended use is:
 
 - storing accepted ActivityPub followers
-- later tracking outbound delivery attempts for blog post federation
+- tracking outbound delivery attempts for blog post federation
 
 Current code helpers live in:
 
@@ -64,3 +66,23 @@ If `ACTIVITYPUB_KEY_ID` is omitted, the app uses:
 - `https://afterword.blog/ap/actor#main-key`
 
 The actor endpoint will expose the public key when `ACTIVITYPUB_PUBLIC_KEY_PEM` is present.
+
+## 6. Manual delivery trigger
+
+To manually deliver a blog post to current followers, add this Cloudflare secret:
+
+- `ACTIVITYPUB_DELIVERY_TOKEN`
+
+Then call:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  https://afterword.blog/ap/admin/deliver/YOUR-BLOG-SLUG
+```
+
+This will:
+
+- generate a `Create` activity for the blog post
+- send it to each follower inbox/sharedInbox
+- record delivery status in `ap_deliveries`

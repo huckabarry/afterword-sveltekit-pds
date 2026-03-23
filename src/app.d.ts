@@ -8,6 +8,7 @@ declare global {
 		ACTIVITYPUB_PRIVATE_KEY_PEM?: string;
 		ACTIVITYPUB_PUBLIC_KEY_PEM?: string;
 		ACTIVITYPUB_KEY_ID?: string;
+		ACTIVITYPUB_DELIVERY_TOKEN?: string;
 	}
 
 	namespace App {
