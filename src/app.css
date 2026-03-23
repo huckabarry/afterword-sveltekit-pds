@@ -1518,17 +1518,15 @@ p:last-child {
 	display: grid;
 	gap: 1rem;
 	padding: 1.15rem;
-	background:
-		linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 245, 240, 0.94)),
-		var(--surface-alt);
-	border: 1px solid rgba(0, 0, 0, 0.08);
+	background: linear-gradient(180deg, #202324, #1a1c1d);
+	border: 1px solid rgba(255, 255, 255, 0.05);
 	border-radius: 24px;
-	box-shadow: 0 18px 42px rgba(0, 0, 0, 0.08);
+	box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
 }
 
 .admin-sidebar__tagline {
 	margin: 0.35rem 0 0;
-	color: var(--muted);
+	color: #b4b7b2;
 	font-size: 0.94rem;
 	line-height: 1.5;
 }
@@ -1548,18 +1546,19 @@ p:last-child {
 	border-radius: 16px;
 	text-decoration: none;
 	font-weight: 700;
-	color: var(--muted-strong);
+	color: #f4f4f1;
 }
 
 .admin-sidebar__link {
-	background: rgba(255, 255, 255, 0.56);
+	background: rgba(255, 255, 255, 0.08);
 }
 
 .admin-sidebar__link--active,
 .admin-mobile-nav__link--active {
-	background: var(--ink);
-	color: white;
-	box-shadow: 0 10px 24px rgba(17, 17, 17, 0.18);
+	background: #f4f4f1;
+	color: #111111;
+	border-color: rgba(0, 0, 0, 0.06);
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
 }
 
 .admin-sidebar__logout {
@@ -1590,14 +1589,14 @@ p:last-child {
 	font-weight: 700;
 	letter-spacing: 0.13em;
 	text-transform: uppercase;
-	color: var(--muted);
+	color: #7a7f7a;
 }
 
 .admin-topbar__title {
 	margin: 0;
 	font-size: 1.05rem;
 	font-weight: 800;
-	color: var(--ink);
+	color: #111111;
 }
 
 .admin-topbar__quick {
@@ -1606,7 +1605,7 @@ p:last-child {
 	justify-content: center;
 	padding: 0.7rem 0.95rem;
 	border-radius: 999px;
-	background: var(--ink);
+	background: #111111;
 	color: white;
 	text-decoration: none;
 	font-weight: 700;
@@ -1619,7 +1618,7 @@ p:last-child {
 	font-weight: 700;
 	letter-spacing: 0.16em;
 	text-transform: uppercase;
-	color: var(--muted);
+	color: #8a8f8a;
 }
 
 .admin-title,
@@ -1653,6 +1652,7 @@ p:last-child {
 	border-radius: 24px;
 	padding: 1.25rem;
 	box-shadow: 0 14px 36px rgba(0, 0, 0, 0.06);
+	color: #111111;
 }
 
 .admin-card--narrow {
@@ -1706,7 +1706,7 @@ p:last-child {
 .admin-stat__value {
 	margin: 0;
 	font-weight: 700;
-	color: var(--ink);
+	color: #111111;
 }
 
 .admin-list-item__meta,
@@ -1715,7 +1715,7 @@ p:last-child {
 .admin-login__intro,
 .admin-stat__label {
 	margin: 0;
-	color: var(--muted);
+	color: #686d68;
 }
 
 .admin-thread__meta {
@@ -1727,12 +1727,13 @@ p:last-child {
 
 .admin-thread__meta span {
 	font-weight: 400;
-	color: var(--muted);
+	color: #686d68;
 }
 
 .admin-thread__content {
 	margin: 0;
 	white-space: pre-wrap;
+	color: #111111;
 }
 
 .admin-thread__actions,
@@ -1831,7 +1832,7 @@ p:last-child {
 
 .admin-field span {
 	font-weight: 600;
-	color: var(--muted-strong);
+	color: #303330;
 }
 
 .admin-field input,
@@ -1841,7 +1842,7 @@ p:last-child {
 	border-radius: 14px;
 	padding: 0.85rem 0.95rem;
 	font: inherit;
-	color: var(--ink);
+	color: #111111;
 	background: white;
 }
 
