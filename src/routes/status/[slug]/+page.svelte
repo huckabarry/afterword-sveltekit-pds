@@ -139,11 +139,11 @@
 					</a>
 					<a
 						class="status-row__reply-pill"
-						href={`/status/${data.post.slug}`}
+						href={`/ap/status/${data.post.slug}`}
 						role="button"
 						onclick={(event) => {
 							event.preventDefault();
-							openFediverseReply(`${data.origin}/status/${data.post.slug}`);
+							openFediverseReply(`${data.origin}/ap/status/${data.post.slug}`);
 						}}
 					>
 						<span class="status-row__reply-pill-icon" aria-hidden="true">
