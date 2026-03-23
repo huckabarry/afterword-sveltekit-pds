@@ -31,6 +31,12 @@ export async function GET(event) {
 				max_media_attachments: 4,
 				characters_reserved_per_url: 23
 			},
+			polls: {
+				max_options: 4,
+				max_characters_per_option: 50,
+				min_expiration: 300,
+				max_expiration: 2629746
+			},
 			media_attachments: {
 				supported_mime_types: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
 				image_size_limit: 10485760,
@@ -44,8 +50,13 @@ export async function GET(event) {
 			enabled: false,
 			approval_required: true
 		},
+		api_versions: {
+			mastodon: 4
+		},
 		contact: {
+			email: '',
 			account
-		}
+		},
+		rules: []
 	});
 }
