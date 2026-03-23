@@ -67,70 +67,84 @@ function getObjectId(activity: FollowActivity) {
 export async function POST(event) {
 	const origin = getActivityPubOrigin(event);
 
-	if (!hasFollowerDb(event)) {
-		throw error(500, 'Follower database is not configured');
-	}
+	try {
+		if (!hasFollowerDb(event)) {
+			console.error('[ap/inbox] follower database is not configured');
+			throw error(500, 'Follower database is not configured');
+		}
 
-	const rawBody = await event.request.text();
-	const verified = await verifyInboundActivitySignature(event, rawBody);
-	const activity = JSON.parse(rawBody) as FollowActivity;
+		const rawBody = await event.request.text();
+		console.log('[ap/inbox] received payload', rawBody.slice(0, 500));
 
-	if (activity.type !== 'Follow') {
-		return new Response(
-			JSON.stringify({
-				error: 'Only Follow activities are supported right now.'
-			}),
-			{
-				status: 501,
-				headers: {
-					'content-type': 'application/json; charset=utf-8'
+		const verified = await verifyInboundActivitySignature(event, rawBody);
+		const activity = JSON.parse(rawBody) as FollowActivity;
+
+		if (activity.type !== 'Follow') {
+			console.log('[ap/inbox] unsupported activity type', activity.type);
+			return new Response(
+				JSON.stringify({
+					error: 'Only Follow activities are supported right now.'
+				}),
+				{
+					status: 501,
+					headers: {
+						'content-type': 'application/json; charset=utf-8'
+					}
 				}
-			}
-		);
-	}
-
-	const actorId = getActorIdFromActivity(activity);
-	const objectId = getObjectId(activity);
-	const localActorId = getActorId(origin);
-
-	if (!actorId || !objectId || objectId !== localActorId) {
-		throw error(400, 'Invalid Follow activity');
-	}
-
-	if (verified.actorId !== actorId) {
-		throw error(401, 'Signed actor did not match Follow actor');
-	}
-
-	const remoteActor = await fetchRemoteActor(actorId);
-	const endpoints =
-		remoteActor.endpoints && typeof remoteActor.endpoints === 'object'
-			? (remoteActor.endpoints as Record<string, unknown>)
-			: null;
-
-	await upsertFollower(event, {
-		actorId,
-		inboxUrl: getString(remoteActor.inbox),
-		sharedInboxUrl: endpoints ? getString(endpoints.sharedInbox) : null,
-		displayName: getString(remoteActor.name),
-		handle: getString(remoteActor.preferredUsername),
-		followActivityId: String(activity.id || `${actorId}#follow`)
-	});
-
-	const acceptActivity = createAcceptActivity(origin, activity);
-	const deliveryTarget = endpoints ? getString(endpoints.sharedInbox) || getString(remoteActor.inbox) : getString(remoteActor.inbox);
-
-	if (deliveryTarget) {
-		try {
-			await sendSignedActivity(origin, deliveryTarget, acceptActivity);
-			await updateFollowerDeliveryStatus(event, actorId, 'accept-sent');
-		} catch (deliveryError) {
-			await updateFollowerDeliveryStatus(
-				event,
-				actorId,
-				`accept-failed:${deliveryError instanceof Error ? deliveryError.message : String(deliveryError)}`
 			);
 		}
-	}
 
-	return activityJson(acceptActivity, { status: 202 });
+		const actorId = getActorIdFromActivity(activity);
+		const objectId = getObjectId(activity);
+		const localActorId = getActorId(origin);
+
+		if (!actorId || !objectId || objectId !== localActorId) {
+			console.error('[ap/inbox] invalid follow activity', { actorId, objectId, localActorId });
+			throw error(400, 'Invalid Follow activity');
+		}
+
+		if (verified.actorId !== actorId) {
+			console.error('[ap/inbox] actor mismatch', { verifiedActorId: verified.actorId, actorId });
+			throw error(401, 'Signed actor did not match Follow actor');
+		}
+
+		const remoteActor = await fetchRemoteActor(actorId);
+		const endpoints =
+			remoteActor.endpoints && typeof remoteActor.endpoints === 'object'
+				? (remoteActor.endpoints as Record<string, unknown>)
+				: null;
+
+		await upsertFollower(event, {
+			actorId,
+			inboxUrl: getString(remoteActor.inbox),
+			sharedInboxUrl: endpoints ? getString(endpoints.sharedInbox) : null,
+			displayName: getString(remoteActor.name),
+			handle: getString(remoteActor.preferredUsername),
+			followActivityId: String(activity.id || `${actorId}#follow`)
+		});
+
+		console.log('[ap/inbox] follower stored', actorId);
+
+		const acceptActivity = createAcceptActivity(origin, activity);
+		const deliveryTarget = endpoints
+			? getString(endpoints.sharedInbox) || getString(remoteActor.inbox)
+			: getString(remoteActor.inbox);
+
+		if (deliveryTarget) {
+			try {
+				await sendSignedActivity(origin, deliveryTarget, acceptActivity);
+				await updateFollowerDeliveryStatus(event, actorId, 'accept-sent');
+				console.log('[ap/inbox] accept delivered', { actorId, deliveryTarget });
+			} catch (deliveryError) {
+				const message = deliveryError instanceof Error ? deliveryError.message : String(deliveryError);
+				await updateFollowerDeliveryStatus(event, actorId, `accept-failed:${message}`);
+				console.error('[ap/inbox] accept delivery failed', { actorId, deliveryTarget, message });
+			}
+		}
+
+		return activityJson(acceptActivity, { status: 202 });
+	} catch (err) {
+		console.error('[ap/inbox] request failed', err);
+		throw err;
+	}
 }
