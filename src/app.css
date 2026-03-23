@@ -1647,7 +1647,10 @@ p:last-child {
 	color: #f4f4f1;
 }
 
-.admin-panel__title,
+.admin-panel__title {
+	color: #f4f4f1;
+}
+
 .admin-login__title {
 	color: #111111;
 }
@@ -1788,6 +1791,44 @@ p:last-child {
 	margin: 0;
 	white-space: pre-wrap;
 	color: #111111;
+}
+
+.admin-thread__context {
+	display: grid;
+	gap: 0.45rem;
+}
+
+.admin-thread__context-label {
+	margin: 0;
+	font-size: 0.78rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: #7a7f7a;
+}
+
+.admin-thread__context-card {
+	display: grid;
+	gap: 0.2rem;
+	padding: 0.85rem 0.95rem;
+	border-radius: 16px;
+	background: rgba(17, 17, 17, 0.04);
+	border: 1px solid rgba(17, 17, 17, 0.08);
+	text-decoration: none;
+}
+
+.admin-thread__context-card strong {
+	color: #111111;
+}
+
+.admin-thread__context-card span {
+	color: #686d68;
+	font-size: 0.88rem;
+}
+
+.admin-thread__context-card p {
+	margin: 0.1rem 0 0;
+	color: #2a2d2a;
 }
 
 .admin-thread__actions,

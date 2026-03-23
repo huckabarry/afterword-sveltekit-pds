@@ -29,7 +29,29 @@
 							<span>{new Date(reply.publishedAt).toLocaleString()}</span>
 						</div>
 						<p class="admin-thread__content">{reply.contentText}</p>
-						<p class="admin-thread__target">In reply to: {reply.inReplyToObjectId}</p>
+
+						{#if reply.replyContext}
+							<div class="admin-thread__context">
+								<p class="admin-thread__context-label">In reply to</p>
+								<a
+									class="admin-thread__context-card"
+									href={reply.replyContext.url}
+									target="_blank"
+									rel="noreferrer"
+								>
+									{#if reply.replyContext.title}
+										<strong>{reply.replyContext.title}</strong>
+									{/if}
+									{#if reply.replyContext.author}
+										<span>{reply.replyContext.author}</span>
+									{/if}
+									<p>{reply.replyContext.excerpt}</p>
+								</a>
+							</div>
+						{:else}
+							<p class="admin-thread__target">In reply to: {reply.inReplyToObjectId}</p>
+						{/if}
+
 						<div class="admin-thread__actions">
 							<form method="POST" action="?/like">
 								<input type="hidden" name="objectId" value={reply.noteId} />
