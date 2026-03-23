@@ -15,6 +15,16 @@
 				announceCount: number;
 				totalCount: number;
 			};
+			replies: Array<{
+				noteId: string;
+				actorId: string;
+				actorName: string | null;
+				actorHandle: string | null;
+				contentHtml: string;
+				publishedAt: string;
+				avatarUrl: string | null;
+				profileUrl: string;
+			}>;
 		};
 	} = $props();
 </script>
@@ -87,6 +97,45 @@
 								<span class="entry-webmentions__meta">{mention.sourceDomain}</span>
 							{/if}
 						</a>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
+
+	{#if data.replies.length}
+		<section class="entry-replies" aria-labelledby="replies-title">
+			<h2 id="replies-title" class="entry-webmentions__title">Fediverse replies</h2>
+			<ul class="entry-replies__list">
+				{#each data.replies as reply}
+					<li class="entry-replies__item">
+						<div class="entry-replies__avatar">
+							{#if reply.avatarUrl}
+								<img src={reply.avatarUrl} alt={reply.actorName || reply.actorHandle || reply.actorId} loading="lazy" />
+							{:else}
+								<span>{(reply.actorName || reply.actorHandle || '?').slice(0, 1).toUpperCase()}</span>
+							{/if}
+						</div>
+						<div class="entry-replies__body">
+							<div class="entry-replies__meta">
+								<a href={reply.profileUrl} target="_blank" rel="noreferrer">
+									{reply.actorName || reply.actorHandle || reply.actorId}
+								</a>
+								{#if reply.actorHandle}
+									<span>{reply.actorHandle}</span>
+								{/if}
+								<time datetime={reply.publishedAt}>
+									{new Date(reply.publishedAt).toLocaleDateString('en-US', {
+										month: 'short',
+										day: 'numeric',
+										year: 'numeric'
+									})}
+								</time>
+							</div>
+							<div class="entry-replies__content">
+								{@html reply.contentHtml}
+							</div>
+						</div>
 					</li>
 				{/each}
 			</ul>
