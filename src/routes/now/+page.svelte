@@ -28,6 +28,8 @@
 	} = $props();
 
 	let nowImageIndex = $state(0);
+	let touchStartX = 0;
+	let touchDeltaX = 0;
 
 	function shouldRenderIntroParagraph(paragraph: string) {
 		const normalizedParagraph = paragraph.trim().toLowerCase();
@@ -46,6 +48,31 @@
 
 	function showNextNowImage() {
 		nowImageIndex = (nowImageIndex + 1) % data.nowImages.length;
+	}
+
+	function handleNowTouchStart(event: TouchEvent) {
+		touchStartX = event.touches[0]?.clientX ?? 0;
+		touchDeltaX = 0;
+	}
+
+	function handleNowTouchMove(event: TouchEvent) {
+		const currentX = event.touches[0]?.clientX ?? touchStartX;
+		touchDeltaX = currentX - touchStartX;
+	}
+
+	function handleNowTouchEnd() {
+		if (Math.abs(touchDeltaX) < 40) {
+			touchDeltaX = 0;
+			return;
+		}
+
+		if (touchDeltaX < 0) {
+			showNextNowImage();
+		} else {
+			showPrevNowImage();
+		}
+
+		touchDeltaX = 0;
 	}
 </script>
 
@@ -85,7 +112,14 @@
 					</h3>
 					{#if data.nowImages.length > 1}
 						<section class="now-carousel" aria-label="Now post images">
-							<div class="now-carousel__frame" role="group" aria-label="Now post image carousel">
+							<div
+								class="now-carousel__frame"
+								role="group"
+								aria-label="Now post image carousel"
+								ontouchstart={handleNowTouchStart}
+								ontouchmove={handleNowTouchMove}
+								ontouchend={handleNowTouchEnd}
+							>
 								<div class="now-carousel__viewport">
 									<div
 										class="now-carousel__track"
@@ -117,6 +151,11 @@
 									<button class="now-carousel__button" type="button" onclick={showNextNowImage}>
 										Next
 									</button>
+								</div>
+								<div class="now-carousel__dots" aria-hidden="true">
+									{#each data.nowImages as _, index}
+										<span class:now-carousel__dot--active={index === nowImageIndex} class="now-carousel__dot"></span>
+									{/each}
 								</div>
 							</div>
 						</section>
@@ -341,25 +380,34 @@
 		line-height: 1;
 	}
 
+	.now-carousel__dots {
+		display: none;
+	}
+
+	.now-carousel__dot {
+		width: 0.42rem;
+		height: 0.42rem;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.28);
+	}
+
+	.now-carousel__dot--active {
+		background: #f2f4a3;
+	}
+
 	@media (max-width: 640px) {
 		.now-carousel__viewport {
-			overflow-x: auto;
-			overflow-y: hidden;
-			scroll-snap-type: x mandatory;
-			padding-right: 12vw;
-			-webkit-overflow-scrolling: touch;
+			overflow: hidden;
 		}
 
 		.now-carousel__track {
-			gap: 0.75rem;
-			width: max-content;
-			transform: none !important;
-			transition: none;
+			gap: 0;
+			width: 100%;
+			transition: transform 220ms ease;
 		}
 
 		.now-carousel__slide {
-			flex: 0 0 min(84vw, 22rem);
-			scroll-snap-align: start;
+			flex: 0 0 100%;
 		}
 
 		.now-carousel__image {
@@ -368,6 +416,13 @@
 
 		.now-carousel__controls {
 			display: none;
+		}
+
+		.now-carousel__dots {
+			display: flex;
+			justify-content: center;
+			gap: 0.35rem;
+			margin-top: 0.55rem;
 		}
 	}
 </style>
