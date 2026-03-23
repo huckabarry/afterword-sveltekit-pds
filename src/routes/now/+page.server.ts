@@ -22,7 +22,7 @@ export async function load() {
 		nowImages,
 		nowContentHtml,
 		latestCheckin: checkins[0] || null,
-		albums: albums.slice(0, 2),
+		albums: albums.slice(0, 8),
 		tracks: tracks.slice(0, 1)
 	};
 }

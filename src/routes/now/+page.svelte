@@ -28,6 +28,7 @@
 	} = $props();
 
 	let nowImageIndex = $state(0);
+	let currentAlbumPage = $state(0);
 	let touchStartX = 0;
 	let touchDeltaX = 0;
 
@@ -48,6 +49,23 @@
 
 	function showNextNowImage() {
 		nowImageIndex = (nowImageIndex + 1) % data.nowImages.length;
+	}
+
+	function getAlbumPageCount() {
+		return Math.max(1, Math.ceil(data.albums.length / 2));
+	}
+
+	function getVisibleAlbums() {
+		const start = currentAlbumPage * 2;
+		return data.albums.slice(start, start + 2);
+	}
+
+	function showPreviousAlbumPage() {
+		currentAlbumPage = (currentAlbumPage - 1 + getAlbumPageCount()) % getAlbumPageCount();
+	}
+
+	function showNextAlbumPage() {
+		currentAlbumPage = (currentAlbumPage + 1) % getAlbumPageCount();
 	}
 
 	function handleNowTouchStart(event: TouchEvent) {
@@ -278,9 +296,19 @@
 	<section class="section-block">
 		<div class="section-head section-head--now">
 			<h2 class="section-title">Album Rotation</h2>
+			{#if data.albums.length > 2}
+				<div class="home-updates__controls">
+					<button class="home-updates__button" type="button" onclick={showPreviousAlbumPage}>
+						Back
+					</button>
+					<button class="home-updates__button" type="button" onclick={showNextAlbumPage}>
+						Next
+					</button>
+				</div>
+			{/if}
 		</div>
 		<section class="cover-grid">
-			{#each data.albums as album}
+			{#each getVisibleAlbums() as album}
 				<article class="cover-card">
 					<a class="cover-card-link" href={album.localPath}>
 						{#if album.coverImage}
@@ -296,6 +324,11 @@
 				</article>
 			{/each}
 		</section>
+		{#if data.albums.length > 2}
+			<div class="now-albums__position-row" aria-hidden="true">
+				<span class="now-albums__position">{currentAlbumPage + 1} / {getAlbumPageCount()}</span>
+			</div>
+		{/if}
 		<div class="home-stream-tags">
 			<a class="tag-pill" href="/music">Albums</a>
 			<a class="home-updates__more-link" href="/music">See all albums <span aria-hidden="true">→</span></a>
@@ -306,6 +339,20 @@
 <style>
 	.section-head--now {
 		margin-bottom: 1.15rem;
+	}
+
+	.now-albums__position-row {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: 0.55rem;
+	}
+
+	.now-albums__position {
+		display: inline-flex;
+		align-items: center;
+		color: var(--muted);
+		font-size: 0.82rem;
+		line-height: 1;
 	}
 
 	.now-carousel {
