@@ -83,16 +83,6 @@
 	<section class="section-block section-block-status">
 		<div class="section-head">
 			<h2 class="section-title">Recent Updates</h2>
-			{#if data.statuses.length > 1}
-				<div class="home-updates__controls">
-					<button class="home-updates__button" type="button" onclick={showPreviousStatus}>
-						Back
-					</button>
-					<button class="home-updates__button" type="button" onclick={showNextStatus}>
-						Next
-					</button>
-				</div>
-			{/if}
 		</div>
 
 		{#if data.statuses.length}
@@ -116,6 +106,19 @@
 										<span>·</span>
 										<span>{formatDate(post.date)}</span>
 									</div>
+									{#if data.statuses.length > 1}
+										<div class="home-status__controls">
+											<button class="home-status__control" type="button" onclick={showPreviousStatus}>
+												Back
+											</button>
+											<span class="home-status__position">
+												{currentStatusIndex + 1} / {data.statuses.length}
+											</span>
+											<button class="home-status__control" type="button" onclick={showNextStatus}>
+												Next
+											</button>
+										</div>
+									{/if}
 								</div>
 								<a class="status-row__permalink" href={statusUrl(post.slug)}>
 									<div class="status-row__content">
@@ -185,9 +188,6 @@
 						</article>
 					{/if}
 				{/each}
-			</div>
-			<div class="home-updates__position-row" aria-hidden="true">
-				<span class="status-row__position">{currentStatusIndex + 1} / {data.statuses.length}</span>
 			</div>
 			<div class="home-stream-tags">
 				<a class="tag-pill" href="/status">Status</a>
@@ -285,40 +285,58 @@
 		height: 9rem;
 	}
 
-	.status-row__position {
-		display: inline-flex;
-		align-items: center;
-		color: var(--muted);
-		font-size: 0.82rem;
-		line-height: 1;
-	}
-
-	.home-updates__position-row {
-		display: flex;
-		justify-content: flex-end;
-		margin-top: 0.5rem;
-		padding-right: 0.15rem;
-	}
-
 	.empty-state {
 		margin: 0;
 		color: var(--muted);
 	}
 
+	.home-status__controls {
+		display: inline-flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 0.45rem;
+		padding: 0.25rem 0.35rem;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 999px;
+		background: rgba(23, 24, 25, 0.52);
+		color: var(--muted);
+	}
+
+	.home-status__control {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.16rem 0.48rem;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.03);
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+	}
+
+	.home-status__control:hover {
+		color: var(--text);
+		border-color: rgba(255, 255, 255, 0.24);
+	}
+
+	.home-status__position {
+		font-size: 0.78rem;
+		line-height: 1;
+		white-space: nowrap;
+	}
+
 	@media (max-width: 640px) {
 		.section-head {
-			align-items: center;
-			flex-direction: row;
-			flex-wrap: wrap;
+			align-items: flex-start;
 		}
 
 		.section-block-status__card .status-row__image img {
 			height: auto;
 		}
 
-		.home-updates__controls {
+		.home-status__controls {
 			margin-left: auto;
 		}
-
 	}
 </style>
