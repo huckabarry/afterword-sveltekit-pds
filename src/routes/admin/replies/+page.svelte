@@ -85,6 +85,26 @@
 								<p class="admin-thread__target">In reply to: {reply.inReplyToObjectId}</p>
 							{/if}
 
+							{#if reply.threadRootContext}
+								<div class="admin-thread__context">
+									<p class="admin-thread__context-label">On post</p>
+									<a
+										class="admin-thread__context-card"
+										href={reply.threadRootContext.url}
+										target="_blank"
+										rel="noreferrer"
+									>
+										{#if reply.threadRootContext.title}
+											<strong>{reply.threadRootContext.title}</strong>
+										{/if}
+										{#if reply.threadRootContext.author}
+											<span>{reply.threadRootContext.author}</span>
+										{/if}
+										<p>{reply.threadRootContext.excerpt}</p>
+									</a>
+								</div>
+							{/if}
+
 							<div class="admin-thread__actions admin-thread__actions--social">
 								<form method="POST" action="?/like">
 									<input type="hidden" name="objectId" value={reply.noteId} />

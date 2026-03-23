@@ -1,5 +1,9 @@
 <script lang="ts">
 	let { data } = $props();
+
+	function formatDate(value: string) {
+		return new Date(value).toLocaleString();
+	}
 </script>
 
 <section class="admin-panel">
@@ -60,16 +64,79 @@
 			</div>
 
 			{#if data.replies.length}
-				<ul class="admin-list">
+				<ul class="admin-social-list">
 					{#each data.replies as reply}
-						<li class="admin-list-item">
-							<div>
-								<p class="admin-list-item__title">
-									{reply.actorName || reply.actorHandle || reply.actorId}
-								</p>
-								<p class="admin-list-item__meta">{reply.contentText}</p>
+						<li class="admin-social-card">
+							<div class="admin-social-card__avatar-wrap">
+								{#if reply.actorProfileUrl}
+									<a href={reply.actorProfileUrl} target="_blank" rel="noreferrer">
+										<img
+											class="admin-social-card__avatar"
+											src={reply.actorAvatarUrl || '/assets/images/status-avatar.jpg'}
+											alt={reply.actorName || reply.actorHandle || 'Avatar'}
+										/>
+									</a>
+								{:else}
+									<img
+										class="admin-social-card__avatar"
+										src={reply.actorAvatarUrl || '/assets/images/status-avatar.jpg'}
+										alt={reply.actorName || reply.actorHandle || 'Avatar'}
+									/>
+								{/if}
 							</div>
-							<a class="admin-pill-link" href={`/admin/compose?replyTo=${encodeURIComponent(reply.noteId)}`}>Reply</a>
+							<div class="admin-social-card__body">
+								<div class="admin-social-card__meta">
+									<strong>{reply.actorName || reply.actorHandle || reply.actorId}</strong>
+									{#if reply.actorHandle && reply.actorHandle !== reply.actorName}
+										<span>{reply.actorHandle}</span>
+									{/if}
+									<span>{formatDate(reply.publishedAt)}</span>
+								</div>
+								<p class="admin-social-card__content">{reply.contentText}</p>
+
+								{#if reply.threadRootContext}
+									<div class="admin-thread__context">
+										<p class="admin-thread__context-label">On post</p>
+										<a
+											class="admin-thread__context-card"
+											href={reply.threadRootContext.url}
+											target="_blank"
+											rel="noreferrer"
+										>
+											{#if reply.threadRootContext.title}
+												<strong>{reply.threadRootContext.title}</strong>
+											{/if}
+											{#if reply.threadRootContext.author}
+												<span>{reply.threadRootContext.author}</span>
+											{/if}
+											<p>{reply.threadRootContext.excerpt}</p>
+										</a>
+									</div>
+								{:else if reply.replyContext}
+									<div class="admin-thread__context">
+										<p class="admin-thread__context-label">On post</p>
+										<a
+											class="admin-thread__context-card"
+											href={reply.replyContext.url}
+											target="_blank"
+											rel="noreferrer"
+										>
+											{#if reply.replyContext.title}
+												<strong>{reply.replyContext.title}</strong>
+											{/if}
+											{#if reply.replyContext.author}
+												<span>{reply.replyContext.author}</span>
+											{/if}
+											<p>{reply.replyContext.excerpt}</p>
+										</a>
+									</div>
+								{/if}
+
+								<div class="admin-thread__actions admin-thread__actions--social">
+									<a class="admin-pill-link" href={`/admin/compose?replyTo=${encodeURIComponent(reply.noteId)}`}>Reply</a>
+									<a class="admin-pill-link" href="/admin/replies">Open thread</a>
+								</div>
+							</div>
 						</li>
 					{/each}
 				</ul>
