@@ -27,6 +27,10 @@ async function deliverLocalNoteToFollowers(
 	}
 }
 
+function isLocalReplyTarget(origin: string, objectId: string) {
+	return String(objectId || '').startsWith(`${origin}/ap/`);
+}
+
 export const load: PageServerLoad = async ({ url }) => {
 	return {
 		replyTo: url.searchParams.get('replyTo') || ''
@@ -73,7 +77,11 @@ export const actions: Actions = {
 
 			try {
 				const activity = localReplyToCreateActivity(reply, origin);
-				await deliverReplyToRemoteActor(origin, replyTo, activity);
+				if (isLocalReplyTarget(origin, replyTo)) {
+					await deliverLocalNoteToFollowers(event, reply);
+				} else {
+					await deliverReplyToRemoteActor(origin, replyTo, activity);
+				}
 				await updateLocalReplyDeliveryStatus(event, reply.localSlug || '', 'delivered');
 			} catch (deliveryError) {
 				const message = deliveryError instanceof Error ? deliveryError.message : String(deliveryError);

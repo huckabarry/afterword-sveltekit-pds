@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { getBlogPostBySlug } from '$lib/server/ghost';
 import { getActivityPubOrigin } from '$lib/server/activitypub';
+import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import {
 	createLocalReply,
 	getLocalReplyBySlug,
@@ -9,6 +10,7 @@ import {
 } from '$lib/server/ap-notes';
 import { deliverLikeToRemoteObject } from '$lib/server/activitypub-likes';
 import { getStatusBySlug } from '$lib/server/atproto';
+import { listFollowers } from '$lib/server/followers';
 import {
 	deliverReplyToRemoteActor,
 	fetchActivityJson,
@@ -145,6 +147,25 @@ async function resolveReplyContext(event: Parameters<PageServerLoad>[0], origin:
 	}
 }
 
+async function deliverLocalReplyToFollowers(
+	event: Parameters<Actions['reply']>[0],
+	reply: NonNullable<Awaited<ReturnType<typeof createLocalReply>>>
+) {
+	const origin = getActivityPubOrigin(event);
+	const followers = await listFollowers(event);
+	const activity = localReplyToCreateActivity(reply, origin);
+
+	for (const follower of followers) {
+		const inboxUrl = follower.sharedInboxUrl || follower.inboxUrl;
+		if (!inboxUrl) continue;
+		await sendSignedActivity(origin, inboxUrl, activity);
+	}
+}
+
+function isLocalReplyTarget(origin: string, objectId: string) {
+	return String(objectId || '').startsWith(`${origin}/ap/`);
+}
+
 export const load: PageServerLoad = async (event) => {
 	const origin = getActivityPubOrigin(event);
 	const replies = await listRecentInboxReplies(event, origin, 50);
@@ -188,7 +209,11 @@ export const actions: Actions = {
 
 		try {
 			const activity = localReplyToCreateActivity(reply, origin);
-			await deliverReplyToRemoteActor(origin, replyTo, activity);
+			if (isLocalReplyTarget(origin, replyTo)) {
+				await deliverLocalReplyToFollowers(event, reply);
+			} else {
+				await deliverReplyToRemoteActor(origin, replyTo, activity);
+			}
 			await updateLocalReplyDeliveryStatus(event, reply.localSlug || '', 'delivered');
 		} catch (deliveryError) {
 			const message = deliveryError instanceof Error ? deliveryError.message : String(deliveryError);
