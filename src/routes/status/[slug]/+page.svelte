@@ -137,10 +137,14 @@
 						</span>
 						<span>Reply on Bluesky</span>
 					</a>
-					<button
-						class="status-row__reply-pill status-row__reply-pill--button"
-						type="button"
-						onclick={() => openFediverseReply(`${data.origin}/status/${data.post.slug}`)}
+					<a
+						class="status-row__reply-pill"
+						href={`/status/${data.post.slug}`}
+						role="button"
+						onclick={(event) => {
+							event.preventDefault();
+							openFediverseReply(`${data.origin}/status/${data.post.slug}`);
+						}}
 					>
 						<span class="status-row__reply-pill-icon" aria-hidden="true">
 							<svg viewBox="0 0 24 24" focusable="false">
@@ -148,7 +152,7 @@
 							</svg>
 						</span>
 						<span>Reply from Fediverse</span>
-					</button>
+					</a>
 				</div>
 			</div>
 			{#if data.fediverse.totalCount > 0}
