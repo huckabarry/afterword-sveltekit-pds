@@ -112,7 +112,7 @@
 						</a>
 					</div>
 					<div class="status-row__reply-pills">
-						<a class="tag-pill status-row__reply-pill" href={post.blueskyUrl} target="_blank" rel="noreferrer">
+						<a class="status-row__reply-pill" href={post.blueskyUrl} target="_blank" rel="noreferrer">
 							<span class="status-row__reply-pill-icon" aria-hidden="true">
 								<svg viewBox="0 0 24 24" focusable="false">
 									<path d="M5.69 4.78c2.35 1.76 4.88 5.33 5.81 7.27.93-1.94 3.46-5.51 5.81-7.27 1.69-1.27 4.43-2.26 4.43.87 0 .63-.36 5.29-.57 6.05-.72 2.66-3.35 3.34-5.69 2.94 4.09.7 5.13 3.04 2.88 5.39-4.27 4.46-6.14-1.12-6.62-2.55-.09-.26-.13-.38-.24-.38s-.15.12-.24.38c-.48 1.43-2.35 7.01-6.62 2.55-2.25-2.35-1.21-4.69 2.88-5.39-2.34.4-4.97-.28-5.69-2.94-.21-.76-.57-5.42-.57-6.05 0-3.13 2.74-2.14 4.43-.87Z"></path>
@@ -121,7 +121,7 @@
 							<span>Reply on Bluesky</span>
 						</a>
 						<button
-							class="tag-pill status-row__reply-pill status-row__reply-pill--button"
+							class="status-row__reply-pill status-row__reply-pill--button"
 							type="button"
 							onclick={() => openFediverseReply(`${siteOrigin}/status/${post.slug}`)}
 						>
