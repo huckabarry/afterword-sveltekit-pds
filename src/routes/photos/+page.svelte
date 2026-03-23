@@ -44,7 +44,7 @@
 <section class="stream-head">
 	<h1 class="stream-head__title">Visual Notes</h1>
 	<p class="stream-head__lede">
-		A masonry view of every image pulled from Ghost posts across the site.
+		A masonry view of photographs pulled from gallery and photo-led field notes posts.
 	</p>
 </section>
 
@@ -57,7 +57,14 @@
 				onclick={() => openLightbox(index)}
 				aria-label={`Open ${photo.postTitle}`}
 			>
-				<img class="photo-card__image" src={photo.displayUrl} alt={photo.alt || photo.postTitle} loading="lazy" />
+				<img
+					class="photo-card__image"
+					src={photo.displayUrl}
+					alt={photo.alt || photo.postTitle}
+					loading="lazy"
+					decoding="async"
+					sizes="(max-width: 640px) 48vw, (max-width: 1024px) 32vw, 18rem"
+				/>
 				<span class="photo-card__overlay">
 					<span class="photo-card__title">{photo.postTitle}</span>
 					<span class="photo-card__meta">
@@ -127,16 +134,10 @@
 		width: 100%;
 		height: auto;
 		border-radius: 0.25rem;
-		opacity: 0.82;
+		background: color-mix(in srgb, var(--surface) 82%, white 18%);
 		transition:
 			transform 180ms ease,
-			opacity 180ms ease;
-	}
-
-	.photo-card__image-link:hover .photo-card__image,
-	.photo-card__image-link:focus-visible .photo-card__image {
-		transform: scale(1.015);
-		opacity: 1;
+			filter 180ms ease;
 	}
 
 	.photo-card__overlay {
@@ -167,12 +168,27 @@
 		border-radius: 0.25rem;
 	}
 
-	.photo-card:hover::after,
-	.photo-card:hover .photo-card__overlay,
-	.photo-card:focus-within::after,
-	.photo-card:focus-within .photo-card__overlay {
-		opacity: 1;
-		transform: translateY(0);
+	@media (hover: hover) {
+		.photo-card__image-link:hover .photo-card__image,
+		.photo-card__image-link:focus-visible .photo-card__image {
+			transform: scale(1.012);
+			filter: saturate(1.02);
+		}
+
+		.photo-card:hover::after,
+		.photo-card:hover .photo-card__overlay,
+		.photo-card:focus-within::after,
+		.photo-card:focus-within .photo-card__overlay {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@media (hover: none) {
+		.photo-card__overlay,
+		.photo-card::after {
+			display: none;
+		}
 	}
 
 	.photo-card__title {

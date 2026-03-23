@@ -25,7 +25,9 @@
 
 <section class="stream-head">
 	<h1 class="stream-head__title">Field Notes</h1>
-	<p class="stream-head__lede">Travel, photography, gallery posts, and on-the-ground notes.</p>
+	<p class="stream-head__lede">
+		Travel, photography, and on-the-ground notes from walks, trains, road trips, and everyday wandering.
+	</p>
 </section>
 
 <section class="blog-list blog-list--archive" aria-label="Field notes posts">
