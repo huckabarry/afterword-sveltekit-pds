@@ -4,8 +4,10 @@ type BoundR2Bucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
 
 export type GalleryPhotoItem = PhotoItem & {
 	assetKey: string;
-	displayUrl: string;
 	isSyncedToR2: boolean;
+	originalUrl: string;
+	displayUrl: string;
+	lightboxUrl: string;
 };
 
 const GALLERY_PREFIX = 'gallery/originals';
@@ -44,6 +46,10 @@ export function getGalleryAssetPath(assetKey: string) {
 	return `/${['gallery-assets', ...assetKey.split('/').filter(Boolean)].join('/')}`;
 }
 
+export function getGalleryVariantPath(assetKey: string, preset: 'thumb' | 'large') {
+	return `/${['gallery-images', preset, ...assetKey.split('/').filter(Boolean)].join('/')}`;
+}
+
 async function listExistingGalleryAssetKeys(bucket: BoundR2Bucket) {
 	const keys = new Set<string>();
 	let cursor: string | undefined;
@@ -69,8 +75,10 @@ export async function attachGalleryAssetUrls(photos: PhotoItem[], bucket?: Bound
 		return photos.map((photo) => ({
 			...photo,
 			assetKey: getGalleryAssetKey(photo),
+			isSyncedToR2: false,
+			originalUrl: photo.imageUrl,
 			displayUrl: photo.imageUrl,
-			isSyncedToR2: false
+			lightboxUrl: photo.imageUrl
 		})) satisfies GalleryPhotoItem[];
 	}
 
@@ -83,8 +91,10 @@ export async function attachGalleryAssetUrls(photos: PhotoItem[], bucket?: Bound
 		return {
 			...photo,
 			assetKey,
-			displayUrl: isSyncedToR2 ? getGalleryAssetPath(assetKey) : photo.imageUrl,
-			isSyncedToR2
+			isSyncedToR2,
+			originalUrl: isSyncedToR2 ? getGalleryAssetPath(assetKey) : photo.imageUrl,
+			displayUrl: isSyncedToR2 ? getGalleryVariantPath(assetKey, 'thumb') : photo.imageUrl,
+			lightboxUrl: isSyncedToR2 ? getGalleryVariantPath(assetKey, 'large') : photo.imageUrl
 		};
 	}) satisfies GalleryPhotoItem[];
 }

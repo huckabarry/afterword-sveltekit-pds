@@ -87,7 +87,7 @@
 				›
 			</button>
 			<figure class="lightbox__figure">
-				<img class="lightbox__image" src={activePhoto.displayUrl} alt={activePhoto.alt || activePhoto.postTitle} />
+				<img class="lightbox__image" src={activePhoto.lightboxUrl} alt={activePhoto.alt || activePhoto.postTitle} />
 				<figcaption class="lightbox__caption">
 					<a href={activePhoto.postPath}>{activePhoto.postTitle}</a>
 					<span>{new Date(activePhoto.postPublishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
