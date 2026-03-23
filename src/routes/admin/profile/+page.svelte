@@ -36,7 +36,12 @@
 
 			<label class="admin-field">
 				<span>Avatar image URL</span>
-				<input name="avatarUrl" type="url" value={form?.avatarUrl || data.profile.avatarUrl} />
+				<input
+					name="avatarUrl"
+					type="text"
+					value={form?.avatarUrl || data.profile.avatarUrl}
+					placeholder="/media/profile/avatar.jpg or https://example.com/avatar.jpg"
+				/>
 			</label>
 
 			<label class="admin-field">
@@ -48,9 +53,9 @@
 				<span>Header image URL</span>
 				<input
 					name="headerImageUrl"
-					type="url"
+					type="text"
 					value={form?.headerImageUrl || data.profile.headerImageUrl || ''}
-					placeholder="Optional banner image"
+					placeholder="/media/profile/header.jpg or https://example.com/header.jpg"
 				/>
 			</label>
 

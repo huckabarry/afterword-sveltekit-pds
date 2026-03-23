@@ -22,10 +22,37 @@
 				<span class="admin-stat__value">{data.webmentions.length}</span>
 				<span class="admin-stat__label">Recent webmentions</span>
 			</div>
+			<div class="admin-stat">
+				<span class="admin-stat__value">{data.mirroredStatuses.length}</span>
+				<span class="admin-stat__label">Mirrored Bluesky posts</span>
+			</div>
 		</div>
 	</div>
 
 	<div class="admin-grid">
+		<section class="admin-card">
+			<div class="admin-card__head">
+				<h3>Mirrored Bluesky posts</h3>
+				<a href="/admin/posts">View all</a>
+			</div>
+
+			{#if data.mirroredStatuses.length}
+				<ul class="admin-list">
+					{#each data.mirroredStatuses as post}
+						<li class="admin-list-item">
+							<div>
+								<p class="admin-list-item__title">{post.displayName || post.handle}</p>
+								<p class="admin-list-item__meta">{post.text}</p>
+							</div>
+							<a class="admin-pill-link" href={`/admin/compose?replyTo=${encodeURIComponent(post.apObjectId)}`}>Reply on AP</a>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="admin-empty">No mirrored Bluesky posts available right now.</p>
+			{/if}
+		</section>
+
 		<section class="admin-card">
 			<div class="admin-card__head">
 				<h3>Recent replies</h3>
