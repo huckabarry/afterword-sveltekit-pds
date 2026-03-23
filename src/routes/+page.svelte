@@ -199,31 +199,6 @@
 	</section>
 
 	<section class="section-block section-block-writing">
-		<h2 class="section-title">Planning & Urbanism</h2>
-		{#if data.planningPosts.length}
-			<section class="blog-list">
-				{#each data.planningPosts as post}
-					<article class="blog-row">
-						<a class="blog-row__link" href={blogUrl(post.slug)}>
-							<time class="blog-row__date" datetime={post.publishedAt.toISOString()}>
-								{formatDate(post.publishedAt)}
-							</time>
-							<h3>{post.title}</h3>
-							<p>{post.excerpt}</p>
-						</a>
-					</article>
-				{/each}
-			</section>
-			<div class="home-stream-tags">
-				<a class="tag-pill" href="/tags/urbanism">Urbanism</a>
-				<a class="home-updates__more-link" href="/planning">Read more planning & urbanism posts <span aria-hidden="true">→</span></a>
-			</div>
-		{:else}
-			<p class="empty-state">No planning posts are available yet.</p>
-		{/if}
-	</section>
-
-	<section class="section-block section-block-writing">
 		<h2 class="section-title">Field Notes</h2>
 		{#if data.fieldNotesPosts.length}
 			<section class="blog-list">
@@ -245,6 +220,31 @@
 			</div>
 		{:else}
 			<p class="empty-state">No field notes are available yet.</p>
+		{/if}
+	</section>
+
+	<section class="section-block section-block-writing">
+		<h2 class="section-title">Planning & Urbanism</h2>
+		{#if data.planningPosts.length}
+			<section class="blog-list">
+				{#each data.planningPosts as post}
+					<article class="blog-row">
+						<a class="blog-row__link" href={blogUrl(post.slug)}>
+							<time class="blog-row__date" datetime={post.publishedAt.toISOString()}>
+								{formatDate(post.publishedAt)}
+							</time>
+							<h3>{post.title}</h3>
+							<p>{post.excerpt}</p>
+						</a>
+					</article>
+				{/each}
+			</section>
+			<div class="home-stream-tags">
+				<a class="tag-pill" href="/tags/urbanism">Urbanism</a>
+				<a class="home-updates__more-link" href="/planning">Read more planning & urbanism posts <span aria-hidden="true">→</span></a>
+			</div>
+		{:else}
+			<p class="empty-state">No planning posts are available yet.</p>
 		{/if}
 	</section>
 
