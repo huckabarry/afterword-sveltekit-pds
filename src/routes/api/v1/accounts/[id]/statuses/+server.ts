@@ -18,9 +18,17 @@ export async function GET(event) {
 
 	if (actorId === localActorId) {
 		const timeline = await buildHomeTimeline(event, limit);
-		return json(timeline.filter((item) => String(item.account?.uri || '') === localActorId).slice(0, limit));
+		return json(timeline.filter((item) => String(item.account?.uri || '') === localActorId).slice(0, limit), {
+			headers: {
+				'cache-control': 'no-store'
+			}
+		});
 	}
 
 	await resolveAccountByIdOrAcct(event, actorId);
-	return json(await fetchRemoteStatusesForActor(event, actorId, limit));
+	return json(await fetchRemoteStatusesForActor(event, actorId, limit), {
+		headers: {
+			'cache-control': 'no-store'
+		}
+	});
 }

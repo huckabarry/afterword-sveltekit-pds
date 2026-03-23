@@ -3,6 +3,7 @@ import {
 	getNoteById,
 	listDirectRepliesToObject,
 	listLocalNotes,
+	listRecentInboxReplies,
 	listNotesForThread,
 	type ApNoteRecord,
 	type LocalApNoteListItem
@@ -145,6 +146,41 @@ export async function buildRemoteAccount(event: Pick<RequestEvent, 'platform' | 
 	const followers = await listFollowers(event);
 	const following = await getFollowingByActorId(event, actorId);
 	const username = actorMeta.handle || String(actor.preferredUsername || '').trim() || actorId;
+	let statusesCount = 0;
+	let lastStatusAt: string | null = null;
+
+	try {
+		const outboxUrl = getString(actor.outbox);
+		if (outboxUrl) {
+			const outbox = await fetchActivityJson(outboxUrl);
+			statusesCount = Number(outbox.totalItems || 0);
+			const orderedItems = await expandOrderedItems(outbox);
+
+			for (const item of orderedItems) {
+				let record: Record<string, unknown> | null = null;
+				if (typeof item === 'string') {
+					record = await fetchActivityJson(item).catch(() => null);
+				} else if (item && typeof item === 'object') {
+					record = item as Record<string, unknown>;
+				}
+				if (!record) continue;
+
+				const type = String(record.type || '');
+				let object = record;
+				if (type === 'Create') {
+					const activityObject = record.object;
+					if (typeof activityObject === 'string') {
+						object = (await fetchActivityJson(activityObject).catch(() => null)) || {};
+					} else if (activityObject && typeof activityObject === 'object') {
+						object = activityObject as Record<string, unknown>;
+					}
+				}
+
+				lastStatusAt = getString(object.published) || getString(object.updated);
+				if (lastStatusAt) break;
+			}
+		}
+	} catch {}
 
 	return {
 		id: encodeMastodonAccountId(actorId),
@@ -170,7 +206,8 @@ export async function buildRemoteAccount(event: Pick<RequestEvent, 'platform' | 
 		created_at: '2026-01-01T00:00:00.000Z',
 		followers_count: followers.filter((item) => item.actorId === actorId).length,
 		following_count: 0,
-		statuses_count: 0,
+		statuses_count: statusesCount,
+		last_status_at: lastStatusAt ? lastStatusAt.slice(0, 10) : null,
 		emojis: [],
 		fields: [],
 		source: {
@@ -485,6 +522,26 @@ export async function buildHomeTimeline(event: Pick<RequestEvent, 'platform' | '
 	return [...localStatuses, ...mirrored, ...remote]
 		.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
 		.slice(0, limit);
+}
+
+export async function listMastodonNotifications(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	limit = 20
+) {
+	const origin = getActivityPubOrigin(event);
+	const replies = await listRecentInboxReplies(event, origin, limit);
+
+	return (
+		await Promise.all(
+			replies.map(async (reply) => ({
+				id: encodeMastodonStatusId(`notification:${reply.noteId}`),
+				type: 'mention',
+				created_at: isoDate(reply.publishedAt),
+				account: await buildRemoteAccount(event, reply.actorId),
+				status: await serializeReplyNote(event, reply)
+			}))
+		)
+	).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 }
 
 export async function resolveStatusByObjectId(
