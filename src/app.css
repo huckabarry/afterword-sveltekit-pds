@@ -160,10 +160,22 @@ p:last-child {
 	margin-top: 1.5rem;
 }
 
+.h-card .u-url[hidden],
+.h-entry .u-url[hidden] {
+	display: none;
+}
+
 .section-block + .section-block {
 	margin-top: 2rem;
 	padding-top: 1.6rem;
 	border-top: 1px solid var(--border);
+}
+
+.p-author.h-card {
+	display: inline-block;
+	margin: 0 0 0.9rem;
+	color: var(--muted);
+	text-decoration: none;
 }
 
 .site-foot-nav {
@@ -201,6 +213,46 @@ p:last-child {
 	font-size: 0.95rem;
 	letter-spacing: -0.02em;
 	line-height: 1.62;
+}
+
+.entry-webmentions {
+	margin-top: 1.8rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid var(--border);
+}
+
+.entry-webmentions__title {
+	margin: 0 0 0.8rem;
+	font-size: 1.05rem;
+	color: #ffffff;
+}
+
+.entry-webmentions__list {
+	display: grid;
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.entry-webmentions__item {
+	margin: 0;
+}
+
+.entry-webmentions__link {
+	display: grid;
+	gap: 0.15rem;
+	text-decoration: none;
+}
+
+.entry-webmentions__name {
+	color: var(--text);
+	font-weight: 600;
+}
+
+.entry-webmentions__meta {
+	color: var(--muted);
+	font-size: 0.9rem;
 }
 
 .section-title {

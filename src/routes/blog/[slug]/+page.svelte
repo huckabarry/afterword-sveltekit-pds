@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { BlogPost } from '$lib/server/ghost';
+	import type { WebmentionRecord } from '$lib/server/webmentions';
 
 	let {
 		data
@@ -8,6 +9,7 @@
 			post: BlogPost;
 			previousPost: BlogPost | null;
 			nextPost: BlogPost | null;
+			webmentions: WebmentionRecord[];
 		};
 	} = $props();
 </script>
@@ -50,6 +52,24 @@
 		<a class="post-action-link" href="/contact">Reply by email</a>
 		<a class="post-action-link" href="/blog">Back to all posts</a>
 	</footer>
+
+	{#if data.webmentions.length}
+		<section class="entry-webmentions" aria-labelledby="webmentions-title">
+			<h2 id="webmentions-title" class="entry-webmentions__title">Elsewhere</h2>
+			<ul class="entry-webmentions__list">
+				{#each data.webmentions as mention}
+					<li class="entry-webmentions__item">
+						<a class="entry-webmentions__link" href={mention.sourceUrl} target="_blank" rel="noreferrer">
+							<span class="entry-webmentions__name">{mention.sourceTitle || mention.sourceDomain || mention.sourceUrl}</span>
+							{#if mention.sourceDomain}
+								<span class="entry-webmentions__meta">{mention.sourceDomain}</span>
+							{/if}
+						</a>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
 
 	{#if data.previousPost || data.nextPost}
 		<nav class="post-navigation">

@@ -129,3 +129,46 @@ export async function upsertWebmention(
 		)
 		.run();
 }
+
+export type WebmentionRecord = {
+	id: number;
+	sourceUrl: string;
+	targetUrl: string;
+	sourceDomain: string | null;
+	sourceTitle: string | null;
+	status: string;
+	verifiedAt: string | null;
+	createdAt: string;
+};
+
+export async function listVerifiedWebmentionsForTarget(
+	event: Pick<RequestEvent, 'platform'>,
+	targetUrl: string
+): Promise<WebmentionRecord[]> {
+	const db = getDb(event);
+	if (!db) {
+		return [];
+	}
+
+	const result = await db
+		.prepare(
+			`SELECT id, source_url, target_url, source_domain, source_title, status, verified_at, created_at
+			 FROM webmentions
+			 WHERE target_url = ?
+			   AND status = 'verified'
+			 ORDER BY COALESCE(verified_at, created_at) DESC`
+		)
+		.bind(targetUrl)
+		.all<Record<string, unknown>>();
+
+	return (result.results || []).map((row: Record<string, unknown>) => ({
+		id: Number(row.id || 0),
+		sourceUrl: String(row.source_url || ''),
+		targetUrl: String(row.target_url || ''),
+		sourceDomain: row.source_domain ? String(row.source_domain) : null,
+		sourceTitle: row.source_title ? String(row.source_title) : null,
+		status: String(row.status || ''),
+		verifiedAt: row.verified_at ? String(row.verified_at) : null,
+		createdAt: String(row.created_at || '')
+	}));
+}
