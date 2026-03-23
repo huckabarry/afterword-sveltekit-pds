@@ -36,12 +36,19 @@ function base64UrlDecode(value: string) {
 	return decodeURIComponent(escape(atob(normalized)));
 }
 
-export function encodeMastodonStatusId(value: string) {
-	return base64UrlEncode(`status:${value}`);
+export function encodeMastodonStatusId(value: string, sortableDate?: string | Date | null) {
+	const encoded = base64UrlEncode(`status:${value}`);
+	if (!sortableDate) return encoded;
+
+	const timestamp = sortableDate instanceof Date ? sortableDate.getTime() : Date.parse(String(sortableDate));
+	if (!Number.isFinite(timestamp)) return encoded;
+
+	return `z${String(Math.max(0, Math.floor(timestamp))).padStart(13, '0')}-${encoded}`;
 }
 
 export function decodeMastodonStatusId(value: string) {
-	const decoded = base64UrlDecode(value);
+	const encoded = value.includes('-') ? value.slice(value.indexOf('-') + 1) : value;
+	const decoded = base64UrlDecode(encoded);
 	return decoded.startsWith('status:') ? decoded.slice(7) : null;
 }
 
@@ -265,7 +272,7 @@ export async function serializeLocalNoteStatus(
 	const favourited = await isObjectFavourited(event, note.noteId);
 
 	return {
-		id: encodeMastodonStatusId(note.noteId),
+		id: encodeMastodonStatusId(note.noteId, note.publishedAt),
 		created_at: isoDate(note.publishedAt),
 		in_reply_to_id: note.inReplyToObjectId ? encodeMastodonStatusId(note.inReplyToObjectId) : null,
 		in_reply_to_account_id: null,
@@ -317,7 +324,7 @@ export async function serializeMirroredStatus(
 	}));
 
 	return {
-		id: encodeMastodonStatusId(objectId),
+		id: encodeMastodonStatusId(objectId, status.date),
 		created_at: isoDate(status.date),
 		in_reply_to_id: status.replyTo?.uri ? encodeMastodonStatusId(status.replyTo.uri) : null,
 		in_reply_to_account_id: null,
@@ -403,7 +410,10 @@ async function serializeRemoteObjectStatus(
 		.filter(Boolean);
 
 	return {
-		id: encodeMastodonStatusId(objectId),
+		id: encodeMastodonStatusId(
+			objectId,
+			getString(object.published) || getString(object.updated) || new Date().toISOString()
+		),
 		created_at: isoDate(getString(object.published) || getString(object.updated) || new Date().toISOString()),
 		in_reply_to_id: getString(object.inReplyTo) ? encodeMastodonStatusId(String(object.inReplyTo)) : null,
 		in_reply_to_account_id: null,
@@ -644,7 +654,7 @@ async function serializeReplyNote(event: Pick<RequestEvent, 'platform' | 'url'>,
 	const favourited = await isObjectFavourited(event, note.noteId);
 
 	return {
-		id: encodeMastodonStatusId(note.noteId),
+		id: encodeMastodonStatusId(note.noteId, note.publishedAt),
 		created_at: isoDate(note.publishedAt),
 		in_reply_to_id: note.inReplyToObjectId ? encodeMastodonStatusId(note.inReplyToObjectId) : null,
 		in_reply_to_account_id: encodeMastodonAccountId(note.actorId),
