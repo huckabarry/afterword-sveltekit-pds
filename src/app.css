@@ -671,9 +671,13 @@ p:last-child {
 }
 
 .status-row__reply-pills {
-	display: inline-flex;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	align-items: center;
 	margin-left: auto;
 	gap: 0.4rem;
+	max-width: 100%;
 }
 
 .status-row__reply-pill {
@@ -682,6 +686,26 @@ p:last-child {
 	gap: 0.38rem;
 	padding: 0.18rem 0.55rem;
 	border-radius: 0.45rem;
+	flex: 0 0 auto;
+	width: fit-content;
+	white-space: nowrap;
+	align-self: flex-start;
+}
+
+.status-row__reply-pill-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 0.95rem;
+	height: 0.95rem;
+	flex: 0 0 0.95rem;
+}
+
+.status-row__reply-pill-icon svg {
+	display: block;
+	width: 0.95rem;
+	height: 0.95rem;
+	fill: currentColor;
 }
 
 .about-interests {
