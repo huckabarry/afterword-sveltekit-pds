@@ -31,6 +31,10 @@ export type ApNoteRecord = {
 	updatedAt: string;
 };
 
+export type LocalApNoteListItem = ApNoteRecord & {
+	incomingReplyCount: number;
+};
+
 function mapNote(row: Record<string, unknown>): ApNoteRecord {
 	return {
 		id: Number(row.id || 0),
@@ -268,6 +272,60 @@ export async function listRecentRemoteReplies(
 	return (result.results || []).map(mapNote);
 }
 
+export async function listLocalNotes(
+	event: Pick<RequestEvent, 'platform'>,
+	limit = 100
+): Promise<LocalApNoteListItem[]> {
+	const db = getDb(event);
+	if (!db) {
+		return [];
+	}
+
+	const safeLimit = Math.max(1, Math.min(limit, 500));
+	const result = await db
+		.prepare(
+			`SELECT n.*,
+			        (
+			        	SELECT COUNT(*)
+			        	FROM ap_notes r
+			        	WHERE r.in_reply_to_object_id = n.note_id
+			        ) AS incoming_reply_count
+			 FROM ap_notes n
+			 WHERE n.origin = 'local'
+			 ORDER BY n.published_at DESC, n.created_at DESC
+			 LIMIT ?`
+		)
+		.bind(safeLimit)
+		.all<Record<string, unknown>>();
+
+	return (result.results || []).map((row: Record<string, unknown>) => ({
+		...mapNote(row),
+		incomingReplyCount: Number(row.incoming_reply_count || 0)
+	}));
+}
+
+export async function listDirectRepliesToObject(
+	event: Pick<RequestEvent, 'platform'>,
+	objectId: string
+): Promise<ApNoteRecord[]> {
+	const db = getDb(event);
+	if (!db) {
+		return [];
+	}
+
+	const result = await db
+		.prepare(
+			`SELECT *
+			 FROM ap_notes
+			 WHERE in_reply_to_object_id = ?
+			 ORDER BY published_at ASC, created_at ASC`
+		)
+		.bind(objectId)
+		.all<Record<string, unknown>>();
+
+	return (result.results || []).map(mapNote);
+}
+
 export async function getLocalReplyBySlug(
 	event: Pick<RequestEvent, 'platform'>,
 	slug: string
@@ -283,4 +341,49 @@ export async function getLocalReplyBySlug(
 		.first<Record<string, unknown>>();
 
 	return row ? mapNote(row) : null;
+}
+
+export async function updateLocalNoteBySlug(
+	event: Pick<RequestEvent, 'platform'>,
+	slug: string,
+	input: {
+		contentHtml: string;
+		contentText: string;
+	}
+) {
+	const db = getDb(event);
+	if (!db) {
+		throw new Error('D1 database is not configured');
+	}
+
+	await db
+		.prepare(
+			`UPDATE ap_notes
+			 SET content_html = ?,
+			     content_text = ?,
+			     updated_at = CURRENT_TIMESTAMP
+			 WHERE local_slug = ?
+			   AND origin = 'local'`
+		)
+		.bind(input.contentHtml, input.contentText, slug)
+		.run();
+}
+
+export async function deleteLocalNoteBySlug(
+	event: Pick<RequestEvent, 'platform'>,
+	slug: string
+) {
+	const db = getDb(event);
+	if (!db) {
+		throw new Error('D1 database is not configured');
+	}
+
+	await db
+		.prepare(
+			`DELETE FROM ap_notes
+			 WHERE local_slug = ?
+			   AND origin = 'local'`
+		)
+		.bind(slug)
+		.run();
 }

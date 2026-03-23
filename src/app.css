@@ -1839,6 +1839,13 @@ p:last-child {
 	align-items: center;
 }
 
+.admin-reply-count,
+.admin-post-meta {
+	margin: 0;
+	color: #686d68;
+	font-size: 0.92rem;
+}
+
 .admin-pill-link,
 .admin-ghost-button,
 .admin-button {
@@ -1869,6 +1876,27 @@ p:last-child {
 	color: white;
 	border: 1px solid #111111;
 	box-shadow: 0 10px 20px rgba(17, 17, 17, 0.18);
+}
+
+.admin-danger-zone {
+	margin-top: 1.25rem;
+	padding-top: 1rem;
+	border-top: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.admin-danger-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999px;
+	padding: 0.55rem 0.9rem;
+	font-size: 0.9rem;
+	font-weight: 700;
+	text-decoration: none;
+	cursor: pointer;
+	border: 1px solid rgba(148, 31, 19, 0.3);
+	background: #fff3f1;
+	color: #8b1f13;
 }
 
 .admin-inline-reply {

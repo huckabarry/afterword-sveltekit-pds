@@ -3,6 +3,7 @@
 
 	const navItems = [
 		{ href: '/admin', label: 'Home', shortLabel: 'Home' },
+		{ href: '/admin/posts', label: 'Posts', shortLabel: 'Posts' },
 		{ href: '/admin/compose', label: 'Compose', shortLabel: 'Write' },
 		{ href: '/admin/replies', label: 'Replies', shortLabel: 'Replies' },
 		{ href: '/admin/webmentions', label: 'Webmentions', shortLabel: 'Mentions' }
@@ -44,6 +45,8 @@
 							Dashboard
 						{:else if data.pathname === '/admin/compose'}
 							Compose
+						{:else if data.pathname.startsWith('/admin/posts')}
+							Posts
 						{:else if data.pathname === '/admin/replies'}
 							Replies
 						{:else if data.pathname === '/admin/webmentions'}

@@ -41,7 +41,7 @@ function compactText(value: string, max = 220) {
 	return text.length > max ? `${text.slice(0, max - 3).trimEnd()}...` : text;
 }
 
-async function resolveReplyContext(origin: string, objectId: string): Promise<ReplyContext | null> {
+async function resolveReplyContext(event: Parameters<PageServerLoad>[0], origin: string, objectId: string): Promise<ReplyContext | null> {
 	const url = String(objectId || '').trim();
 	if (!url) return null;
 
@@ -63,7 +63,7 @@ async function resolveReplyContext(origin: string, objectId: string): Promise<Re
 	const replyPrefix = `${origin}/ap/replies/`;
 	if (url.startsWith(replyPrefix)) {
 		const slug = url.slice(replyPrefix.length);
-		const note = await getLocalReplyBySlug({ platform: null as never }, slug).catch(() => null);
+		const note = await getLocalReplyBySlug(event, slug).catch(() => null);
 		if (!note) return null;
 
 		return {
@@ -78,7 +78,7 @@ async function resolveReplyContext(origin: string, objectId: string): Promise<Re
 	const notePrefix = `${origin}/ap/notes/`;
 	if (url.startsWith(notePrefix)) {
 		const slug = url.slice(notePrefix.length);
-		const note = await getLocalReplyBySlug({ platform: null as never }, slug).catch(() => null);
+		const note = await getLocalReplyBySlug(event, slug).catch(() => null);
 		if (!note) return null;
 
 		return {
@@ -146,7 +146,7 @@ export const load: PageServerLoad = async (event) => {
 	const repliesWithContext = await Promise.all(
 		replies.map(async (reply) => ({
 			...reply,
-			replyContext: reply.inReplyToObjectId ? await resolveReplyContext(origin, reply.inReplyToObjectId) : null
+			replyContext: reply.inReplyToObjectId ? await resolveReplyContext(event, origin, reply.inReplyToObjectId) : null
 		}))
 	);
 
