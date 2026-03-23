@@ -10,7 +10,7 @@ export async function GET(event) {
 		short_description: account.note,
 		description: account.note,
 		email: null,
-		version: '4.2.0-afterword',
+		version: '4.2.0',
 		urls: {
 			streaming_api: null
 		},

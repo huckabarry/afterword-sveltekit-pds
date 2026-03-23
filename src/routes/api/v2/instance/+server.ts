@@ -7,7 +7,7 @@ export async function GET(event) {
 	return json({
 		domain: event.url.host,
 		title: 'Afterword',
-		version: '4.2.0-afterword',
+		version: '4.2.0',
 		source_url: `${event.url.origin}/`,
 		description: account.note,
 		usage: {
