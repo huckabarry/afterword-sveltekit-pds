@@ -9,6 +9,7 @@ import {
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { requireAdminAccess } from '$lib/server/admin';
 import { listFollowers } from '$lib/server/followers';
+import { enrichReplies } from '$lib/server/activitypub-reply-previews';
 import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
@@ -40,19 +41,23 @@ export async function GET(event) {
 
 	const origin = getActivityPubOrigin(event);
 	const replies = await listRecentInboxReplies(event, origin, 100);
+	const enrichedReplies = await enrichReplies(event, replies);
 
 	return json({
-		replies: replies.map((reply) => ({
+		replies: enrichedReplies.map((reply) => ({
 			noteId: reply.noteId,
 			actorId: reply.actorId,
 			actorName: reply.actorName,
 			actorHandle: reply.actorHandle,
+			avatarUrl: reply.avatarUrl,
+			profileUrl: reply.profileUrl,
 			contentHtml: reply.contentHtml,
 			contentText: reply.contentText,
 			publishedAt: reply.publishedAt,
 			inReplyToObjectId: reply.inReplyToObjectId,
 			threadRootObjectId: reply.threadRootObjectId,
-			objectUrl: reply.objectUrl
+			objectUrl: reply.objectUrl,
+			attachments: reply.attachments
 		}))
 	});
 }

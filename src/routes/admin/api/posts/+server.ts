@@ -1,14 +1,16 @@
 import { json } from '@sveltejs/kit';
-import { getActivityPubOrigin } from '$lib/server/activitypub';
+import { getActivityPubHandle, getActivityPubOrigin } from '$lib/server/activitypub';
 import { listLocalNotes } from '$lib/server/ap-notes';
 import { requireAdminAccess } from '$lib/server/admin';
 import { getStatuses } from '$lib/server/atproto';
+import { getSiteProfile } from '$lib/server/profile';
 
 export async function GET(event) {
 	await requireAdminAccess(event);
 
 	const origin = getActivityPubOrigin(event);
 	const localPosts = await listLocalNotes(event, 200);
+	const profile = await getSiteProfile(event);
 	const mirroredStatuses = (await getStatuses()).slice(0, 50).map((post) => ({
 		id: post.id,
 		slug: post.slug,
@@ -18,9 +20,11 @@ export async function GET(event) {
 		handle: post.handle,
 		blueskyUrl: post.blueskyUrl,
 		date: post.date.toISOString(),
+		avatarUrl: post.avatar,
 		replyCount: post.replyCount,
 		repostCount: post.repostCount,
-		likeCount: post.likeCount
+		likeCount: post.likeCount,
+		images: post.images
 	}));
 
 	return json({
@@ -32,7 +36,13 @@ export async function GET(event) {
 			publishedAt: post.publishedAt,
 			inReplyToObjectId: post.inReplyToObjectId,
 			incomingReplyCount: post.incomingReplyCount,
-			deliveryStatus: post.deliveryStatus
+			deliveryStatus: post.deliveryStatus,
+			attachments: post.attachments,
+			actorName: profile.displayName,
+			actorHandle: getActivityPubHandle(origin),
+			avatarUrl: profile.avatarUrl.startsWith('http')
+				? profile.avatarUrl
+				: `${origin}${profile.avatarUrl}`
 		})),
 		mirroredStatuses
 	});
