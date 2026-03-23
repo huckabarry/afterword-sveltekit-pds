@@ -28,8 +28,6 @@
 	} = $props();
 
 	let nowImageIndex = $state(0);
-	let touchStartX = 0;
-	let touchDeltaX = 0;
 
 	function shouldRenderIntroParagraph(paragraph: string) {
 		const normalizedParagraph = paragraph.trim().toLowerCase();
@@ -48,31 +46,6 @@
 
 	function showNextNowImage() {
 		nowImageIndex = (nowImageIndex + 1) % data.nowImages.length;
-	}
-
-	function handleNowTouchStart(event: TouchEvent) {
-		touchStartX = event.touches[0]?.clientX ?? 0;
-		touchDeltaX = 0;
-	}
-
-	function handleNowTouchMove(event: TouchEvent) {
-		const currentX = event.touches[0]?.clientX ?? touchStartX;
-		touchDeltaX = currentX - touchStartX;
-	}
-
-	function handleNowTouchEnd() {
-		if (Math.abs(touchDeltaX) < 40) {
-			touchDeltaX = 0;
-			return;
-		}
-
-		if (touchDeltaX < 0) {
-			showNextNowImage();
-		} else {
-			showPrevNowImage();
-		}
-
-		touchDeltaX = 0;
 	}
 </script>
 
@@ -112,26 +85,28 @@
 					</h3>
 					{#if data.nowImages.length > 1}
 						<section class="now-carousel" aria-label="Now post images">
-							<div
-								class="now-carousel__frame"
-								role="group"
-								aria-label="Now post image carousel"
-								ontouchstart={handleNowTouchStart}
-								ontouchmove={handleNowTouchMove}
-								ontouchend={handleNowTouchEnd}
-							>
-								<a
-									class="now-carousel__image-link"
-									href={data.nowImages[nowImageIndex].imageUrl}
-									target="_blank"
-									rel="noreferrer"
-								>
-									<img
-										class="now-carousel__image"
-										src={data.nowImages[nowImageIndex].imageUrl}
-										alt={data.nowImages[nowImageIndex].alt || data.nowPost.title}
-									/>
-								</a>
+							<div class="now-carousel__frame" role="group" aria-label="Now post image carousel">
+								<div class="now-carousel__viewport">
+									<div
+										class="now-carousel__track"
+										style:transform={`translateX(-${nowImageIndex * 100}%)`}
+									>
+										{#each data.nowImages as image}
+											<a
+												class="now-carousel__slide"
+												href={image.imageUrl}
+												target="_blank"
+												rel="noreferrer"
+											>
+												<img
+													class="now-carousel__image"
+													src={image.imageUrl}
+													alt={image.alt || data.nowPost.title}
+												/>
+											</a>
+										{/each}
+									</div>
+								</div>
 								<div class="now-carousel__controls">
 									<button class="now-carousel__button" type="button" onclick={showPrevNowImage}>
 										Prev
@@ -302,10 +277,19 @@
 		position: relative;
 	}
 
-	.now-carousel__image-link {
-		display: block;
+	.now-carousel__viewport {
 		overflow: hidden;
 		border-radius: 0.75rem;
+	}
+
+	.now-carousel__track {
+		display: flex;
+		transition: transform 180ms ease;
+	}
+
+	.now-carousel__slide {
+		display: block;
+		flex: 0 0 100%;
 	}
 
 	.now-carousel__image {
@@ -358,6 +342,30 @@
 	}
 
 	@media (max-width: 640px) {
+		.now-carousel__viewport {
+			overflow-x: auto;
+			overflow-y: hidden;
+			scroll-snap-type: x mandatory;
+			padding-right: 12vw;
+			-webkit-overflow-scrolling: touch;
+		}
+
+		.now-carousel__track {
+			gap: 0.75rem;
+			width: max-content;
+			transform: none !important;
+			transition: none;
+		}
+
+		.now-carousel__slide {
+			flex: 0 0 min(84vw, 22rem);
+			scroll-snap-align: start;
+		}
+
+		.now-carousel__image {
+			max-height: 21rem;
+		}
+
 		.now-carousel__controls {
 			display: none;
 		}
