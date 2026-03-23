@@ -19,6 +19,14 @@ export function getActorId(origin: string) {
 	return `${origin}${ACTOR_PATH}`;
 }
 
+export function getInboxId(origin: string) {
+	return `${origin}${INBOX_PATH}`;
+}
+
+export function getFollowersId(origin: string) {
+	return `${origin}${FOLLOWERS_PATH}`;
+}
+
 export function getActorAliases(origin: string) {
 	const host = new URL(origin).host;
 	return [`acct:${DEFAULT_USERNAME}@${host}`, `acct:${ALT_USERNAME}@${host}`];
@@ -77,6 +85,19 @@ export function createActor(origin: string) {
 		outbox: `${origin}${OUTBOX_PATH}`,
 		followers: `${origin}${FOLLOWERS_PATH}`,
 		following: `${origin}${FOLLOWING_PATH}`
+	};
+}
+
+export function createAcceptActivity(origin: string, followActivity: Record<string, unknown>) {
+	const actorId = getActorId(origin);
+	const objectId = String(followActivity.id || '').trim() || `${actorId}#follow`;
+
+	return {
+		'@context': ACTIVITY_STREAMS_CONTEXT,
+		id: `${objectId}#accept`,
+		type: 'Accept',
+		actor: actorId,
+		object: followActivity
 	};
 }
 
