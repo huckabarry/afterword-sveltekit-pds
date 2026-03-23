@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
 	import { tick } from 'svelte';
 	import '../app.css';
@@ -22,6 +23,7 @@
 	let searchState = $state<'idle' | 'loading' | 'ready' | 'empty'>('idle');
 	let searchInput = $state<HTMLInputElement | null>(null);
 	let searchRequest = 0;
+	const isAdminRoute = $derived(page.url.pathname.startsWith('/admin'));
 
 	async function openSearch() {
 		searchOpen = true;
@@ -116,71 +118,75 @@
 	/>
 </svelte:head>
 
-<div class="site-shell">
-	<header class="site-header h-card">
-		<a class="site-header-avatar-link u-url u-uid" href="/">
-			<img
-				class="avatar u-photo"
-				src="/assets/images/status-avatar.jpg"
-				alt="Bryan Robb"
-			/>
-		</a>
+{#if isAdminRoute}
+	{@render children()}
+{:else}
+	<div class="site-shell">
+		<header class="site-header h-card">
+			<a class="site-header-avatar-link u-url u-uid" href="/">
+				<img
+					class="avatar u-photo"
+					src="/assets/images/status-avatar.jpg"
+					alt="Bryan Robb"
+				/>
+			</a>
 
-		<div class="site-header-copy">
-			<div class="site-title-row">
-				<div class="site-title p-name">
-					<a class="u-url" href="/">
-						<span class="site-title__name">Bryan Robb</span>
-					</a>
+			<div class="site-header-copy">
+				<div class="site-title-row">
+					<div class="site-title p-name">
+						<a class="u-url" href="/">
+							<span class="site-title__name">Bryan Robb</span>
+						</a>
+					</div>
+				</div>
+
+				<div class="site-nav-row">
+					<nav class="site-nav" aria-label="Primary">
+						<ul class="site-nav-list">
+							<li class="site-nav-list-item"><a class="site-nav-item" href="/">Home</a></li>
+							<li class="site-nav-list-item"><a class="site-nav-item" href="/photos">Gallery</a></li>
+							<li class="site-nav-list-item"><a class="site-nav-item" href="/now">Now</a></li>
+							<li class="site-nav-list-item"><a class="site-nav-item" href="/about">About</a></li>
+						</ul>
+					</nav>
+
+					<button
+						class="site-nav-search"
+						type="button"
+						onclick={() => void openSearch()}
+						aria-label="Open search"
+						title="Search"
+					>
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<circle cx="11" cy="11" r="6.25" />
+							<path d="M16 16l4.5 4.5" />
+						</svg>
+					</button>
 				</div>
 			</div>
+		</header>
 
-			<div class="site-nav-row">
-				<nav class="site-nav" aria-label="Primary">
-					<ul class="site-nav-list">
-						<li class="site-nav-list-item"><a class="site-nav-item" href="/">Home</a></li>
-						<li class="site-nav-list-item"><a class="site-nav-item" href="/photos">Gallery</a></li>
-						<li class="site-nav-list-item"><a class="site-nav-item" href="/now">Now</a></li>
-						<li class="site-nav-list-item"><a class="site-nav-item" href="/about">About</a></li>
-					</ul>
-				</nav>
+		<hr class="site-rule" />
 
-				<button
-					class="site-nav-search"
-					type="button"
-					onclick={() => void openSearch()}
-					aria-label="Open search"
-					title="Search"
-				>
-					<svg viewBox="0 0 24 24" aria-hidden="true">
-						<circle cx="11" cy="11" r="6.25" />
-						<path d="M16 16l4.5 4.5" />
-					</svg>
-				</button>
+		<main class="site-main">
+			{@render children()}
+		</main>
+
+		<hr class="site-rule" />
+
+		<footer class="site-foot">
+			<div class="site-foot-nav">
+				<a class="site-foot-nav-item" href="/photos">Gallery</a>
+				<span class="site-foot-separator">/</span>
+				<a class="site-foot-nav-item" href="/now">Now</a>
+				<span class="site-foot-separator">/</span>
+				<a class="site-foot-nav-item" href="https://bsky.app/profile/afterword.blog" target="_blank" rel="noreferrer me">Bluesky</a>
 			</div>
-		</div>
-	</header>
+		</footer>
+	</div>
+{/if}
 
-	<hr class="site-rule" />
-
-	<main class="site-main">
-		{@render children()}
-	</main>
-
-	<hr class="site-rule" />
-
-	<footer class="site-foot">
-		<div class="site-foot-nav">
-			<a class="site-foot-nav-item" href="/photos">Gallery</a>
-			<span class="site-foot-separator">/</span>
-			<a class="site-foot-nav-item" href="/now">Now</a>
-			<span class="site-foot-separator">/</span>
-			<a class="site-foot-nav-item" href="https://bsky.app/profile/afterword.blog" target="_blank" rel="noreferrer me">Bluesky</a>
-		</div>
-	</footer>
-</div>
-
-{#if searchOpen}
+{#if searchOpen && !isAdminRoute}
 	<div class="search-modal">
 		<button class="search-modal__backdrop" type="button" onclick={closeSearch} aria-label="Close search"></button>
 		<div class="search-modal__panel" role="dialog" aria-modal="true" aria-label="Search the site" tabindex="-1">

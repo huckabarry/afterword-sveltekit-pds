@@ -1503,10 +1503,12 @@ p:last-child {
 	grid-template-columns: 260px minmax(0, 1fr);
 	gap: 1.4rem;
 	align-items: start;
+	width: 100%;
+	max-width: none;
+	padding: 1rem 1.15rem 1.5rem;
 }
 
 .admin-shell {
-	max-width: 980px;
 	min-width: 0;
 }
 
@@ -1760,13 +1762,17 @@ p:last-child {
 
 .admin-pill-link,
 .admin-ghost-button {
-	background: rgba(255, 255, 255, 0.9);
+	background: #ffffff;
 	color: #111111;
+	border: 1px solid rgba(0, 0, 0, 0.14);
+	box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
 }
 
 .admin-button {
-	background: var(--ink);
+	background: #111111;
 	color: white;
+	border: 1px solid #111111;
+	box-shadow: 0 10px 20px rgba(17, 17, 17, 0.18);
 }
 
 .admin-inline-reply {
@@ -1858,6 +1864,7 @@ p:last-child {
 @media (max-width: 720px) {
 	.admin-app {
 		grid-template-columns: 1fr;
+		padding: 0.75rem 0.75rem 1rem;
 	}
 
 	.admin-sidebar {
