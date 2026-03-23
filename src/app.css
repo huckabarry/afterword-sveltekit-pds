@@ -671,13 +671,15 @@ p:last-child {
 }
 
 .status-row__reply-pills {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: flex-end;
+	display: inline-flex;
+	flex-wrap: nowrap;
+	justify-content: flex-start;
 	align-items: center;
 	margin-left: auto;
 	gap: 0.4rem;
-	max-width: 100%;
+	flex: 0 0 auto;
+	width: fit-content;
+	max-width: none;
 }
 
 .status-row__reply-pill {
