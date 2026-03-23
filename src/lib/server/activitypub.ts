@@ -215,9 +215,47 @@ export function blogPostToCreateActivity(post: BlogPost, origin: string) {
 	};
 }
 
+function escapeHtml(value: string) {
+	return String(value || '')
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+function getStatusNoteHtml(post: StatusPost) {
+	const baseHtml = String(post.html || '').trim();
+
+	if (!post.external?.uri) {
+		return baseHtml;
+	}
+
+	if (baseHtml.includes(post.external.uri)) {
+		return baseHtml;
+	}
+
+	const linkLabel = post.external.title || post.external.domain || post.external.uri;
+	const externalHtml = `<p><a href="${escapeHtml(post.external.uri)}">${escapeHtml(linkLabel)}</a></p>`;
+
+	return `${baseHtml}${externalHtml}`;
+}
+
+function getStatusSourceText(post: StatusPost) {
+	const baseText = String(post.text || '').trim();
+
+	if (!post.external?.uri || baseText.includes(post.external.uri)) {
+		return baseText;
+	}
+
+	return baseText ? `${baseText}\n\n${post.external.uri}` : post.external.uri;
+}
+
 export function statusPostToNote(post: StatusPost, origin: string) {
 	const actorId = getActorId(origin);
 	const objectId = getStatusObjectId(origin, post.slug);
+	const noteHtml = getStatusNoteHtml(post);
+	const sourceText = getStatusSourceText(post);
 
 	return {
 		'@context': ACTIVITY_STREAMS_CONTEXT,
@@ -228,9 +266,9 @@ export function statusPostToNote(post: StatusPost, origin: string) {
 		url: `${origin}/status/${post.slug}`,
 		to: [PUBLIC_COLLECTION],
 		cc: [`${origin}${FOLLOWERS_PATH}`],
-		content: post.html,
+		content: noteHtml,
 		contentMap: {
-			en: post.html
+			en: noteHtml
 		},
 		mediaType: 'text/html',
 		inReplyTo: post.replyTo?.uri ? post.replyTo.blueskyUrl : undefined,
@@ -252,7 +290,7 @@ export function statusPostToNote(post: StatusPost, origin: string) {
 				: [])
 		],
 		source: {
-			content: post.text,
+			content: sourceText,
 			mediaType: 'text/plain'
 		}
 	};
