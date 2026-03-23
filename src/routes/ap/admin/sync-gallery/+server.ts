@@ -1,6 +1,6 @@
 import { requireDeliveryToken } from '$lib/server/activitypub-admin';
 import { syncGalleryPhotosToR2 } from '$lib/server/gallery-assets';
-import { getPhotoItems } from '$lib/server/ghost';
+import { getAllPhotoItems } from '$lib/server/ghost';
 import { error } from '@sveltejs/kit';
 
 function getBatchParams(request: Request) {
@@ -25,7 +25,7 @@ export async function POST(event) {
 		throw error(500, 'R2_BUCKET is not configured');
 	}
 
-	const allPhotos = await getPhotoItems();
+	const allPhotos = await getAllPhotoItems();
 	const { offset, limit } = getBatchParams(event.request);
 	const photos = allPhotos.slice(offset, offset + limit);
 	const summary = await syncGalleryPhotosToR2(photos, bucket);
