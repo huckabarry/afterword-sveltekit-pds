@@ -38,13 +38,6 @@
 						year: 'numeric'
 					})}
 				</time>
-				{#if post.publicTags.length}
-					<div class="blog-row__tags">
-						{#each post.publicTags as tag}
-							<span class="tag-pill blog-row__tag">{tag.label}</span>
-						{/each}
-					</div>
-				{/if}
 				<h2>{post.title}</h2>
 				<p>{post.excerpt}</p>
 				<span class="blog-row__read-more">Read more <span aria-hidden="true">→</span></span>
