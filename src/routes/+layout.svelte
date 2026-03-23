@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import favicon from '$lib/assets/favicon.svg';
 	import { tick } from 'svelte';
 	import '../app.css';
 
@@ -106,7 +105,8 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" href={profile.avatarUrl} />
+	<link rel="apple-touch-icon" href={profile.avatarUrl} />
 	<link rel="webmention" href="/webmention" />
 	<link
 		rel="stylesheet"
