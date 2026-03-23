@@ -247,40 +247,40 @@
 		</div>
 		<section class="track-list">
 			{#each data.tracks as track}
-				<article class="track-row">
+				<article class="track-row track-row--now">
 					{#if track.artworkUrl}
 						<a class="track-row__art-link" href={track.localPath}>
 							<img class="track-row__art" src={track.artworkUrl} alt={track.trackTitle} />
 						</a>
 					{/if}
-					<div class="track-row__body">
+					<div class="track-row__body track-row__body--now">
 						<a class="track-row__link" href={track.localPath}>
 							<time class="track-row__date" datetime={track.publishedAt.toISOString()}>
 								{track.displayDate}
 							</time>
 							<h3 class="track-row__title">{track.trackTitle}</h3>
 							<p class="track-row__artist">{track.artist}</p>
-							{#if track.note}
-								<p class="track-row__note">{track.note}</p>
-							{/if}
 						</a>
-						{#if track.previewUrl}
-							<div class="track-preview track-preview--inline">
-								<audio
-									controls
-									preload="none"
-									src={track.previewUrl}
-									aria-label={`Preview ${track.trackTitle} by ${track.artist}`}
-								></audio>
-							</div>
-						{/if}
-						<div class="track-row__actions">
-							{#each track.listenLinks as link}
-								<a class="tag-pill track-row__action" href={link.url} target="_blank" rel="noreferrer">
-									{link.label}
-								</a>
-							{/each}
+					</div>
+					{#if track.note}
+						<p class="track-row__note track-row__note--now">{track.note}</p>
+					{/if}
+					{#if track.previewUrl}
+						<div class="track-preview track-preview--inline track-preview--now">
+							<audio
+								controls
+								preload="none"
+								src={track.previewUrl}
+								aria-label={`Preview ${track.trackTitle} by ${track.artist}`}
+							></audio>
 						</div>
+					{/if}
+					<div class="track-row__actions track-row__actions--now">
+						{#each track.listenLinks as link}
+							<a class="tag-pill track-row__action" href={link.url} target="_blank" rel="noreferrer">
+								{link.label}
+							</a>
+						{/each}
 					</div>
 				</article>
 			{/each}
@@ -339,6 +339,51 @@
 <style>
 	.section-head--now {
 		margin-bottom: 1.15rem;
+	}
+
+	.track-row--now {
+		grid-template-columns: auto minmax(0, 1fr);
+		row-gap: 0.7rem;
+	}
+
+	.track-row__body--now {
+		align-self: center;
+	}
+
+	.track-row--now .track-row__art {
+		width: 4.25rem;
+		height: 4.25rem;
+	}
+
+	.track-row--now .track-row__date {
+		margin-bottom: 0.08rem;
+	}
+
+	.track-row--now .track-row__title {
+		font-size: 1.08rem;
+	}
+
+	.track-row--now .track-row__artist {
+		margin-top: 0.08rem;
+		font-size: 0.98rem;
+	}
+
+	.track-row__note--now,
+	.track-preview--now,
+	.track-row__actions--now {
+		grid-column: 1 / -1;
+	}
+
+	.track-row__note--now {
+		margin: 0;
+	}
+
+	.track-preview--now {
+		margin-top: 0;
+	}
+
+	.track-row__actions--now {
+		margin-top: 0;
 	}
 
 	.now-albums__position-row {

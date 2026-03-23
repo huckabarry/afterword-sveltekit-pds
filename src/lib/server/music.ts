@@ -457,7 +457,7 @@ export async function getTracks(): Promise<TrackEntry[]> {
 				});
 			}
 			if (parsed.playlistUrl) {
-				listenLinks.push({ label: "Bryan's playlist", url: parsed.playlistUrl });
+				listenLinks.push({ label: 'Playlist', url: parsed.playlistUrl });
 			}
 
 			return {
