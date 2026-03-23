@@ -114,9 +114,6 @@
 		name="description"
 		content="Short updates, photos, and longer reflections on place, music, design, and daily life."
 	/>
-	<link rel="authorization_endpoint" href="/indieauth/authorize" />
-	<link rel="token_endpoint" href="/indieauth/token" />
-	<link rel="micropub" href="/micropub" />
 </svelte:head>
 
 <div class="site-shell">

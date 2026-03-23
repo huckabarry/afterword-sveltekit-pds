@@ -22,8 +22,6 @@ export type ApNoteRecord = {
 	threadRootObjectId: string | null;
 	contentHtml: string;
 	contentText: string;
-	title: string | null;
-	category: string[];
 	publishedAt: string;
 	objectUrl: string | null;
 	localSlug: string | null;
@@ -46,8 +44,6 @@ function mapNote(row: Record<string, unknown>): ApNoteRecord {
 		threadRootObjectId: row.thread_root_object_id ? String(row.thread_root_object_id) : null,
 		contentHtml: String(row.content_html || ''),
 		contentText: String(row.content_text || ''),
-		title: row.title ? String(row.title) : null,
-		category: row.category ? JSON.parse(String(row.category)) : [],
 		publishedAt: String(row.published_at || ''),
 		objectUrl: row.object_url ? String(row.object_url) : null,
 		localSlug: row.local_slug ? String(row.local_slug) : null,
@@ -155,50 +151,6 @@ export async function createLocalReply(
 			input.threadRootObjectId ?? input.inReplyToObjectId,
 			input.contentHtml,
 			input.contentText,
-			publishedAt,
-			noteId,
-			slug,
-			'pending'
-		)
-		.run();
-
-	return getLocalReplyBySlug(event, slug);
-}
-
-export async function createLocalNote(
-	event: Pick<RequestEvent, 'platform' | 'url'>,
-	input: {
-		contentHtml: string;
-		contentText: string;
-		name?: string | null;
-		category?: string[];
-	}
-) {
-	const db = getDb(event);
-	if (!db) {
-		throw new Error('D1 database is not configured');
-	}
-
-	const slug = makeLocalReplySlug();
-	const noteId = `${event.url.origin}/ap/notes/${slug}`;
-	const actorId = getActorId(event.url.origin);
-	const publishedAt = new Date().toISOString();
-
-	await db
-		.prepare(
-			`INSERT INTO ap_notes (
-				note_id, origin, actor_id, thread_root_object_id, content_html, content_text,
-				title, category, published_at, object_url, local_slug, delivery_status
-			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-		)
-		.bind(
-			noteId,
-			actorId,
-			noteId,
-			input.contentHtml,
-			input.contentText,
-			input.name ?? null,
-			JSON.stringify(input.category || []),
 			publishedAt,
 			noteId,
 			slug,
