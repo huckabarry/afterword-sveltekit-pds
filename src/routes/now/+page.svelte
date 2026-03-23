@@ -15,11 +15,19 @@
 				paragraphs: string[];
 			};
 			nowPost: BlogPost | null;
+			nowImages: Array<{
+				id: string;
+				imageUrl: string;
+				alt: string;
+			}>;
+			nowContentHtml: string;
 			latestCheckin: Checkin | null;
 			albums: AlbumEntry[];
 			tracks: TrackEntry[];
 		};
 	} = $props();
+
+	let nowImageIndex = $state(0);
 
 	function shouldRenderIntroParagraph(paragraph: string) {
 		const normalizedParagraph = paragraph.trim().toLowerCase();
@@ -30,6 +38,14 @@
 		}
 
 		return !normalizedParagraph.startsWith(normalizedDescription.replace(/[.:!?]+$/g, ''));
+	}
+
+	function showPrevNowImage() {
+		nowImageIndex = (nowImageIndex - 1 + data.nowImages.length) % data.nowImages.length;
+	}
+
+	function showNextNowImage() {
+		nowImageIndex = (nowImageIndex + 1) % data.nowImages.length;
 	}
 </script>
 
@@ -67,8 +83,37 @@
 					<h3 class="entry__title">
 						<a href={data.nowPost.path}>{data.nowPost.title}</a>
 					</h3>
+					{#if data.nowImages.length > 1}
+						<section class="now-carousel" aria-label="Now post images">
+							<div class="now-carousel__frame">
+								<a
+									class="now-carousel__image-link"
+									href={data.nowImages[nowImageIndex].imageUrl}
+									target="_blank"
+									rel="noreferrer"
+								>
+									<img
+										class="now-carousel__image"
+										src={data.nowImages[nowImageIndex].imageUrl}
+										alt={data.nowImages[nowImageIndex].alt || data.nowPost.title}
+									/>
+								</a>
+								<div class="now-carousel__controls">
+									<button class="now-carousel__button" type="button" onclick={showPrevNowImage}>
+										Prev
+									</button>
+									<span class="now-carousel__position">
+										{nowImageIndex + 1} / {data.nowImages.length}
+									</span>
+									<button class="now-carousel__button" type="button" onclick={showNextNowImage}>
+										Next
+									</button>
+								</div>
+							</div>
+						</section>
+					{/if}
 					<div class="entry__content">
-						{@html data.nowPost.html}
+						{@html data.nowContentHtml}
 					</div>
 				</section>
 			</div>
@@ -213,5 +258,59 @@
 <style>
 	.section-head--now {
 		margin-bottom: 1.15rem;
+	}
+
+	.now-carousel {
+		margin: 0 0 1.15rem;
+	}
+
+	.now-carousel__frame {
+		display: grid;
+		gap: 0.6rem;
+	}
+
+	.now-carousel__image-link {
+		display: block;
+		overflow: hidden;
+		border-radius: 0.75rem;
+	}
+
+	.now-carousel__image {
+		display: block;
+		width: 100%;
+		max-height: 36rem;
+		object-fit: cover;
+		border-radius: 0.75rem;
+	}
+
+	.now-carousel__controls {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		color: var(--muted);
+		font-size: 0.84rem;
+	}
+
+	.now-carousel__button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.2rem 0.55rem;
+		border: 1px solid var(--border);
+		border-radius: 0.45rem;
+		background: transparent;
+		color: var(--muted);
+		font: inherit;
+		cursor: pointer;
+	}
+
+	.now-carousel__button:hover {
+		color: var(--text);
+		border-color: var(--muted);
+	}
+
+	.now-carousel__position {
+		white-space: nowrap;
 	}
 </style>

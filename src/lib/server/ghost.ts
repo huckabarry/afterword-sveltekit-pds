@@ -64,6 +64,14 @@ export type PhotoItem = {
 	index: number;
 };
 
+export function stripImagesFromHtml(html: string) {
+	return String(html || '')
+		.replace(/<figure\b[^>]*>[\s\S]*?<img[\s\S]*?<\/figure>/gi, '')
+		.replace(/<img\b[^>]*>/gi, '')
+		.replace(/<p>\s*(?:<br\s*\/?>|\s|&nbsp;)*<\/p>/gi, '')
+		.trim();
+}
+
 function getGhostUrl() {
 	return String(env.GHOST_URL || env.GHOST_ADMIN_URL || DEFAULT_GHOST_URL)
 		.trim()
@@ -256,6 +264,10 @@ function extractPhotoItems(post: BlogPost): PhotoItem[] {
 	}
 
 	return items;
+}
+
+export function getPostImages(post: BlogPost): PhotoItem[] {
+	return extractPhotoItems(post);
 }
 
 function shouldIncludePost(post: BlogPost) {
