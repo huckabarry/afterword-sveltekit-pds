@@ -638,10 +638,9 @@ p:last-child {
 }
 
 .status-row__actions {
-	display: flex;
-	flex-wrap: nowrap;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
-	justify-content: space-between;
 	gap: 1rem;
 	margin-top: 0.85rem;
 	color: var(--muted);
@@ -650,7 +649,7 @@ p:last-child {
 
 .status-row__metrics {
 	display: inline-flex;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	align-items: center;
 	gap: 1rem;
 	min-width: 0;
@@ -684,13 +683,13 @@ p:last-child {
 .status-row__reply-pills {
 	display: inline-flex;
 	flex-wrap: nowrap;
-	justify-content: flex-start;
+	justify-content: flex-end;
 	align-items: center;
-	margin-left: auto;
 	gap: 0.4rem;
 	flex: 0 0 auto;
 	width: fit-content;
 	max-width: none;
+	justify-self: end;
 }
 
 .status-row__reply-pill {
