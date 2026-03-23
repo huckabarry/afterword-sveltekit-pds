@@ -150,7 +150,8 @@
 							title="Search"
 						>
 							<svg viewBox="0 0 24 24" aria-hidden="true">
-								<path d="M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12Zm0-1.5a7.5 7.5 0 1 1 4.74 13.32l4.72 4.71l-1.06 1.06l-4.71-4.72A7.5 7.5 0 0 1 10.5 3Z" />
+								<circle cx="11" cy="11" r="6.25" />
+								<path d="M16 16l4.5 4.5" />
 							</svg>
 						</button>
 					</li>
