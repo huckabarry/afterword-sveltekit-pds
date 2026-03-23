@@ -272,6 +272,33 @@ export async function listRecentRemoteReplies(
 	return (result.results || []).map(mapNote);
 }
 
+export async function listRecentInboxReplies(
+	event: Pick<RequestEvent, 'platform'>,
+	origin: string,
+	limit = 25
+): Promise<ApNoteRecord[]> {
+	const db = getDb(event);
+	if (!db) {
+		return [];
+	}
+
+	const safeLimit = Math.max(1, Math.min(limit, 100));
+	const localObjectPrefix = `${origin.replace(/\/$/, '')}/ap/%`;
+	const result = await db
+		.prepare(
+			`SELECT *
+			 FROM ap_notes
+			 WHERE origin = 'remote'
+			   AND in_reply_to_object_id LIKE ?
+			 ORDER BY published_at DESC, created_at DESC
+			 LIMIT ?`
+		)
+		.bind(localObjectPrefix, safeLimit)
+		.all<Record<string, unknown>>();
+
+	return (result.results || []).map(mapNote);
+}
+
 export async function listLocalNotes(
 	event: Pick<RequestEvent, 'platform'>,
 	limit = 100

@@ -1,7 +1,12 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { getBlogPostBySlug } from '$lib/server/ghost';
 import { getActivityPubOrigin } from '$lib/server/activitypub';
-import { createLocalReply, getLocalReplyBySlug, listRecentRemoteReplies, updateLocalReplyDeliveryStatus } from '$lib/server/ap-notes';
+import {
+	createLocalReply,
+	getLocalReplyBySlug,
+	listRecentInboxReplies,
+	updateLocalReplyDeliveryStatus
+} from '$lib/server/ap-notes';
 import { deliverLikeToRemoteObject } from '$lib/server/activitypub-likes';
 import { getStatusBySlug } from '$lib/server/atproto';
 import {
@@ -142,7 +147,7 @@ async function resolveReplyContext(event: Parameters<PageServerLoad>[0], origin:
 
 export const load: PageServerLoad = async (event) => {
 	const origin = getActivityPubOrigin(event);
-	const replies = await listRecentRemoteReplies(event, 50);
+	const replies = await listRecentInboxReplies(event, origin, 50);
 	const repliesWithContext = await Promise.all(
 		replies.map(async (reply) => ({
 			...reply,
