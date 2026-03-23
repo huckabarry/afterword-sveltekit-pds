@@ -12,6 +12,16 @@
 				announceCount: number;
 				totalCount: number;
 			};
+			apReplies: Array<{
+				noteId: string;
+				origin: 'local' | 'remote';
+				actorId: string;
+				actorName: string | null;
+				actorHandle: string | null;
+				contentHtml: string;
+				publishedAt: string;
+				inReplyToObjectId: string | null;
+			}>;
 		};
 	} = $props();
 </script>
@@ -144,6 +154,28 @@
 							</div>
 							<div class="status-row__content">
 								{@html reply.html}
+							</div>
+						</article>
+					{/each}
+				</section>
+			{/if}
+			{#if data.apReplies.length}
+				<section class="status-thread status-thread--fediverse">
+					<h2>Fediverse Replies</h2>
+					{#each data.apReplies as reply}
+						<article class="status-reply">
+							<div class="status-row__meta">
+								<div class="status-row__byline">
+									<span class="status-row__name">{reply.actorName || 'ActivityPub reply'}</span>
+									{#if reply.actorHandle}
+										<span class="status-row__handle">@{reply.actorHandle}</span>
+									{/if}
+									<span>·</span>
+									<time datetime={reply.publishedAt}>{formatDate(new Date(reply.publishedAt))}</time>
+								</div>
+							</div>
+							<div class="status-row__content">
+								{@html reply.contentHtml}
 							</div>
 						</article>
 					{/each}

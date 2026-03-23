@@ -7,6 +7,8 @@ import {
 	getInboxId
 } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
+import { resolveThreadRootObjectId } from '$lib/server/activitypub-replies';
+import { storeRemoteReply } from '$lib/server/ap-notes';
 import { recordInteraction } from '$lib/server/interactions';
 import { verifyInboundActivitySignature } from '$lib/server/activitypub-signatures';
 import { hasFollowerDb, updateFollowerDeliveryStatus, upsertFollower } from '$lib/server/followers';
@@ -67,6 +69,14 @@ function getObjectId(activity: FollowActivity) {
 		return getString((activity.object as Record<string, unknown>).id);
 	}
 	return null;
+}
+
+function getObjectFromCreateActivity(activity: SupportedInboxActivity) {
+	if (!activity.object || typeof activity.object !== 'object') {
+		return null;
+	}
+
+	return activity.object as Record<string, unknown>;
 }
 
 export async function POST(event) {
@@ -175,10 +185,54 @@ export async function POST(event) {
 			return new Response(null, { status: 202 });
 		}
 
+		if (activity.type === 'Create') {
+			const object = getObjectFromCreateActivity(activity);
+			if (!object) {
+				return new Response(null, { status: 202 });
+			}
+
+			const objectType = getString(object.type);
+			const noteId = getString(object.id);
+			const inReplyTo = getString(object.inReplyTo);
+
+			if (objectType !== 'Note' || !noteId || !inReplyTo) {
+				return new Response(null, { status: 202 });
+			}
+
+			const threadRootObjectId = await resolveThreadRootObjectId(inReplyTo, origin);
+
+			await storeRemoteReply(event, {
+				noteId,
+				activityId,
+				actorId,
+				actorName: getString(object.name) || getString(remoteActor.name),
+				actorHandle: getString(remoteActor.preferredUsername),
+				inReplyToObjectId: inReplyTo,
+				threadRootObjectId,
+				contentHtml: getString(object.content) || '',
+				contentText:
+					object.source && typeof object.source === 'object'
+						? getString((object.source as Record<string, unknown>).content) || ''
+						: '',
+				publishedAt: getString(object.published) || new Date().toISOString(),
+				objectUrl: getString(object.url) || noteId,
+				rawActivityJson: rawBody
+			});
+
+			console.log('[ap/inbox] reply stored', {
+				actorId,
+				noteId,
+				inReplyTo,
+				threadRootObjectId
+			});
+
+			return new Response(null, { status: 202 });
+		}
+
 		console.log('[ap/inbox] unsupported activity type', activity.type);
 		return new Response(
 			JSON.stringify({
-				error: 'Only Follow, Like, and Announce activities are supported right now.'
+				error: 'Only Follow, Like, Announce, and Create(Note) activities are supported right now.'
 			}),
 			{
 				status: 501,
