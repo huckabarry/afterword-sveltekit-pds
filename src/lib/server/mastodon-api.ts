@@ -56,6 +56,8 @@ export function formatMastodonStatus(origin: string, input: {
 	id: string;
 	text: string;
 	createdAt: string;
+	favourited?: boolean;
+	favouritesCount?: number;
 }) {
 	return {
 		id: input.id,
@@ -70,8 +72,8 @@ export function formatMastodonStatus(origin: string, input: {
 		url: `${origin}/status/${input.id}`,
 		replies_count: 0,
 		reblogs_count: 0,
-		favourites_count: 0,
-		favourited: false,
+		favourites_count: input.favouritesCount ?? 0,
+		favourited: input.favourited ?? false,
 		reblogged: false,
 		muted: false,
 		bookmarked: false,

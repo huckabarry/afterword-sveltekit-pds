@@ -38,6 +38,7 @@ export type Checkin = {
 export type StatusPost = {
 	id: string;
 	uri: string;
+	cid: string;
 	slug: string;
 	text: string;
 	html: string;
@@ -371,6 +372,7 @@ function normalizeReply(node: Record<string, any>): StatusPost | null {
 	return {
 		id: String(post.uri || ''),
 		uri: String(post.uri || ''),
+		cid: String(post.cid || ''),
 		slug: getRecordKey(post.uri),
 		text: String(record.text || ''),
 		html: renderTextHtml(String(record.text || '')),
@@ -401,6 +403,7 @@ function normalizeStatus(item: Record<string, any>, actor: string): StatusPost |
 	return {
 		id: String(post.uri || ''),
 		uri: String(post.uri || ''),
+		cid: String(post.cid || ''),
 		slug: getRecordKey(post.uri),
 		text: String(record.text || ''),
 		html: renderTextHtml(String(record.text || '')),
