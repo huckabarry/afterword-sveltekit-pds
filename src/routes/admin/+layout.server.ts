@@ -9,5 +9,8 @@ export const load: LayoutServerLoad = async (event) => {
 		throw redirect(303, '/admin/login');
 	}
 
-	return { authenticated };
+	return {
+		authenticated,
+		pathname: event.url.pathname
+	};
 };
