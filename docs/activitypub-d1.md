@@ -86,3 +86,18 @@ This will:
 - generate a `Create` activity for the blog post
 - send it to each follower inbox/sharedInbox
 - record delivery status in `ap_deliveries`
+
+To deliver only the most recent posts that have not yet been delivered to each follower, call:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  "https://afterword.blog/ap/admin/deliver-missing?limit=5"
+```
+
+This will:
+
+- scan the latest `limit` blog posts
+- skip follower/post pairs already marked as delivered
+- only send missing deliveries
+- record new delivery attempts in `ap_deliveries`

@@ -57,3 +57,29 @@ export async function recordDeliveryAttempt(
 		)
 		.run();
 }
+
+export async function listDeliveredFollowerActorIds(
+	event: Pick<RequestEvent, 'platform'>,
+	objectId: string
+): Promise<Set<string>> {
+	const db = getDb(event);
+	if (!db) {
+		return new Set();
+	}
+
+	const result = await db
+		.prepare(
+			`SELECT follower_actor_id
+			 FROM ap_deliveries
+			 WHERE object_id = ?
+			   AND status = 'delivered'`
+		)
+		.bind(objectId)
+		.all<Record<string, unknown>>();
+
+	return new Set(
+		(result.results || [])
+			.map((row: Record<string, unknown>) => String(row.follower_actor_id || '').trim())
+			.filter(Boolean)
+	);
+}
