@@ -7,6 +7,7 @@ import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
 	localReplyToRemoteCreateActivity,
+	normalizeMentionText,
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
@@ -19,7 +20,7 @@ async function deliverLocalNoteToFollowers(
 ) {
 	const origin = getActivityPubOrigin(event);
 	const followers = await listFollowers(event);
-	const activity = localReplyToCreateActivity(note, origin);
+	const activity = await localReplyToCreateActivity(note, origin);
 
 	for (const follower of followers) {
 		const inboxUrl = follower.sharedInboxUrl || follower.inboxUrl;
@@ -42,7 +43,7 @@ export const actions: Actions = {
 	default: async (event) => {
 		const form = await event.request.formData();
 		const replyTo = String(form.get('replyTo') || '').trim();
-		const content = String(form.get('content') || '').trim();
+		const content = normalizeMentionText(String(form.get('content') || '').trim());
 		const imageFiles = form
 			.getAll('images')
 			.filter((value): value is File => value instanceof File && value.size > 0);

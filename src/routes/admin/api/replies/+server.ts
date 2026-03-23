@@ -14,6 +14,7 @@ import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
 	localReplyToRemoteCreateActivity,
+	normalizeMentionText,
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
@@ -28,7 +29,7 @@ async function deliverLocalReplyToFollowers(
 ) {
 	const origin = getActivityPubOrigin(event);
 	const followers = await listFollowers(event);
-	const activity = localReplyToCreateActivity(reply, origin);
+	const activity = await localReplyToCreateActivity(reply, origin);
 
 	for (const follower of followers) {
 		const inboxUrl = follower.sharedInboxUrl || follower.inboxUrl;
@@ -80,7 +81,7 @@ export async function POST(event) {
 	}
 
 	const replyTo = String(body?.replyTo || '').trim();
-	const content = String(body?.content || '').trim();
+	const content = normalizeMentionText(String(body?.content || '').trim());
 
 	if (!replyTo || !content) {
 		return json({ error: 'Reply target and content are required.' }, { status: 400 });

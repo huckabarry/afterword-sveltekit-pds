@@ -20,6 +20,7 @@ import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
 	localReplyToRemoteCreateActivity,
+	normalizeMentionText,
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
@@ -34,7 +35,7 @@ async function deliverLocalNoteToFollowers(
 ) {
 	const origin = getActivityPubOrigin(event);
 	const followers = await listFollowers(event);
-	const activity = localReplyToCreateActivity(note, origin);
+	const activity = await localReplyToCreateActivity(note, origin);
 
 	for (const follower of followers) {
 		const inboxUrl = follower.sharedInboxUrl || follower.inboxUrl;
@@ -77,7 +78,7 @@ export async function POST(event) {
 	const getValue = (key: string) =>
 		parsed instanceof FormData ? String(parsed.get(key) || '').trim() : String(parsed[key] || '').trim();
 
-	const content = getValue('status');
+	const content = normalizeMentionText(getValue('status'));
 	const inReplyToId = getValue('in_reply_to_id');
 	const mediaIds = [...readEntries(parsed, 'media_ids[]'), ...readEntries(parsed, 'media_ids')];
 

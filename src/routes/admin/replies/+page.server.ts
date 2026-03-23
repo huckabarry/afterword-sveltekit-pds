@@ -16,6 +16,7 @@ import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
 	localReplyToRemoteCreateActivity,
+	normalizeMentionText,
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
@@ -27,7 +28,7 @@ async function deliverLocalReplyToFollowers(
 ) {
 	const origin = getActivityPubOrigin(event);
 	const followers = await listFollowers(event);
-	const activity = localReplyToCreateActivity(reply, origin);
+	const activity = await localReplyToCreateActivity(reply, origin);
 
 	for (const follower of followers) {
 		const inboxUrl = follower.sharedInboxUrl || follower.inboxUrl;
@@ -80,7 +81,7 @@ export const actions: Actions = {
 	reply: async (event) => {
 		const form = await event.request.formData();
 		const replyTo = String(form.get('replyTo') || '').trim();
-		const content = String(form.get('content') || '').trim();
+		const content = normalizeMentionText(String(form.get('content') || '').trim());
 
 		if (!replyTo || !content) {
 			return fail(400, { error: 'Reply target and content are required.' });

@@ -5,6 +5,7 @@ import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
 	localReplyToRemoteCreateActivity,
+	normalizeMentionText,
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
@@ -23,7 +24,7 @@ export async function POST(event) {
 	};
 
 	const inReplyTo = getString(payload.inReplyTo);
-	const content = getString(payload.content);
+	const content = normalizeMentionText(getString(payload.content) || '');
 
 	if (!inReplyTo) {
 		throw error(400, '`inReplyTo` is required');
@@ -49,7 +50,7 @@ export async function POST(event) {
 
 	try {
 		const activity = inReplyTo.startsWith(`${origin}/ap/`)
-			? localReplyToCreateActivity(reply, origin)
+			? await localReplyToCreateActivity(reply, origin)
 			: await localReplyToRemoteCreateActivity(reply, origin, inReplyTo);
 		const delivery = await deliverReplyToRemoteActor(origin, inReplyTo, activity);
 		await updateLocalReplyDeliveryStatus(event, reply.localSlug || '', 'delivered');

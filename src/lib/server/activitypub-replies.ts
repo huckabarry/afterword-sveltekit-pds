@@ -17,6 +17,8 @@ type ReplyMention = {
 	name: string;
 };
 
+const MENTION_PATTERN = /(^|[\s(>])@?([A-Za-z0-9_.-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,})(?=$|[\s),.:;!?<])/g;
+
 function getString(value: unknown) {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -105,6 +107,102 @@ function prependMentionHtml(contentHtml: string, mention: ReplyMention) {
 	return `${mentionHtml}${contentHtml}`;
 }
 
+export function normalizeMentionText(value: string) {
+	return String(value || '').replace(MENTION_PATTERN, (_match, prefix: string, username: string, domain: string) => {
+		return `${prefix}@${username}@${domain}`;
+	});
+}
+
+async function resolveMentionTagsFromText(contentText: string) {
+	const matches = Array.from(normalizeMentionText(contentText).matchAll(MENTION_PATTERN));
+	const mentions = new Map<string, ReplyMention>();
+
+	for (const match of matches) {
+		const username = match[2];
+		const domain = match[3];
+		const acct = `${username}@${domain}`;
+
+		try {
+			const response = await fetch(`https://${domain}/.well-known/webfinger?resource=${encodeURIComponent(`acct:${acct}`)}`, {
+				headers: { Accept: 'application/jrd+json, application/json' }
+			});
+			if (!response.ok) continue;
+
+			const jrd = (await response.json()) as {
+				links?: Array<{ rel?: string; href?: string }>;
+			};
+			const selfLink = (jrd.links || []).find((link) => link.rel === 'self' && link.href);
+			if (!selfLink?.href) continue;
+
+			mentions.set(selfLink.href, {
+				href: selfLink.href,
+				name: `@${acct}`
+			});
+		} catch {}
+	}
+
+	return Array.from(mentions.values());
+}
+
+async function buildMentionedNote(
+	reply: ApNoteRecord,
+	origin: string,
+	input?: { targetActorId?: string | null; targetMention?: ReplyMention | null }
+) {
+	const detectedMentions = await resolveMentionTagsFromText(reply.contentText || stripHtmlToText(reply.contentHtml));
+	const mentions = new Map<string, ReplyMention>();
+
+	for (const mention of detectedMentions) {
+		mentions.set(mention.href, mention);
+	}
+
+	if (input?.targetActorId && input.targetMention) {
+		mentions.set(input.targetActorId, input.targetMention);
+	}
+
+	let contentHtml = reply.contentHtml;
+	if (input?.targetMention) {
+		contentHtml = prependMentionHtml(contentHtml, input.targetMention);
+	}
+
+	const to = new Set<string>(['https://www.w3.org/ns/activitystreams#Public']);
+	for (const mention of mentions.values()) {
+		to.add(mention.href);
+	}
+
+	return {
+		'@context': 'https://www.w3.org/ns/activitystreams',
+		id: reply.noteId,
+		type: 'Note',
+		attributedTo: getActorId(origin),
+		published: reply.publishedAt,
+		url: reply.noteId,
+		to: Array.from(to),
+		cc: [`${origin}/ap/followers`],
+		inReplyTo: reply.inReplyToObjectId || undefined,
+		content: contentHtml,
+		contentMap: {
+			en: contentHtml
+		},
+		mediaType: 'text/html',
+		tag: Array.from(mentions.values()).map((mention) => ({
+			type: 'Mention',
+			href: mention.href,
+			name: mention.name
+		})),
+		attachment: reply.attachments.map((item) => ({
+			type: 'Image',
+			mediaType: item.mediaType,
+			url: item.url,
+			name: item.alt || undefined
+		})),
+		source: {
+			content: normalizeMentionText(reply.contentText || stripHtmlToText(reply.contentHtml)),
+			mediaType: 'text/plain'
+		}
+	};
+}
+
 export async function resolveThreadRootObjectId(
 	inReplyToObjectId: string,
 	origin: string,
@@ -164,33 +262,8 @@ export async function resolveThreadRootObjectId(
 	return lastKnown;
 }
 
-export function localReplyToNote(reply: ApNoteRecord, origin: string) {
-	return {
-		'@context': 'https://www.w3.org/ns/activitystreams',
-		id: reply.noteId,
-		type: 'Note',
-		attributedTo: getActorId(origin),
-		published: reply.publishedAt,
-		url: reply.noteId,
-		to: ['https://www.w3.org/ns/activitystreams#Public'],
-		cc: [`${origin}/ap/followers`],
-		inReplyTo: reply.inReplyToObjectId || undefined,
-		content: reply.contentHtml,
-		contentMap: {
-			en: reply.contentHtml
-		},
-		mediaType: 'text/html',
-		attachment: reply.attachments.map((item) => ({
-			type: 'Image',
-			mediaType: item.mediaType,
-			url: item.url,
-			name: item.alt || undefined
-		})),
-		source: {
-			content: reply.contentText || stripHtmlToText(reply.contentHtml),
-			mediaType: 'text/plain'
-		}
-	};
+export async function localReplyToNote(reply: ApNoteRecord, origin: string) {
+	return buildMentionedNote(reply, origin);
 }
 
 export function localReplyToMentionedNote(
@@ -201,42 +274,13 @@ export function localReplyToMentionedNote(
 		mention: ReplyMention;
 	}
 ) {
-	return {
-		'@context': 'https://www.w3.org/ns/activitystreams',
-		id: reply.noteId,
-		type: 'Note',
-		attributedTo: getActorId(origin),
-		published: reply.publishedAt,
-		url: reply.noteId,
-		to: ['https://www.w3.org/ns/activitystreams#Public', input.targetActorId],
-		cc: [`${origin}/ap/followers`],
-		inReplyTo: reply.inReplyToObjectId || undefined,
-		content: prependMentionHtml(reply.contentHtml, input.mention),
-		contentMap: {
-			en: prependMentionHtml(reply.contentHtml, input.mention)
-		},
-		mediaType: 'text/html',
-		tag: [
-			{
-				type: 'Mention',
-				href: input.mention.href,
-				name: input.mention.name
-			}
-		],
-		attachment: reply.attachments.map((item) => ({
-			type: 'Image',
-			mediaType: item.mediaType,
-			url: item.url,
-			name: item.alt || undefined
-		})),
-		source: {
-			content: `${input.mention.name} ${reply.contentText || stripHtmlToText(reply.contentHtml)}`.trim(),
-			mediaType: 'text/plain'
-		}
-	};
+	return buildMentionedNote(reply, origin, {
+		targetActorId: input.targetActorId,
+		targetMention: input.mention
+	});
 }
 
-export function localReplyToCreateActivity(reply: ApNoteRecord, origin: string) {
+export async function localReplyToCreateActivity(reply: ApNoteRecord, origin: string) {
 	return {
 		'@context': 'https://www.w3.org/ns/activitystreams',
 		id: `${reply.noteId}#create`,
@@ -245,7 +289,7 @@ export function localReplyToCreateActivity(reply: ApNoteRecord, origin: string) 
 		published: reply.publishedAt,
 		to: ['https://www.w3.org/ns/activitystreams#Public'],
 		cc: [`${origin}/ap/followers`],
-		object: localReplyToNote(reply, origin)
+		object: await localReplyToNote(reply, origin)
 	};
 }
 
@@ -276,7 +320,7 @@ export async function localReplyToRemoteCreateActivity(
 		published: reply.publishedAt,
 		to: ['https://www.w3.org/ns/activitystreams#Public', targetActorId],
 		cc: [`${origin}/ap/followers`],
-		object: localReplyToMentionedNote(reply, origin, { targetActorId, mention })
+		object: await localReplyToMentionedNote(reply, origin, { targetActorId, mention })
 	};
 }
 

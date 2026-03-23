@@ -9,5 +9,5 @@ export async function GET(event) {
 		throw error(404, 'Note not found');
 	}
 
-	return replyJson(localReplyToNote(note, event.url.origin));
+	return replyJson(await localReplyToNote(note, event.url.origin));
 }

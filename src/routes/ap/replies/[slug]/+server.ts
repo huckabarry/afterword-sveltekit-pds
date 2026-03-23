@@ -10,5 +10,5 @@ export async function GET(event) {
 		throw error(404, 'Reply not found');
 	}
 
-	return replyJson(localReplyToNote(reply, getActivityPubOrigin(event)));
+	return replyJson(await localReplyToNote(reply, getActivityPubOrigin(event)));
 }

@@ -8,6 +8,7 @@ import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
 	localReplyToRemoteCreateActivity,
+	normalizeMentionText,
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
@@ -22,7 +23,7 @@ async function deliverLocalNoteToFollowers(
 ) {
 	const origin = getActivityPubOrigin(event);
 	const followers = await listFollowers(event);
-	const activity = localReplyToCreateActivity(note, origin);
+	const activity = await localReplyToCreateActivity(note, origin);
 
 	for (const follower of followers) {
 		const inboxUrl = follower.sharedInboxUrl || follower.inboxUrl;
@@ -36,7 +37,7 @@ export async function POST(event) {
 
 	const body = await event.request.json().catch(() => null);
 	const replyTo = String(body?.replyTo || '').trim();
-	const content = String(body?.content || '').trim();
+	const content = normalizeMentionText(String(body?.content || '').trim());
 	const attachmentInput: unknown[] = Array.isArray(body?.attachments) ? body.attachments : [];
 	const attachments = attachmentInput
 		.map((item: unknown) => {
