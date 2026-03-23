@@ -169,7 +169,7 @@ p:last-child {
 	align-items: center;
 	justify-content: center;
 	flex: 0 0 auto;
-	padding: 0;
+	padding: 0 1.25rem 0 0;
 	border: 0;
 	background: transparent;
 	color: #ffffff;
