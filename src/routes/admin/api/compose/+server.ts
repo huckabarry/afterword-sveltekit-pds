@@ -36,6 +36,21 @@ export async function POST(event) {
 	const body = await event.request.json().catch(() => null);
 	const replyTo = String(body?.replyTo || '').trim();
 	const content = String(body?.content || '').trim();
+	const attachmentInput: unknown[] = Array.isArray(body?.attachments) ? body.attachments : [];
+	const attachments = attachmentInput
+		.map((item: unknown) => {
+					if (!item || typeof item !== 'object') return null;
+					const url = String((item as { url?: unknown }).url || '').trim();
+					if (!url) return null;
+					return {
+						url,
+						mediaType: String((item as { mediaType?: unknown }).mediaType || 'image/jpeg'),
+						alt: String((item as { alt?: unknown }).alt || '')
+					};
+				})
+		.filter(
+			(item): item is { url: string; mediaType: string; alt: string } => Boolean(item)
+		);
 
 	if (!content) {
 		return json({ error: 'Content is required.' }, { status: 400 });
@@ -50,7 +65,8 @@ export async function POST(event) {
 			inReplyToObjectId: replyTo,
 			threadRootObjectId,
 			contentHtml,
-			contentText: content
+			contentText: content,
+			attachments
 		});
 
 		if (!reply) {
@@ -85,7 +101,8 @@ export async function POST(event) {
 
 	const note = await createLocalNote(event, {
 		contentHtml,
-		contentText: content
+		contentText: content,
+		attachments
 	});
 
 	if (!note) {
