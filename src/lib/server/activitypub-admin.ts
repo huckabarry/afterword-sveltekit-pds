@@ -8,14 +8,15 @@ function getBearerToken(request: Request) {
 }
 
 export function requireDeliveryToken(request: Request) {
-	const expected = String(env.ACTIVITYPUB_DELIVERY_TOKEN || '').trim();
+	const expected = String(env.ADMIN_API_TOKEN || env.ACTIVITYPUB_DELIVERY_TOKEN || '').trim();
 
 	if (!expected) {
-		throw error(500, 'ACTIVITYPUB_DELIVERY_TOKEN is not configured');
+		throw error(500, 'ADMIN_API_TOKEN is not configured');
 	}
 
 	const provided =
 		getBearerToken(request) ||
+		request.headers.get('x-admin-token')?.trim() ||
 		request.headers.get('x-activitypub-token')?.trim() ||
 		new URL(request.url).searchParams.get('token')?.trim() ||
 		null;

@@ -88,11 +88,19 @@ https://mastodon.social/@bryan,https://urbanists.social/@bryan
 
 This will publish `alsoKnownAs` on the actor document, which can help with receiving-side alias configuration during account migration.
 
-## 6. Manual delivery trigger
+## 6. Manual admin trigger
 
-To manually deliver a blog post to current followers, add this Cloudflare secret:
+To protect admin-only endpoints, add this Cloudflare secret:
 
-- `ACTIVITYPUB_DELIVERY_TOKEN`
+- `ADMIN_API_TOKEN`
+
+For compatibility, the app still accepts `ACTIVITYPUB_DELIVERY_TOKEN`, but `ADMIN_API_TOKEN` is the preferred name now.
+
+This token protects:
+
+- ActivityPub delivery endpoints
+- gallery sync
+- future private admin endpoints
 
 Then call:
 
@@ -152,8 +160,8 @@ It runs hourly and calls:
 
 To enable it, add this GitHub Actions repository secret:
 
-- `ACTIVITYPUB_DELIVERY_TOKEN`
+- `ADMIN_API_TOKEN`
 
-Use the same token value you added to Cloudflare.
+Use the same token value you added to Cloudflare. Once both are updated, you can remove the old `ACTIVITYPUB_DELIVERY_TOKEN` secret.
 
 You can also run it manually from the GitHub Actions tab with `workflow_dispatch`.

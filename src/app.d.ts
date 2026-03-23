@@ -10,6 +10,7 @@ declare global {
 		ACTIVITYPUB_PUBLIC_KEY_PEM?: string;
 		ACTIVITYPUB_KEY_ID?: string;
 		ACTIVITYPUB_ALSO_KNOWN_AS?: string;
+		ADMIN_API_TOKEN?: string;
 		ACTIVITYPUB_DELIVERY_TOKEN?: string;
 	}
 

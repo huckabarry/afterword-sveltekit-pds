@@ -14,28 +14,28 @@ jobs:
     steps:
       - name: Deliver missing ActivityPub blog posts
         env:
-          ACTIVITYPUB_DELIVERY_TOKEN: ${{ secrets.ACTIVITYPUB_DELIVERY_TOKEN }}
+          ADMIN_API_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
         run: |
-          if [ -z "$ACTIVITYPUB_DELIVERY_TOKEN" ]; then
-            echo "Missing ACTIVITYPUB_DELIVERY_TOKEN GitHub secret"
+          if [ -z "$ADMIN_API_TOKEN" ]; then
+            echo "Missing ADMIN_API_TOKEN GitHub secret"
             exit 1
           fi
 
           curl --fail-with-body --silent --show-error \
             -X POST \
-            -H "Authorization: Bearer $ACTIVITYPUB_DELIVERY_TOKEN" \
+            -H "Authorization: Bearer $ADMIN_API_TOKEN" \
             "https://afterword.blog/ap/admin/deliver-missing?limit=10"
 
       - name: Deliver missing ActivityPub status posts
         env:
-          ACTIVITYPUB_DELIVERY_TOKEN: ${{ secrets.ACTIVITYPUB_DELIVERY_TOKEN }}
+          ADMIN_API_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
         run: |
-          if [ -z "$ACTIVITYPUB_DELIVERY_TOKEN" ]; then
-            echo "Missing ACTIVITYPUB_DELIVERY_TOKEN GitHub secret"
+          if [ -z "$ADMIN_API_TOKEN" ]; then
+            echo "Missing ADMIN_API_TOKEN GitHub secret"
             exit 1
           fi
 
           curl --fail-with-body --silent --show-error \
             -X POST \
-            -H "Authorization: Bearer $ACTIVITYPUB_DELIVERY_TOKEN" \
+            -H "Authorization: Bearer $ADMIN_API_TOKEN" \
             "https://afterword.blog/ap/admin/deliver-missing-statuses?limit=20"
