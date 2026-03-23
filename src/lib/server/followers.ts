@@ -94,3 +94,25 @@ export async function upsertFollower(
 		)
 		.run();
 }
+
+export async function updateFollowerDeliveryStatus(
+	event: Pick<RequestEvent, 'platform'>,
+	actorId: string,
+	status: string
+): Promise<void> {
+	const db = getDb(event);
+	if (!db) {
+		throw new Error('AP_DB is not configured');
+	}
+
+	await db
+		.prepare(
+			`UPDATE ap_followers
+			 SET last_delivery_status = ?,
+			     last_delivery_at = CURRENT_TIMESTAMP,
+			     updated_at = CURRENT_TIMESTAMP
+			 WHERE actor_id = ?`
+		)
+		.bind(status, actorId)
+		.run();
+}

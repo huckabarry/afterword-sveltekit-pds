@@ -47,3 +47,20 @@ The first intended use is:
 Current code helpers live in:
 
 - [src/lib/server/followers.ts](/Users/bryanrobb/Git/afterword-sveltekit-pds/src/lib/server/followers.ts)
+
+## 5. Add ActivityPub signing keys
+
+To send signed `Accept` activities and later signed post delivery, add these Cloudflare secrets:
+
+- `ACTIVITYPUB_PRIVATE_KEY_PEM`
+- `ACTIVITYPUB_PUBLIC_KEY_PEM`
+
+Optional:
+
+- `ACTIVITYPUB_KEY_ID`
+
+If `ACTIVITYPUB_KEY_ID` is omitted, the app uses:
+
+- `https://afterword.blog/ap/actor#main-key`
+
+The actor endpoint will expose the public key when `ACTIVITYPUB_PUBLIC_KEY_PEM` is present.

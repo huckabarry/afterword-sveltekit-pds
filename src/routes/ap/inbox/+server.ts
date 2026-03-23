@@ -6,8 +6,9 @@ import {
 	getActorId,
 	getInboxId
 } from '$lib/server/activitypub';
+import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { verifyInboundActivitySignature } from '$lib/server/activitypub-signatures';
-import { hasFollowerDb, upsertFollower } from '$lib/server/followers';
+import { hasFollowerDb, updateFollowerDeliveryStatus, upsertFollower } from '$lib/server/followers';
 
 export function GET(event) {
 	const origin = getActivityPubOrigin(event);
@@ -115,5 +116,21 @@ export async function POST(event) {
 		followActivityId: String(activity.id || `${actorId}#follow`)
 	});
 
-	return activityJson(createAcceptActivity(origin, activity), { status: 202 });
+	const acceptActivity = createAcceptActivity(origin, activity);
+	const deliveryTarget = endpoints ? getString(endpoints.sharedInbox) || getString(remoteActor.inbox) : getString(remoteActor.inbox);
+
+	if (deliveryTarget) {
+		try {
+			await sendSignedActivity(origin, deliveryTarget, acceptActivity);
+			await updateFollowerDeliveryStatus(event, actorId, 'accept-sent');
+		} catch (deliveryError) {
+			await updateFollowerDeliveryStatus(
+				event,
+				actorId,
+				`accept-failed:${deliveryError instanceof Error ? deliveryError.message : String(deliveryError)}`
+			);
+		}
+	}
+
+	return activityJson(acceptActivity, { status: 202 });
 }

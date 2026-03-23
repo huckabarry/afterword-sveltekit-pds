@@ -1,3 +1,4 @@
+import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
 import { getBlogPostBySlug, getBlogPosts, type BlogPost } from '$lib/server/ghost';
 
@@ -41,6 +42,18 @@ export function getPreferredUsername() {
 	return DEFAULT_USERNAME;
 }
 
+export function getActivityPubKeyId(origin: string) {
+	return String(env.ACTIVITYPUB_KEY_ID || '').trim() || `${getActorId(origin)}#main-key`;
+}
+
+export function getActivityPubPublicKeyPem() {
+	return String(env.ACTIVITYPUB_PUBLIC_KEY_PEM || '').trim() || null;
+}
+
+export function getActivityPubPrivateKeyPem() {
+	return String(env.ACTIVITYPUB_PRIVATE_KEY_PEM || '').trim() || null;
+}
+
 export function getNoteObjectId(origin: string, slug: string) {
 	return `${origin}/ap/posts/${slug}`;
 }
@@ -67,6 +80,7 @@ export function jrdJson(body: unknown, init?: ResponseInit) {
 
 export function createActor(origin: string) {
 	const actorId = getActorId(origin);
+	const publicKeyPem = getActivityPubPublicKeyPem();
 
 	return {
 		'@context': [ACTIVITY_STREAMS_CONTEXT, 'https://w3id.org/security/v1'],
@@ -84,7 +98,16 @@ export function createActor(origin: string) {
 		inbox: `${origin}${INBOX_PATH}`,
 		outbox: `${origin}${OUTBOX_PATH}`,
 		followers: `${origin}${FOLLOWERS_PATH}`,
-		following: `${origin}${FOLLOWING_PATH}`
+		following: `${origin}${FOLLOWING_PATH}`,
+		...(publicKeyPem
+			? {
+					publicKey: {
+						id: getActivityPubKeyId(origin),
+						owner: actorId,
+						publicKeyPem
+					}
+				}
+			: {})
 	};
 }
 
