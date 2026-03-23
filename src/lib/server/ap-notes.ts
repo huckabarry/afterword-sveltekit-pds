@@ -161,6 +161,46 @@ export async function createLocalReply(
 	return getLocalReplyBySlug(event, slug);
 }
 
+export async function createLocalNote(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	input: {
+		contentHtml: string;
+		contentText: string;
+	}
+) {
+	const db = getDb(event);
+	if (!db) {
+		throw new Error('D1 database is not configured');
+	}
+
+	const slug = makeLocalReplySlug();
+	const noteId = `${event.url.origin}/ap/notes/${slug}`;
+	const actorId = getActorId(event.url.origin);
+	const publishedAt = new Date().toISOString();
+
+	await db
+		.prepare(
+			`INSERT INTO ap_notes (
+				note_id, origin, actor_id, thread_root_object_id, content_html, content_text,
+				published_at, object_url, local_slug, delivery_status
+			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?)`
+		)
+		.bind(
+			noteId,
+			actorId,
+			noteId,
+			input.contentHtml,
+			input.contentText,
+			publishedAt,
+			noteId,
+			slug,
+			'pending'
+		)
+		.run();
+
+	return getLocalReplyBySlug(event, slug);
+}
+
 export async function updateLocalReplyDeliveryStatus(
 	event: Pick<RequestEvent, 'platform'>,
 	slug: string,
@@ -199,6 +239,30 @@ export async function listNotesForThread(
 			 ORDER BY published_at ASC, created_at ASC`
 		)
 		.bind(threadRootObjectId, threadRootObjectId)
+		.all<Record<string, unknown>>();
+
+	return (result.results || []).map(mapNote);
+}
+
+export async function listRecentRemoteReplies(
+	event: Pick<RequestEvent, 'platform'>,
+	limit = 25
+): Promise<ApNoteRecord[]> {
+	const db = getDb(event);
+	if (!db) {
+		return [];
+	}
+
+	const safeLimit = Math.max(1, Math.min(limit, 100));
+	const result = await db
+		.prepare(
+			`SELECT *
+			 FROM ap_notes
+			 WHERE origin = 'remote'
+			 ORDER BY published_at DESC, created_at DESC
+			 LIMIT ?`
+		)
+		.bind(safeLimit)
 		.all<Record<string, unknown>>();
 
 	return (result.results || []).map(mapNote);

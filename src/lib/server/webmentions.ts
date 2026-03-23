@@ -172,3 +172,67 @@ export async function listVerifiedWebmentionsForTarget(
 		createdAt: String(row.created_at || '')
 	}));
 }
+
+export async function listRecentWebmentions(
+	event: Pick<RequestEvent, 'platform'>,
+	limit = 50
+): Promise<WebmentionRecord[]> {
+	const db = getDb(event);
+	if (!db) {
+		return [];
+	}
+
+	const safeLimit = Math.max(1, Math.min(limit, 200));
+	const result = await db
+		.prepare(
+			`SELECT id, source_url, target_url, source_domain, source_title, status, verified_at, created_at
+			 FROM webmentions
+			 ORDER BY COALESCE(verified_at, created_at) DESC
+			 LIMIT ?`
+		)
+		.bind(safeLimit)
+		.all<Record<string, unknown>>();
+
+	return (result.results || []).map((row: Record<string, unknown>) => ({
+		id: Number(row.id || 0),
+		sourceUrl: String(row.source_url || ''),
+		targetUrl: String(row.target_url || ''),
+		sourceDomain: row.source_domain ? String(row.source_domain) : null,
+		sourceTitle: row.source_title ? String(row.source_title) : null,
+		status: String(row.status || ''),
+		verifiedAt: row.verified_at ? String(row.verified_at) : null,
+		createdAt: String(row.created_at || '')
+	}));
+}
+
+export async function updateWebmentionStatus(
+	event: Pick<RequestEvent, 'platform'>,
+	id: number,
+	status: string
+) {
+	const db = getDb(event);
+	if (!db) {
+		throw new Error('D1 database is not configured');
+	}
+
+	await db
+		.prepare(
+			`UPDATE webmentions
+			 SET status = ?, updated_at = CURRENT_TIMESTAMP
+			 WHERE id = ?`
+		)
+		.bind(status, id)
+		.run();
+}
+
+export async function deleteWebmention(
+	event: Pick<RequestEvent, 'platform'>,
+	id: number
+) {
+	const db = getDb(event);
+	if (!db) {
+		throw new Error('D1 database is not configured');
+	}
+
+	await db.prepare(`DELETE FROM webmentions WHERE id = ?`).bind(id).run();
+}
