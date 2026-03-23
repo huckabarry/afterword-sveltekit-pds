@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
 import { getBlogPostBySlug, getBlogPosts, type BlogPost } from '$lib/server/ghost';
 import { getStatusBySlug, type StatusPost } from '$lib/server/atproto';
+import type { SiteProfile } from '$lib/server/profile';
 
 const ACTIVITY_STREAMS_CONTEXT = 'https://www.w3.org/ns/activitystreams';
 const PUBLIC_COLLECTION = 'https://www.w3.org/ns/activitystreams#Public';
@@ -90,24 +91,43 @@ export function jrdJson(body: unknown, init?: ResponseInit) {
 	});
 }
 
-export function createActor(origin: string) {
+export function createActor(origin: string, profile?: SiteProfile) {
 	const actorId = getActorId(origin);
 	const publicKeyPem = getActivityPubPublicKeyPem();
 	const alsoKnownAs = getAlsoKnownAs();
+	const actorProfile = profile ?? {
+		displayName: 'Bryan Robb',
+		avatarUrl: '/assets/images/status-avatar.jpg',
+		headerImageUrl: null,
+		bio: 'Writer, photographer, and urban planner publishing from Afterword.',
+		verificationLinks: []
+	};
 
 	return {
 		'@context': [ACTIVITY_STREAMS_CONTEXT, 'https://w3id.org/security/v1'],
 		id: actorId,
 		type: 'Person',
 		preferredUsername: DEFAULT_USERNAME,
-		name: 'Bryan Robb',
-		summary: 'Writer, photographer, and urban planner publishing from Afterword.',
+		name: actorProfile.displayName,
+		summary: actorProfile.bio,
 		url: `${origin}/`,
 		icon: {
 			type: 'Image',
 			mediaType: 'image/jpeg',
-			url: `${origin}/assets/images/status-avatar.jpg`
+			url: actorProfile.avatarUrl.startsWith('http')
+				? actorProfile.avatarUrl
+				: `${origin}${actorProfile.avatarUrl}`
 		},
+		...(actorProfile.headerImageUrl
+			? {
+					image: {
+						type: 'Image',
+						url: actorProfile.headerImageUrl.startsWith('http')
+							? actorProfile.headerImageUrl
+							: `${origin}${actorProfile.headerImageUrl}`
+					}
+				}
+			: {}),
 		inbox: `${origin}${INBOX_PATH}`,
 		outbox: `${origin}${OUTBOX_PATH}`,
 		followers: `${origin}${FOLLOWERS_PATH}`,

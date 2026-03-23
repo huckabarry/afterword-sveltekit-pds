@@ -23,6 +23,7 @@
 	let searchInput = $state<HTMLInputElement | null>(null);
 	let searchRequest = 0;
 	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
+	const profile = $derived(data.profile);
 
 	async function openSearch() {
 		searchOpen = true;
@@ -125,8 +126,8 @@
 			<a class="site-header-avatar-link u-url u-uid" href="/">
 				<img
 					class="avatar u-photo"
-					src="/assets/images/status-avatar.jpg"
-					alt="Bryan Robb"
+					src={profile.avatarUrl}
+					alt={profile.displayName}
 				/>
 			</a>
 
@@ -134,7 +135,7 @@
 				<div class="site-title-row">
 					<div class="site-title p-name">
 						<a class="u-url" href="/">
-							<span class="site-title__name">Bryan Robb</span>
+							<span class="site-title__name">{profile.displayName}</span>
 						</a>
 					</div>
 				</div>
@@ -178,8 +179,10 @@
 				<a class="site-foot-nav-item" href="/photos">Gallery</a>
 				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/now">Now</a>
-				<span class="site-foot-separator">/</span>
-				<a class="site-foot-nav-item" href="https://bsky.app/profile/afterword.blog" target="_blank" rel="noreferrer me">Bluesky</a>
+				{#each profile.verificationLinks as link}
+					<span class="site-foot-separator">/</span>
+					<a class="site-foot-nav-item" href={link.url} target="_blank" rel="noreferrer me">{link.label}</a>
+				{/each}
 			</div>
 		</footer>
 	</div>

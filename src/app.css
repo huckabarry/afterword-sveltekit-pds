@@ -1566,6 +1566,13 @@ p:last-child {
 	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
 }
 
+.admin-sidebar__link--active,
+.admin-sidebar__link--active *,
+.admin-mobile-nav__link--active,
+.admin-mobile-nav__link--active * {
+	color: #111111 !important;
+}
+
 .admin-sidebar__logout {
 	margin-top: 0.4rem;
 }
@@ -1702,6 +1709,51 @@ p:last-child {
 
 .admin-card--narrow {
 	max-width: 720px;
+}
+
+.admin-profile-preview {
+	display: grid;
+	gap: 1rem;
+}
+
+.admin-profile-preview__banner {
+	width: 100%;
+	max-height: 220px;
+	object-fit: cover;
+	border-radius: 18px;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.admin-profile-preview__meta {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 1rem;
+	align-items: center;
+}
+
+.admin-profile-preview__avatar {
+	width: 72px;
+	height: 72px;
+	border-radius: 999px;
+	object-fit: cover;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.admin-profile-preview__meta h3 {
+	margin: 0 0 0.25rem;
+}
+
+.admin-profile-preview__meta p,
+.admin-field-note {
+	margin: 0;
+	color: #686d68;
+}
+
+.admin-link-list {
+	margin: 0;
+	padding-left: 1.1rem;
+	display: grid;
+	gap: 0.35rem;
 }
 
 .admin-card__head {

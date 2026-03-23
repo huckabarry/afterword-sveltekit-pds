@@ -7,6 +7,13 @@
 			description: string;
 			paragraphs: string[];
 			interests: string[];
+			profile: {
+				displayName: string;
+				avatarUrl: string;
+				headerImageUrl: string | null;
+				bio: string;
+				verificationLinks: { label: string; url: string }[];
+			};
 		};
 	} = $props();
 </script>
@@ -20,6 +27,12 @@
 	<article class="content content-page">
 		<div class="post-full-content">
 			<section class="content-body">
+				{#if data.profile.headerImageUrl}
+					<p><img src={data.profile.headerImageUrl} alt="" /></p>
+				{/if}
+
+				<p>{data.profile.bio}</p>
+
 				{#each data.paragraphs as paragraph}
 					<p>{paragraph}</p>
 				{/each}
@@ -39,6 +52,15 @@
 						{/if}
 					{/each}
 				</div>
+
+				{#if data.profile.verificationLinks.length}
+					<h2>Elsewhere</h2>
+					<ul>
+						{#each data.profile.verificationLinks as link}
+							<li><a href={link.url} target="_blank" rel="noreferrer me">{link.label}</a></li>
+						{/each}
+					</ul>
+				{/if}
 			</section>
 		</div>
 	</article>

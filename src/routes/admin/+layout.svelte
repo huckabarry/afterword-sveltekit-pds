@@ -3,6 +3,7 @@
 
 	const navItems = [
 		{ href: '/admin', label: 'Home', shortLabel: 'Home' },
+		{ href: '/admin/profile', label: 'Profile', shortLabel: 'Profile' },
 		{ href: '/admin/posts', label: 'Posts', shortLabel: 'Posts' },
 		{ href: '/admin/compose', label: 'Compose', shortLabel: 'Write' },
 		{ href: '/admin/replies', label: 'Replies', shortLabel: 'Replies' },
@@ -10,7 +11,7 @@
 	];
 
 	function isActive(href: string) {
-		return data.pathname === href;
+		return href === '/admin' ? data.pathname === href : data.pathname === href || data.pathname.startsWith(`${href}/`);
 	}
 </script>
 
@@ -43,6 +44,8 @@
 					<p class="admin-topbar__title">
 						{#if data.pathname === '/admin'}
 							Dashboard
+						{:else if data.pathname === '/admin/profile'}
+							Edit profile
 						{:else if data.pathname === '/admin/compose'}
 							Compose
 						{:else if data.pathname.startsWith('/admin/posts')}

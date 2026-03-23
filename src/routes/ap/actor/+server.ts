@@ -1,6 +1,6 @@
 import { activityJson, createActor, getActivityPubOrigin } from '$lib/server/activitypub';
+import { getSiteProfile } from '$lib/server/profile';
 
-export function GET(event) {
-	return activityJson(createActor(getActivityPubOrigin(event)));
+export async function GET(event) {
+	return activityJson(createActor(getActivityPubOrigin(event), await getSiteProfile(event)));
 }
-
