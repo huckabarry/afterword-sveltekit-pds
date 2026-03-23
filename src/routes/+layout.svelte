@@ -135,28 +135,29 @@
 				</div>
 			</div>
 
-			<nav class="site-nav" aria-label="Primary">
-				<ul class="site-nav-list">
-					<li class="site-nav-list-item"><a class="site-nav-item" href="/">Home</a></li>
-					<li class="site-nav-list-item"><a class="site-nav-item" href="/photos">Gallery</a></li>
-					<li class="site-nav-list-item"><a class="site-nav-item" href="/now">Now</a></li>
-					<li class="site-nav-list-item"><a class="site-nav-item" href="/about">About</a></li>
-					<li class="site-nav-list-item">
-						<button
-							class="site-nav-search"
-							type="button"
-							onclick={() => void openSearch()}
-							aria-label="Open search"
-							title="Search"
-						>
-							<svg viewBox="0 0 24 24" aria-hidden="true">
-								<circle cx="11" cy="11" r="6.25" />
-								<path d="M16 16l4.5 4.5" />
-							</svg>
-						</button>
-					</li>
-				</ul>
-			</nav>
+			<div class="site-nav-row">
+				<nav class="site-nav" aria-label="Primary">
+					<ul class="site-nav-list">
+						<li class="site-nav-list-item"><a class="site-nav-item" href="/">Home</a></li>
+						<li class="site-nav-list-item"><a class="site-nav-item" href="/photos">Gallery</a></li>
+						<li class="site-nav-list-item"><a class="site-nav-item" href="/now">Now</a></li>
+						<li class="site-nav-list-item"><a class="site-nav-item" href="/about">About</a></li>
+					</ul>
+				</nav>
+
+				<button
+					class="site-nav-search"
+					type="button"
+					onclick={() => void openSearch()}
+					aria-label="Open search"
+					title="Search"
+				>
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<circle cx="11" cy="11" r="6.25" />
+						<path d="M16 16l4.5 4.5" />
+					</svg>
+				</button>
+			</div>
 		</div>
 	</header>
 

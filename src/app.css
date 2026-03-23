@@ -139,6 +139,18 @@ p:last-child {
 	list-style: none;
 }
 
+.site-nav-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-top: 0.16rem;
+}
+
+.site-nav {
+	min-width: 0;
+}
+
 .site-nav-item {
 	display: inline-block;
 	padding: 0;
@@ -1404,6 +1416,10 @@ p:last-child {
 	}
 
 	.site-header {
+		align-items: flex-start;
+	}
+
+	.site-nav-row {
 		align-items: flex-start;
 	}
 
