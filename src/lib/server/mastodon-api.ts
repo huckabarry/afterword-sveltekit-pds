@@ -540,8 +540,75 @@ export async function listMastodonNotifications(
 				account: await buildRemoteAccount(event, reply.actorId),
 				status: await serializeReplyNote(event, reply)
 			}))
-		)
+	)
 	).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+}
+
+export function filterMastodonStatuses(
+	statuses: Array<Record<string, unknown>>,
+	options?: {
+		maxId?: string | null;
+		excludeReplies?: boolean;
+		excludeReblogs?: boolean;
+		onlyMedia?: boolean;
+		pinned?: boolean | null;
+		limit?: number;
+	}
+) {
+	let filtered = [...statuses];
+
+	if (options?.pinned === true) {
+		return [];
+	}
+
+	if (options?.excludeReplies) {
+		filtered = filtered.filter((item) => !item.in_reply_to_id);
+	}
+
+	if (options?.excludeReblogs) {
+		filtered = filtered.filter((item) => !item.reblog);
+	}
+
+	if (options?.onlyMedia) {
+		filtered = filtered.filter((item) => Array.isArray(item.media_attachments) && item.media_attachments.length > 0);
+	}
+
+	if (options?.maxId) {
+		const index = filtered.findIndex((item) => String(item.id || '') === options.maxId);
+		if (index >= 0) {
+			filtered = filtered.slice(index + 1);
+		}
+	}
+
+	if (options?.limit) {
+		filtered = filtered.slice(0, options.limit);
+	}
+
+	return filtered;
+}
+
+export async function listGroupedMastodonNotifications(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	limit = 20
+) {
+	const notifications = await listMastodonNotifications(event, limit);
+	const groups = notifications.map((notification, index) => ({
+		group_key: `mention:${notification.id}`,
+		notifications_count: 1,
+		type: notification.type,
+		most_recent_notification_id: Number(limit - index),
+		page_min_id: null,
+		page_max_id: null,
+		latest_page_notification_at: notification.created_at,
+		sample_account_ids: [String((notification.account as Record<string, unknown>).id || '')].filter(Boolean),
+		status_id: notification.status ? String((notification.status as Record<string, unknown>).id || '') : null
+	}));
+
+	return {
+		accounts: notifications.map((notification) => notification.account),
+		statuses: notifications.map((notification) => notification.status).filter(Boolean),
+		notification_groups: groups
+	};
 }
 
 export async function resolveStatusByObjectId(
