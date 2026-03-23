@@ -361,7 +361,7 @@ p:last-child {
 }
 
 .section-block-status__card {
-	padding: 1rem 0.95rem 0.85rem;
+	padding: 1rem 0.95rem 1.05rem;
 	border-radius: 0.7rem;
 	background: color-mix(in srgb, var(--surface) 26%, transparent);
 }

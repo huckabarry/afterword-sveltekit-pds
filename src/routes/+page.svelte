@@ -269,7 +269,7 @@
 
 	.section-block-status__card .status-row {
 		grid-template-columns: 1fr;
-		padding-bottom: 0.5rem;
+		padding-bottom: 0.8rem;
 	}
 
 	.section-block-status__card .status-row__avatar {
