@@ -29,37 +29,6 @@ export function getMe(origin: string) {
 	return `${origin}/`;
 }
 
-export function validateMe(value: string, origin: string) {
-	const trimmed = String(value || '').trim();
-
-	if (!trimmed) {
-		return getMe(origin);
-	}
-
-	let meUrl: URL;
-	let originUrl: URL;
-
-	try {
-		meUrl = new URL(trimmed);
-		originUrl = new URL(origin);
-	} catch {
-		throw error(400, 'Invalid me');
-	}
-
-	const sameHost = meUrl.host === originUrl.host;
-	const allowedProtocol = /^(https?:)$/i.test(meUrl.protocol);
-
-	if (!sameHost || !allowedProtocol) {
-		throw error(400, 'Invalid me');
-	}
-
-	if (!meUrl.pathname || meUrl.pathname === '') {
-		meUrl.pathname = '/';
-	}
-
-	return meUrl.toString();
-}
-
 function base64UrlEncode(bytes: Uint8Array) {
 	let binary = '';
 	for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -100,7 +69,6 @@ export async function createAuthorizationCode(
 	input: {
 		clientId: string;
 		redirectUri: string;
-		me: string;
 		scope: string;
 		codeChallenge?: string | null;
 		codeChallengeMethod?: string | null;
@@ -115,14 +83,13 @@ export async function createAuthorizationCode(
 	await db
 		.prepare(
 			`INSERT INTO indieauth_codes (
-				code, client_id, redirect_uri, me, scope, code_challenge, code_challenge_method, expires_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+				code, client_id, redirect_uri, scope, code_challenge, code_challenge_method, expires_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?)`
 		)
 		.bind(
 			code,
 			input.clientId,
 			input.redirectUri,
-			input.me,
 			input.scope || '',
 			input.codeChallenge ?? null,
 			input.codeChallengeMethod ?? null,
@@ -149,7 +116,6 @@ export async function exchangeAuthorizationCode(
 	const row = await db
 		.prepare(
 			`SELECT code, client_id, redirect_uri, scope, code_challenge, code_challenge_method, expires_at, used_at
-			        , me
 			 FROM indieauth_codes
 			 WHERE code = ?
 			 LIMIT 1`
@@ -193,7 +159,6 @@ export async function exchangeAuthorizationCode(
 
 	const accessToken = crypto.randomUUID().replace(/-/g, '');
 	const scope = String(row.scope || '').trim();
-	const me = String(row.me || input.me || '').trim() || input.me;
 
 	await db.batch([
 		db
@@ -208,13 +173,12 @@ export async function exchangeAuthorizationCode(
 				`INSERT INTO indieauth_tokens (access_token, client_id, scope, me)
 				 VALUES (?, ?, ?, ?)`
 			)
-			.bind(accessToken, input.clientId, scope, me)
+			.bind(accessToken, input.clientId, scope, input.me)
 	]);
 
 	return {
 		accessToken,
-		scope,
-		me
+		scope
 	};
 }
 
@@ -295,13 +259,12 @@ export function requireMicropubPassword(password: string) {
 export function redirectWithCode(input: {
 	redirectUri: string;
 	code: string;
-	me: string;
 	state?: string | null;
 	origin: string;
 }) {
 	const target = new URL(input.redirectUri);
 	target.searchParams.set('code', input.code);
-	target.searchParams.set('me', input.me);
+	target.searchParams.set('me', `${input.origin}/`);
 	target.searchParams.set('iss', input.origin);
 
 	if (input.state) {
