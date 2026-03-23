@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { PhotoItem } from '$lib/server/ghost';
+	import type { GalleryPhotoItem } from '$lib/server/gallery-assets';
 
-	let { data }: { data: { photos: PhotoItem[] } } = $props();
+	let { data }: { data: { photos: GalleryPhotoItem[] } } = $props();
 	let activeIndex = $state<number | null>(null);
 
 	function openLightbox(index: number) {
@@ -57,7 +57,7 @@
 				onclick={() => openLightbox(index)}
 				aria-label={`Open ${photo.postTitle}`}
 			>
-				<img class="photo-card__image" src={photo.imageUrl} alt={photo.alt || photo.postTitle} loading="lazy" />
+				<img class="photo-card__image" src={photo.displayUrl} alt={photo.alt || photo.postTitle} loading="lazy" />
 				<span class="photo-card__overlay">
 					<span class="photo-card__title">{photo.postTitle}</span>
 					<span class="photo-card__meta">
@@ -87,7 +87,7 @@
 				›
 			</button>
 			<figure class="lightbox__figure">
-				<img class="lightbox__image" src={activePhoto.imageUrl} alt={activePhoto.alt || activePhoto.postTitle} />
+				<img class="lightbox__image" src={activePhoto.displayUrl} alt={activePhoto.alt || activePhoto.postTitle} />
 				<figcaption class="lightbox__caption">
 					<a href={activePhoto.postPath}>{activePhoto.postTitle}</a>
 					<span>{new Date(activePhoto.postPublishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
