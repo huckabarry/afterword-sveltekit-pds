@@ -55,6 +55,29 @@
 
 		<section class="admin-card">
 			<div class="admin-card__head">
+				<h3>Followers</h3>
+			</div>
+
+			{#if data.followers.length}
+				<ul class="admin-list">
+					{#each data.followers as follower}
+						<li class="admin-list-item">
+							<div>
+								<p class="admin-list-item__title">
+									{follower.displayName || follower.handle || follower.actorId}
+								</p>
+								<p class="admin-list-item__meta">{follower.actorId}</p>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="admin-empty">No followers stored yet.</p>
+			{/if}
+		</section>
+
+		<section class="admin-card">
+			<div class="admin-card__head">
 				<h3>Recent replies</h3>
 				<a href="/admin/replies">View all</a>
 			</div>
