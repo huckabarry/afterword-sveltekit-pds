@@ -27,6 +27,11 @@ export type ApNoteRecord = {
 	localSlug: string | null;
 	deliveryStatus: string | null;
 	rawActivityJson: string | null;
+	attachments: Array<{
+		url: string;
+		mediaType: string;
+		alt: string;
+	}>;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -36,6 +41,27 @@ export type LocalApNoteListItem = ApNoteRecord & {
 };
 
 function mapNote(row: Record<string, unknown>): ApNoteRecord {
+	let attachments: ApNoteRecord['attachments'] = [];
+	try {
+		const parsed = JSON.parse(String(row.attachments_json || '[]'));
+		if (Array.isArray(parsed)) {
+			attachments = parsed
+				.map((item) => {
+					if (!item || typeof item !== 'object') return null;
+					const url = String((item as { url?: unknown }).url || '').trim();
+					if (!url) return null;
+					return {
+						url,
+						mediaType: String((item as { mediaType?: unknown }).mediaType || 'image/jpeg'),
+						alt: String((item as { alt?: unknown }).alt || '')
+					};
+				})
+				.filter(
+					(item): item is { url: string; mediaType: string; alt: string } => Boolean(item)
+				);
+		}
+	} catch {}
+
 	return {
 		id: Number(row.id || 0),
 		noteId: String(row.note_id || ''),
@@ -53,6 +79,7 @@ function mapNote(row: Record<string, unknown>): ApNoteRecord {
 		localSlug: row.local_slug ? String(row.local_slug) : null,
 		deliveryStatus: row.delivery_status ? String(row.delivery_status) : null,
 		rawActivityJson: row.raw_activity_json ? String(row.raw_activity_json) : null,
+		attachments,
 		createdAt: String(row.created_at || ''),
 		updatedAt: String(row.updated_at || '')
 	};
@@ -129,6 +156,7 @@ export async function createLocalReply(
 		threadRootObjectId?: string | null;
 		contentHtml: string;
 		contentText: string;
+		attachments?: ApNoteRecord['attachments'];
 	}
 ) {
 	const db = getDb(event);
@@ -145,8 +173,8 @@ export async function createLocalReply(
 		.prepare(
 			`INSERT INTO ap_notes (
 				note_id, origin, actor_id, in_reply_to_object_id, thread_root_object_id,
-				content_html, content_text, published_at, object_url, local_slug, delivery_status
-			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+				content_html, content_text, published_at, object_url, local_slug, delivery_status, attachments_json
+			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		)
 		.bind(
 			noteId,
@@ -158,7 +186,8 @@ export async function createLocalReply(
 			publishedAt,
 			noteId,
 			slug,
-			'pending'
+			'pending',
+			JSON.stringify(input.attachments || [])
 		)
 		.run();
 
@@ -170,6 +199,7 @@ export async function createLocalNote(
 	input: {
 		contentHtml: string;
 		contentText: string;
+		attachments?: ApNoteRecord['attachments'];
 	}
 ) {
 	const db = getDb(event);
@@ -186,8 +216,8 @@ export async function createLocalNote(
 		.prepare(
 			`INSERT INTO ap_notes (
 				note_id, origin, actor_id, thread_root_object_id, content_html, content_text,
-				published_at, object_url, local_slug, delivery_status
-			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?)`
+				published_at, object_url, local_slug, delivery_status, attachments_json
+			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		)
 		.bind(
 			noteId,
@@ -198,7 +228,8 @@ export async function createLocalNote(
 			publishedAt,
 			noteId,
 			slug,
-			'pending'
+			'pending',
+			JSON.stringify(input.attachments || [])
 		)
 		.run();
 
@@ -376,6 +407,7 @@ export async function updateLocalNoteBySlug(
 	input: {
 		contentHtml: string;
 		contentText: string;
+		attachments?: ApNoteRecord['attachments'];
 	}
 ) {
 	const db = getDb(event);
@@ -388,11 +420,12 @@ export async function updateLocalNoteBySlug(
 			`UPDATE ap_notes
 			 SET content_html = ?,
 			     content_text = ?,
+			     attachments_json = ?,
 			     updated_at = CURRENT_TIMESTAMP
 			 WHERE local_slug = ?
 			   AND origin = 'local'`
 		)
-		.bind(input.contentHtml, input.contentText, slug)
+		.bind(input.contentHtml, input.contentText, JSON.stringify(input.attachments || []), slug)
 		.run();
 }
 

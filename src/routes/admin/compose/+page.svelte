@@ -11,7 +11,7 @@
 			</div>
 		</div>
 
-		<form method="POST" class="admin-compose-form">
+		<form method="POST" enctype="multipart/form-data" class="admin-compose-form">
 			{#if data.replyTo}
 				<label class="admin-field">
 					<span>Replying to</span>
@@ -28,6 +28,11 @@
 					rows="10"
 					placeholder={data.replyTo ? 'Write your reply…' : 'Write a note to federate to your followers…'}
 				>{form?.content || ''}</textarea>
+			</label>
+
+			<label class="admin-field">
+				<span>Photos</span>
+				<input name="images" type="file" accept="image/*" multiple />
 			</label>
 
 			{#if form?.error}

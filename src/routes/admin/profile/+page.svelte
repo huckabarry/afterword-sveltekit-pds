@@ -28,7 +28,7 @@
 			<p class="admin-form-success">Profile saved.</p>
 		{/if}
 
-		<form method="POST" class="admin-compose-form">
+		<form method="POST" enctype="multipart/form-data" class="admin-compose-form">
 			<label class="admin-field">
 				<span>Display name</span>
 				<input name="displayName" type="text" value={form?.displayName || data.profile.displayName} />
@@ -40,6 +40,11 @@
 			</label>
 
 			<label class="admin-field">
+				<span>Upload avatar</span>
+				<input name="avatarFile" type="file" accept="image/*" />
+			</label>
+
+			<label class="admin-field">
 				<span>Header image URL</span>
 				<input
 					name="headerImageUrl"
@@ -47,6 +52,11 @@
 					value={form?.headerImageUrl || data.profile.headerImageUrl || ''}
 					placeholder="Optional banner image"
 				/>
+			</label>
+
+			<label class="admin-field">
+				<span>Upload header image</span>
+				<input name="headerFile" type="file" accept="image/*" />
 			</label>
 
 			<label class="admin-field">

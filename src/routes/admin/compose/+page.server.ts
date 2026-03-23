@@ -2,6 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { getActivityPubOrigin } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { createLocalNote, createLocalReply, updateLocalReplyDeliveryStatus } from '$lib/server/ap-notes';
+import { uploadImageFiles } from '$lib/server/media';
 import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
@@ -37,6 +38,9 @@ export const actions: Actions = {
 		const form = await event.request.formData();
 		const replyTo = String(form.get('replyTo') || '').trim();
 		const content = String(form.get('content') || '').trim();
+		const imageFiles = form
+			.getAll('images')
+			.filter((value): value is File => value instanceof File && value.size > 0);
 
 		if (!content) {
 			return fail(400, {
@@ -48,6 +52,10 @@ export const actions: Actions = {
 
 		const contentHtml = textToParagraphHtml(content);
 		const origin = getActivityPubOrigin(event);
+		const attachments = await uploadImageFiles(event, imageFiles, {
+			scope: 'ap-notes',
+			prefix: replyTo ? 'reply' : 'note'
+		});
 
 		if (replyTo) {
 			const threadRootObjectId = await resolveThreadRootObjectId(replyTo, origin);
@@ -55,7 +63,8 @@ export const actions: Actions = {
 				inReplyToObjectId: replyTo,
 				threadRootObjectId,
 				contentHtml,
-				contentText: content
+				contentText: content,
+				attachments
 			});
 
 			if (!reply) {
@@ -77,7 +86,8 @@ export const actions: Actions = {
 
 		const note = await createLocalNote(event, {
 			contentHtml,
-			contentText: content
+			contentText: content,
+			attachments
 		});
 
 		if (!note) {

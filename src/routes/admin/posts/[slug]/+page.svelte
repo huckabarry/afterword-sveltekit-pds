@@ -28,10 +28,32 @@
 			<p class="admin-thread__target">In reply to: {data.post.inReplyToObjectId}</p>
 		{/if}
 
-		<form method="POST" action="?/save" class="admin-compose-form">
+		<form method="POST" action="?/save" enctype="multipart/form-data" class="admin-compose-form">
 			<label class="admin-field">
 				<span>Content</span>
 				<textarea name="content" rows="10">{getContentValue()}</textarea>
+			</label>
+
+			{#if data.post.attachments.length}
+				<div class="admin-field">
+					<span>Current photos</span>
+					<div class="admin-attachment-grid">
+						{#each data.post.attachments as attachment}
+							<label class="admin-attachment-card">
+								<img src={attachment.url} alt={attachment.alt || ''} />
+								<span>
+									<input type="checkbox" name="keepAttachment" value={attachment.url} checked />
+									Keep photo
+								</span>
+							</label>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<label class="admin-field">
+				<span>Add photos</span>
+				<input name="images" type="file" accept="image/*" multiple />
 			</label>
 
 			{#if form?.error}

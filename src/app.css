@@ -1756,6 +1756,36 @@ p:last-child {
 	gap: 0.35rem;
 }
 
+.admin-attachment-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 0.9rem;
+}
+
+.admin-attachment-card {
+	display: grid;
+	gap: 0.6rem;
+	padding: 0.75rem;
+	border-radius: 16px;
+	background: rgba(17, 17, 17, 0.04);
+	border: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.admin-attachment-card img {
+	width: 100%;
+	aspect-ratio: 4 / 3;
+	object-fit: cover;
+	border-radius: 12px;
+}
+
+.admin-attachment-card span {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.92rem;
+	color: #111111;
+}
+
 .admin-card__head {
 	display: flex;
 	justify-content: space-between;

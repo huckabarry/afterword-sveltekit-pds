@@ -130,6 +130,12 @@ export function localReplyToNote(reply: ApNoteRecord, origin: string) {
 			en: reply.contentHtml
 		},
 		mediaType: 'text/html',
+		attachment: reply.attachments.map((item) => ({
+			type: 'Image',
+			mediaType: item.mediaType,
+			url: item.url,
+			name: item.alt || undefined
+		})),
 		source: {
 			content: reply.contentText || stripHtmlToText(reply.contentHtml),
 			mediaType: 'text/plain'

@@ -5,6 +5,7 @@ import {
 	parseVerificationLinksInput,
 	updateSiteProfile
 } from '$lib/server/profile';
+import { uploadImageFiles } from '$lib/server/media';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
@@ -25,6 +26,8 @@ export const actions: Actions = {
 		const headerImageUrl = String(form.get('headerImageUrl') || '').trim();
 		const bio = String(form.get('bio') || '').trim();
 		const verificationLinksInput = String(form.get('verificationLinks') || '');
+		const avatarFile = form.get('avatarFile');
+		const headerFile = form.get('headerFile');
 
 		if (!displayName || !avatarUrl || !bio) {
 			return fail(400, {
@@ -37,10 +40,25 @@ export const actions: Actions = {
 			});
 		}
 
+		const [uploadedAvatar] =
+			avatarFile instanceof File && avatarFile.size > 0
+				? await uploadImageFiles(event, [avatarFile], {
+						scope: 'profile',
+						prefix: 'avatar'
+					})
+				: [];
+		const [uploadedHeader] =
+			headerFile instanceof File && headerFile.size > 0
+				? await uploadImageFiles(event, [headerFile], {
+						scope: 'profile',
+						prefix: 'header'
+					})
+				: [];
+
 		await updateSiteProfile(event, {
 			displayName,
-			avatarUrl,
-			headerImageUrl: headerImageUrl || null,
+			avatarUrl: uploadedAvatar?.url || avatarUrl,
+			headerImageUrl: uploadedHeader?.url || headerImageUrl || null,
 			bio,
 			verificationLinks: parseVerificationLinksInput(verificationLinksInput)
 		});
@@ -48,8 +66,8 @@ export const actions: Actions = {
 		return {
 			success: true,
 			displayName,
-			avatarUrl,
-			headerImageUrl,
+			avatarUrl: uploadedAvatar?.url || avatarUrl,
+			headerImageUrl: uploadedHeader?.url || headerImageUrl,
 			bio,
 			verificationLinksInput
 		};
