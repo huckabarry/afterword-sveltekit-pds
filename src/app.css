@@ -1682,6 +1682,25 @@ p:last-child {
 	color: white;
 }
 
+.admin-inline-reply {
+	display: grid;
+	gap: 0.7rem;
+}
+
+.admin-inline-reply summary {
+	list-style: none;
+}
+
+.admin-inline-reply summary::-webkit-details-marker {
+	display: none;
+}
+
+.admin-inline-reply__form {
+	display: grid;
+	gap: 0.8rem;
+	padding: 0.9rem 0 0.2rem;
+}
+
 .admin-stat {
 	display: grid;
 	gap: 0.15rem;
