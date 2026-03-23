@@ -6,6 +6,7 @@ import { uploadImageFiles } from '$lib/server/media';
 import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
+	localReplyToRemoteCreateActivity,
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
@@ -75,13 +76,13 @@ export const actions: Actions = {
 				throw error(500, 'Unable to create reply');
 			}
 
-			try {
-				const activity = localReplyToCreateActivity(reply, origin);
-				if (isLocalReplyTarget(origin, replyTo)) {
-					await deliverLocalNoteToFollowers(event, reply);
-				} else {
-					await deliverReplyToRemoteActor(origin, replyTo, activity);
-				}
+		try {
+			if (isLocalReplyTarget(origin, replyTo)) {
+				await deliverLocalNoteToFollowers(event, reply);
+			} else {
+				const remoteActivity = await localReplyToRemoteCreateActivity(reply, origin, replyTo);
+				await deliverReplyToRemoteActor(origin, replyTo, remoteActivity);
+			}
 				await updateLocalReplyDeliveryStatus(event, reply.localSlug || '', 'delivered');
 			} catch (deliveryError) {
 				const message = deliveryError instanceof Error ? deliveryError.message : String(deliveryError);

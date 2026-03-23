@@ -12,6 +12,11 @@ type RemoteActor = {
 	sharedInboxUrl: string | null;
 };
 
+type ReplyMention = {
+	href: string;
+	name: string;
+};
+
 function getString(value: unknown) {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -82,6 +87,22 @@ export async function fetchRemoteActor(actorId: string): Promise<RemoteActor> {
 		inboxUrl: getString(remoteActor.inbox),
 		sharedInboxUrl: endpoints ? getString(endpoints.sharedInbox) : null
 	};
+}
+
+function getMentionHandle(actorId: string, remoteActor: RemoteActor) {
+	const handle = String(remoteActor.handle || '').trim().replace(/^@+/, '');
+	const host = new URL(actorId).host;
+	if (!handle) return `@${host}`;
+	return handle.includes('@') ? `@${handle}` : `@${handle}@${host}`;
+}
+
+function prependMentionHtml(contentHtml: string, mention: ReplyMention) {
+	if (contentHtml.includes(mention.href) || contentHtml.includes(mention.name)) {
+		return contentHtml;
+	}
+
+	const mentionHtml = `<p><a href="${mention.href}" class="u-url mention">${escapeHtml(mention.name)}</a></p>`;
+	return `${mentionHtml}${contentHtml}`;
 }
 
 export async function resolveThreadRootObjectId(
@@ -172,6 +193,49 @@ export function localReplyToNote(reply: ApNoteRecord, origin: string) {
 	};
 }
 
+export function localReplyToMentionedNote(
+	reply: ApNoteRecord,
+	origin: string,
+	input: {
+		targetActorId: string;
+		mention: ReplyMention;
+	}
+) {
+	return {
+		'@context': 'https://www.w3.org/ns/activitystreams',
+		id: reply.noteId,
+		type: 'Note',
+		attributedTo: getActorId(origin),
+		published: reply.publishedAt,
+		url: reply.noteId,
+		to: ['https://www.w3.org/ns/activitystreams#Public', input.targetActorId],
+		cc: [`${origin}/ap/followers`],
+		inReplyTo: reply.inReplyToObjectId || undefined,
+		content: prependMentionHtml(reply.contentHtml, input.mention),
+		contentMap: {
+			en: prependMentionHtml(reply.contentHtml, input.mention)
+		},
+		mediaType: 'text/html',
+		tag: [
+			{
+				type: 'Mention',
+				href: input.mention.href,
+				name: input.mention.name
+			}
+		],
+		attachment: reply.attachments.map((item) => ({
+			type: 'Image',
+			mediaType: item.mediaType,
+			url: item.url,
+			name: item.alt || undefined
+		})),
+		source: {
+			content: `${input.mention.name} ${reply.contentText || stripHtmlToText(reply.contentHtml)}`.trim(),
+			mediaType: 'text/plain'
+		}
+	};
+}
+
 export function localReplyToCreateActivity(reply: ApNoteRecord, origin: string) {
 	return {
 		'@context': 'https://www.w3.org/ns/activitystreams',
@@ -182,6 +246,37 @@ export function localReplyToCreateActivity(reply: ApNoteRecord, origin: string) 
 		to: ['https://www.w3.org/ns/activitystreams#Public'],
 		cc: [`${origin}/ap/followers`],
 		object: localReplyToNote(reply, origin)
+	};
+}
+
+export async function localReplyToRemoteCreateActivity(
+	reply: ApNoteRecord,
+	origin: string,
+	inReplyToObjectId: string
+) {
+	const targetObject = await fetchActivityJson(inReplyToObjectId);
+	const targetActorId =
+		getString(targetObject.attributedTo) || getString(targetObject.actor);
+
+	if (!targetActorId) {
+		throw error(400, 'Target object does not declare an actor');
+	}
+
+	const remoteActor = await fetchRemoteActor(targetActorId);
+	const mention = {
+		href: targetActorId,
+		name: getMentionHandle(targetActorId, remoteActor)
+	};
+
+	return {
+		'@context': 'https://www.w3.org/ns/activitystreams',
+		id: `${reply.noteId}#create`,
+		type: 'Create',
+		actor: getActorId(origin),
+		published: reply.publishedAt,
+		to: ['https://www.w3.org/ns/activitystreams#Public', targetActorId],
+		cc: [`${origin}/ap/followers`],
+		object: localReplyToMentionedNote(reply, origin, { targetActorId, mention })
 	};
 }
 

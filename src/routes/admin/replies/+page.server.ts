@@ -15,6 +15,7 @@ import { resolveReplyContext } from '$lib/server/admin-reply-context';
 import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
+	localReplyToRemoteCreateActivity,
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
@@ -100,11 +101,11 @@ export const actions: Actions = {
 		}
 
 		try {
-			const activity = localReplyToCreateActivity(reply, origin);
 			if (isLocalReplyTarget(origin, replyTo)) {
 				await deliverLocalReplyToFollowers(event, reply);
 			} else {
-				await deliverReplyToRemoteActor(origin, replyTo, activity);
+				const remoteActivity = await localReplyToRemoteCreateActivity(reply, origin, replyTo);
+				await deliverReplyToRemoteActor(origin, replyTo, remoteActivity);
 			}
 			await updateLocalReplyDeliveryStatus(event, reply.localSlug || '', 'delivered');
 		} catch (deliveryError) {

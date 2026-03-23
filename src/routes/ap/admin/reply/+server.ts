@@ -4,6 +4,7 @@ import { createLocalReply, updateLocalReplyDeliveryStatus } from '$lib/server/ap
 import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
+	localReplyToRemoteCreateActivity,
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
@@ -47,7 +48,9 @@ export async function POST(event) {
 	}
 
 	try {
-		const activity = localReplyToCreateActivity(reply, origin);
+		const activity = inReplyTo.startsWith(`${origin}/ap/`)
+			? localReplyToCreateActivity(reply, origin)
+			: await localReplyToRemoteCreateActivity(reply, origin, inReplyTo);
 		const delivery = await deliverReplyToRemoteActor(origin, inReplyTo, activity);
 		await updateLocalReplyDeliveryStatus(event, reply.localSlug || '', 'delivered');
 
