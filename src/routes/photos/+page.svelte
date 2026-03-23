@@ -44,7 +44,7 @@
 <section class="stream-head">
 	<h1 class="stream-head__title">Visual Notes</h1>
 	<p class="stream-head__lede">
-		A masonry view of every image pulled from gallery-tagged posts.
+		A masonry view of every image pulled from Ghost posts across the site.
 	</p>
 </section>
 

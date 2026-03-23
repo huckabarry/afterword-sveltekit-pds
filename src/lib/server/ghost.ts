@@ -206,11 +206,6 @@ function normalizePost(post: Record<string, any>, siteUrl: string): BlogPost {
 	};
 }
 
-function shouldIncludeGalleryPost(post: BlogPost) {
-	const tags = new Set((post.tags || []).filter(Boolean));
-	return tags.has('gallery') || tags.has('hash-gallery') || tags.has('photography');
-}
-
 function extractPhotoItems(post: BlogPost): PhotoItem[] {
 	const imagePattern = /<img[^>]+src=["']([^"']+)["'][^>]*alt=["']([^"']*)["'][^>]*>|<img[^>]+alt=["']([^"']*)["'][^>]*src=["']([^"']+)["'][^>]*>|<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
 	const seen = new Set<string>();
@@ -516,7 +511,5 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
 export async function getPhotoItems(): Promise<PhotoItem[]> {
 	const posts = await getBlogPosts();
 
-	return posts
-		.filter((post: BlogPost) => shouldIncludeGalleryPost(post))
-		.flatMap((post: BlogPost) => extractPhotoItems(post));
+	return posts.flatMap((post: BlogPost) => extractPhotoItems(post));
 }
