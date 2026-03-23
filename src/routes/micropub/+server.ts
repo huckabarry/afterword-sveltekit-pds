@@ -16,7 +16,10 @@ function responseJson(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body, null, 2), {
 		status,
 		headers: {
-			'content-type': 'application/json; charset=utf-8'
+			'content-type': 'application/json; charset=utf-8',
+			'access-control-allow-origin': '*',
+			'access-control-allow-headers': 'Authorization, Content-Type',
+			'access-control-allow-methods': 'GET, POST, OPTIONS'
 		}
 	});
 }
@@ -60,6 +63,10 @@ async function parseMicropubRequest(request: Request) {
 		inReplyTo: String(form.get('in-reply-to') || '').trim(),
 		category: form.getAll('category').flatMap((item) => (typeof item === 'string' ? [item.trim()] : [])).filter(Boolean)
 	};
+}
+
+export async function OPTIONS() {
+	return responseJson({});
 }
 
 async function deliverLocalNoteToFollowers(
