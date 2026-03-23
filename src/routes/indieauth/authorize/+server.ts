@@ -1,4 +1,4 @@
-import { createAuthorizationCode, redirectWithCode, requireMicropubPassword, validateClientId, validateRedirectUri } from '$lib/server/indieauth';
+import { createAuthorizationCode, redirectWithCode, requireMicropubPassword, validateClientId, validateMe, validateRedirectUri } from '$lib/server/indieauth';
 
 function isRedirectError(error: unknown): error is { status: number; location: string } {
 	return Boolean(
@@ -13,6 +13,7 @@ function isRedirectError(error: unknown): error is { status: number; location: s
 function pageHtml(input: {
 	clientId: string;
 	redirectUri: string;
+	me: string;
 	state: string;
 	scope: string;
 	codeChallenge: string;
@@ -45,6 +46,7 @@ function pageHtml(input: {
     <form method="POST">
       <input type="hidden" name="client_id" value="${input.clientId}">
       <input type="hidden" name="redirect_uri" value="${input.redirectUri}">
+      <input type="hidden" name="me" value="${input.me}">
       <input type="hidden" name="state" value="${input.state}">
       <input type="hidden" name="scope" value="${input.scope}">
       <input type="hidden" name="code_challenge" value="${input.codeChallenge}">
@@ -66,6 +68,7 @@ function getString(form: FormData, key: string) {
 export async function GET(event) {
 	const clientId = validateClientId(event.url.searchParams.get('client_id') || '');
 	const redirectUri = validateRedirectUri(event.url.searchParams.get('redirect_uri') || '');
+	const me = validateMe(event.url.searchParams.get('me') || '', event.url.origin);
 	const state = event.url.searchParams.get('state') || '';
 	const scope = event.url.searchParams.get('scope') || 'create';
 	const codeChallenge = event.url.searchParams.get('code_challenge') || '';
@@ -77,6 +80,7 @@ export async function GET(event) {
 			redirectUri,
 			state,
 			scope,
+			me,
 			codeChallenge,
 			codeChallengeMethod
 		}),
@@ -92,6 +96,7 @@ export async function POST(event) {
 	const form = await event.request.formData();
 	const clientId = validateClientId(getString(form, 'client_id'));
 	const redirectUri = validateRedirectUri(getString(form, 'redirect_uri'));
+	const me = validateMe(getString(form, 'me'), event.url.origin);
 	const state = getString(form, 'state');
 	const scope = getString(form, 'scope') || 'create';
 	const codeChallenge = getString(form, 'code_challenge') || null;
@@ -103,6 +108,7 @@ export async function POST(event) {
 		const code = await createAuthorizationCode(event, {
 			clientId,
 			redirectUri,
+			me,
 			scope,
 			codeChallenge,
 			codeChallengeMethod
@@ -110,6 +116,7 @@ export async function POST(event) {
 		redirectWithCode({
 			redirectUri,
 			code,
+			me,
 			state,
 			origin: event.url.origin
 		});
@@ -122,6 +129,7 @@ export async function POST(event) {
 			pageHtml({
 				clientId,
 				redirectUri,
+				me,
 				state,
 				scope,
 				codeChallenge: codeChallenge || '',
