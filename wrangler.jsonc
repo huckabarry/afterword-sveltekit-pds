@@ -10,6 +10,12 @@
 			"database_id": "61f9c95d-c74d-4490-8fb8-f5737289a08a"
 		}
 	],
+	"r2_buckets": [
+		{
+			"binding": "R2_BUCKET",
+			"bucket_name": "afterword"
+		}
+	],
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"assets": {
 		"binding": "ASSETS",
