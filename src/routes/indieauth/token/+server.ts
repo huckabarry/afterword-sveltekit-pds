@@ -4,10 +4,7 @@ function json(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body, null, 2), {
 		status,
 		headers: {
-			'content-type': 'application/json; charset=utf-8',
-			'access-control-allow-origin': '*',
-			'access-control-allow-headers': 'Authorization, Content-Type',
-			'access-control-allow-methods': 'GET, POST, OPTIONS'
+			'content-type': 'application/json; charset=utf-8'
 		}
 	});
 }
@@ -23,10 +20,6 @@ export async function GET(event) {
 		client_id: token.clientId,
 		scope: token.scope
 	});
-}
-
-export async function OPTIONS() {
-	return json({});
 }
 
 export async function POST(event) {
