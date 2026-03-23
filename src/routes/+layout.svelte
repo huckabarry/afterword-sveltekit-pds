@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
 	import { tick } from 'svelte';
 	import '../app.css';
 
-	let { children } = $props();
+	let { children, data } = $props();
 
 	type SearchResult = {
 		id: string;
@@ -23,7 +22,7 @@
 	let searchState = $state<'idle' | 'loading' | 'ready' | 'empty'>('idle');
 	let searchInput = $state<HTMLInputElement | null>(null);
 	let searchRequest = 0;
-	const isAdminRoute = $derived(page.url.pathname.startsWith('/admin'));
+	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
 
 	async function openSearch() {
 		searchOpen = true;
