@@ -214,7 +214,7 @@
 			</section>
 			<div class="home-stream-tags">
 				<a class="tag-pill" href="/tags/urbanism">Planning</a>
-				<a class="home-updates__more-link" href="/blog">Read more planning posts <span aria-hidden="true">→</span></a>
+				<a class="home-updates__more-link" href="/planning">Read more planning posts <span aria-hidden="true">→</span></a>
 			</div>
 		{:else}
 			<p class="empty-state">No planning posts are available yet.</p>
@@ -239,7 +239,7 @@
 			</section>
 			<div class="home-stream-tags">
 				<a class="tag-pill" href="/tags/field-notes">Field Notes</a>
-				<a class="home-updates__more-link" href="/blog">Read more field notes <span aria-hidden="true">→</span></a>
+				<a class="home-updates__more-link" href="/field-notes">Read more field notes <span aria-hidden="true">→</span></a>
 			</div>
 		{:else}
 			<p class="empty-state">No field notes are available yet.</p>
