@@ -9,8 +9,10 @@ import {
 	updateLocalReplyDeliveryStatus
 } from '$lib/server/ap-notes';
 import { deliverLikeToRemoteObject } from '$lib/server/activitypub-likes';
+import { enrichReplies } from '$lib/server/activitypub-reply-previews';
 import { getStatusBySlug } from '$lib/server/atproto';
 import { listFollowers } from '$lib/server/followers';
+import { getSiteProfile } from '$lib/server/profile';
 import {
 	deliverReplyToRemoteActor,
 	fetchActivityJson,
@@ -168,11 +170,20 @@ function isLocalReplyTarget(origin: string, objectId: string) {
 
 export const load: PageServerLoad = async (event) => {
 	const origin = getActivityPubOrigin(event);
+	const profile = await getSiteProfile(event);
 	const replies = await listRecentInboxReplies(event, origin, 50);
+	const enrichedReplies = await enrichReplies(event, replies);
 	const repliesWithContext = await Promise.all(
-		replies.map(async (reply) => ({
+		enrichedReplies.map(async (reply) => ({
 			...reply,
-			replyContext: reply.inReplyToObjectId ? await resolveReplyContext(event, origin, reply.inReplyToObjectId) : null
+			replyContext: reply.inReplyToObjectId ? await resolveReplyContext(event, origin, reply.inReplyToObjectId) : null,
+			actorAvatarUrl:
+				reply.origin === 'local'
+					? profile.avatarUrl.startsWith('http')
+						? profile.avatarUrl
+						: `${origin}${profile.avatarUrl}`
+					: reply.avatarUrl,
+			actorProfileUrl: reply.origin === 'local' ? `${origin}/` : reply.profileUrl
 		}))
 	);
 
