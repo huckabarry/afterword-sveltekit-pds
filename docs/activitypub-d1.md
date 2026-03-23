@@ -38,6 +38,7 @@ This creates:
 
 - `ap_followers`
 - `ap_deliveries`
+- `ap_interactions`
 
 ## 4. What it is for
 
@@ -45,6 +46,7 @@ The first intended use is:
 
 - storing accepted ActivityPub followers
 - tracking outbound delivery attempts for blog post federation
+- storing inbound likes and boosts (`Announce`) against local objects
 
 Current code helpers live in:
 

@@ -17,7 +17,9 @@ export async function POST(event) {
 	requireDeliveryToken(event.request);
 
 	const limit = getLimit(event.request);
-	const posts = (await getBlogPosts()).slice(0, limit);
+	const posts = (await getBlogPosts())
+		.slice(0, limit)
+		.reverse();
 	const deliveries = [];
 
 	for (const post of posts) {
