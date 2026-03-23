@@ -52,8 +52,40 @@ export async function hasAdminSession(cookies: Cookies) {
 	return current === expected;
 }
 
+function getSubmittedAdminSecret(
+	event: Pick<RequestEvent, 'request'>
+) {
+	const authorization = event.request.headers.get('authorization')?.trim() || '';
+	const bearer = authorization.toLowerCase().startsWith('bearer ')
+		? authorization.slice(7).trim()
+		: '';
+
+	return (
+		event.request.headers.get('x-admin-token')?.trim() ||
+		event.request.headers.get('x-admin-password')?.trim() ||
+		bearer ||
+		''
+	);
+}
+
+export async function hasAdminAccess(event: Pick<RequestEvent, 'cookies' | 'request'>) {
+	if (await hasAdminSession(event.cookies)) {
+		return true;
+	}
+
+	const password = getAdminPassword();
+	const submitted = getSubmittedAdminSecret(event);
+	return Boolean(password && submitted && submitted === password);
+}
+
 export async function requireAdminSession(event: Pick<RequestEvent, 'cookies'>) {
 	if (!(await hasAdminSession(event.cookies))) {
 		throw redirect(303, '/admin/login');
+	}
+}
+
+export async function requireAdminAccess(event: Pick<RequestEvent, 'cookies' | 'request'>) {
+	if (!(await hasAdminAccess(event))) {
+		throw error(401, 'Unauthorized');
 	}
 }
