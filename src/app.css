@@ -153,21 +153,16 @@ p:last-child {
 .site-nav-search {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.38rem;
 	padding: 0;
 	border: 0;
 	background: transparent;
-	color: var(--accent);
-	font-size: 0.94rem;
-	font-weight: 500;
-	font-family: 'IBM Plex Mono', monospace;
-	font-style: italic;
+	color: #ffffff;
 	cursor: pointer;
 }
 
 .site-nav-search svg {
-	width: 0.9rem;
-	height: 0.9rem;
+	width: 1rem;
+	height: 1rem;
 	fill: currentColor;
 }
 
