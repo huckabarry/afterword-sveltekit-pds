@@ -1524,6 +1524,11 @@ p:last-child {
 	box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
 }
 
+.admin-sidebar,
+.admin-sidebar * {
+	color: #f4f4f1;
+}
+
 .admin-sidebar__tagline {
 	margin: 0.35rem 0 0;
 	color: #b4b7b2;
@@ -1581,6 +1586,12 @@ p:last-child {
 	border: 1px solid rgba(0, 0, 0, 0.08);
 	border-radius: 22px;
 	box-shadow: 0 14px 32px rgba(0, 0, 0, 0.07);
+	color: #111111;
+}
+
+.admin-topbar,
+.admin-topbar * {
+	color: #111111;
 }
 
 .admin-topbar__eyebrow {
@@ -1612,6 +1623,11 @@ p:last-child {
 	white-space: nowrap;
 }
 
+.admin-topbar__quick,
+.admin-topbar__quick:hover {
+	color: #ffffff;
+}
+
 .admin-eyebrow {
 	margin: 0 0 0.2rem;
 	font-size: 0.72rem;
@@ -1625,6 +1641,15 @@ p:last-child {
 .admin-panel__title,
 .admin-login__title {
 	margin: 0;
+}
+
+.admin-title {
+	color: #f4f4f1;
+}
+
+.admin-panel__title,
+.admin-login__title {
+	color: #111111;
 }
 
 .admin-content,
@@ -1653,6 +1678,23 @@ p:last-child {
 	padding: 1.25rem;
 	box-shadow: 0 14px 36px rgba(0, 0, 0, 0.06);
 	color: #111111;
+}
+
+.admin-card,
+.admin-card *:not(.admin-pill-link):not(.admin-button):not(.admin-ghost-button),
+.admin-login__card,
+.admin-login__card *:not(.admin-pill-link):not(.admin-button):not(.admin-ghost-button) {
+	color: #111111;
+}
+
+.admin-card a:not(.admin-pill-link):not(.admin-button):not(.admin-ghost-button),
+.admin-login__card a:not(.admin-pill-link):not(.admin-button):not(.admin-ghost-button) {
+	color: #7a5b00;
+}
+
+.admin-card a:not(.admin-pill-link):not(.admin-button):not(.admin-ghost-button):hover,
+.admin-login__card a:not(.admin-pill-link):not(.admin-button):not(.admin-ghost-button):hover {
+	color: #5f4700;
 }
 
 .admin-card--narrow {
@@ -1716,6 +1758,18 @@ p:last-child {
 .admin-stat__label {
 	margin: 0;
 	color: #686d68;
+}
+
+.admin-list-item__meta,
+.admin-thread__target,
+.admin-empty,
+.admin-login__intro,
+.admin-stat__label,
+.admin-thread__meta span,
+.admin-sidebar__tagline,
+.admin-topbar__eyebrow,
+.admin-eyebrow {
+	opacity: 1;
 }
 
 .admin-thread__meta {
