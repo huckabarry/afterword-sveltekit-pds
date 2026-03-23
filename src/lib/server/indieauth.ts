@@ -297,12 +297,10 @@ export function redirectWithCode(input: {
 	code: string;
 	me: string;
 	state?: string | null;
-	origin: string;
 }) {
 	const target = new URL(input.redirectUri);
 	target.searchParams.set('code', input.code);
 	target.searchParams.set('me', input.me);
-	target.searchParams.set('iss', input.origin);
 
 	if (input.state) {
 		target.searchParams.set('state', input.state);
