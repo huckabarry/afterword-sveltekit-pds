@@ -10,6 +10,11 @@ declare global {
 		ACTIVITYPUB_KEY_ID?: string;
 		ACTIVITYPUB_ALSO_KNOWN_AS?: string;
 		ACTIVITYPUB_DELIVERY_TOKEN?: string;
+		MASTODON_ADMIN_PASSWORD?: string;
+		MASTODON_INSTANCE_TITLE?: string;
+		ATPROTO_PUBLISH_HANDLE?: string;
+		ATPROTO_APP_PASSWORD?: string;
+		ATPROTO_PDS_URL?: string;
 	}
 
 	namespace App {
