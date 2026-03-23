@@ -7,7 +7,7 @@ import {
 	getInboxId
 } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
-import { resolveThreadRootObjectId } from '$lib/server/activitypub-replies';
+import { resolveThreadRootObjectId, stripHtmlToText } from '$lib/server/activitypub-replies';
 import { storeRemoteReply } from '$lib/server/ap-notes';
 import { recordInteraction } from '$lib/server/interactions';
 import { verifyInboundActivitySignature } from '$lib/server/activitypub-signatures';
@@ -200,6 +200,12 @@ export async function POST(event) {
 			}
 
 			const threadRootObjectId = await resolveThreadRootObjectId(inReplyTo, origin, event);
+			const contentHtml = getString(object.content) || '';
+			const sourceContent =
+				object.source && typeof object.source === 'object'
+					? getString((object.source as Record<string, unknown>).content) || ''
+					: '';
+			const contentText = sourceContent || stripHtmlToText(contentHtml) || contentHtml;
 
 			await storeRemoteReply(event, {
 				noteId,
@@ -209,11 +215,8 @@ export async function POST(event) {
 				actorHandle: getString(remoteActor.preferredUsername),
 				inReplyToObjectId: inReplyTo,
 				threadRootObjectId,
-				contentHtml: getString(object.content) || '',
-				contentText:
-					object.source && typeof object.source === 'object'
-						? getString((object.source as Record<string, unknown>).content) || ''
-						: '',
+				contentHtml,
+				contentText,
 				publishedAt: getString(object.published) || new Date().toISOString(),
 				objectUrl: getString(object.url) || noteId,
 				rawActivityJson: rawBody

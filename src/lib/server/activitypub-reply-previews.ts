@@ -1,4 +1,5 @@
 import { getActivityPubHandle } from '$lib/server/activitypub';
+import { stripHtmlToText } from '$lib/server/activitypub-replies';
 import { getSiteProfile } from '$lib/server/profile';
 import type { ApNoteRecord } from '$lib/server/ap-notes';
 
@@ -46,21 +47,23 @@ export async function enrichReplies(
 	return Promise.all(
 		replies.map(async (reply) => {
 			if (reply.origin === 'local') {
-				return {
-					...reply,
-					actorName: reply.actorName || profile.displayName,
-					actorHandle: reply.actorHandle || getActivityPubHandle(event.url.origin),
-					avatarUrl: profile.avatarUrl.startsWith('http')
-						? profile.avatarUrl
-						: `${event.url.origin}${profile.avatarUrl}`,
-					profileUrl: `${event.url.origin}/`
-				};
+			return {
+				...reply,
+				actorName: reply.actorName || profile.displayName,
+				actorHandle: reply.actorHandle || getActivityPubHandle(event.url.origin),
+				contentText: reply.contentText || stripHtmlToText(reply.contentHtml),
+				avatarUrl: profile.avatarUrl.startsWith('http')
+					? profile.avatarUrl
+					: `${event.url.origin}${profile.avatarUrl}`,
+				profileUrl: `${event.url.origin}/`
+			};
 			}
 
 			const actorPreview = await fetchActorPreview(reply.actorId);
 
 			return {
 				...reply,
+				contentText: reply.contentText || stripHtmlToText(reply.contentHtml),
 				avatarUrl: actorPreview.avatarUrl,
 				profileUrl: actorPreview.profileUrl
 			};

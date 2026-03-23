@@ -16,7 +16,7 @@ function getString(value: unknown) {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function stripHtmlToText(html: string) {
+export function stripHtmlToText(html: string) {
 	return String(html || '')
 		.replace(/<script[\s\S]*?<\/script>/gi, ' ')
 		.replace(/<style[\s\S]*?<\/style>/gi, ' ')

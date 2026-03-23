@@ -53,7 +53,13 @@
 								{/if}
 								<span>{formatDate(reply.publishedAt)}</span>
 							</div>
-							<p class="admin-social-card__content">{reply.contentText}</p>
+							{#if reply.contentText}
+								<p class="admin-social-card__content">{reply.contentText}</p>
+							{:else if reply.contentHtml}
+								<div class="admin-social-card__content">
+									{@html reply.contentHtml}
+								</div>
+							{/if}
 
 							{#if reply.attachments?.length}
 								<div class="admin-social-card__media-strip">
