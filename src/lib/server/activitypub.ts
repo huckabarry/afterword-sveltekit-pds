@@ -29,6 +29,10 @@ export function getActivityPubHandle(origin: string) {
 	return `${DEFAULT_USERNAME}@${host}`;
 }
 
+export function getPreferredUsername() {
+	return DEFAULT_USERNAME;
+}
+
 export function getNoteObjectId(origin: string, slug: string) {
 	return `${origin}/ap/posts/${slug}`;
 }
@@ -168,4 +172,3 @@ export async function getActivityObjectBySlug(slug: string, origin: string) {
 	if (!post) return null;
 	return blogPostToArticle(post, origin);
 }
-

@@ -1,4 +1,10 @@
-import { getActivityPubHandle, getActivityPubOrigin, getActorAliases, getActorId, jrdJson } from '$lib/server/activitypub';
+import {
+	getActivityPubOrigin,
+	getActorAliases,
+	getActorId,
+	getPreferredUsername,
+	jrdJson
+} from '$lib/server/activitypub';
 
 export function GET(event) {
 	const origin = getActivityPubOrigin(event);
@@ -38,8 +44,7 @@ export function GET(event) {
 		properties: {
 			'https://www.w3.org/ns/activitystreams#type': 'Person',
 			'https://www.w3.org/ns/activitystreams#name': 'Bryan Robb',
-			'https://www.w3.org/ns/activitystreams#preferredUsername': getActivityPubHandle(origin)
+			'https://www.w3.org/ns/activitystreams#preferredUsername': getPreferredUsername()
 		}
 	});
 }
-
