@@ -3,6 +3,7 @@
 declare global {
 	interface Env {
 		AP_DB?: D1Database;
+		D1_DATABASE?: D1Database;
 		D1_DATABASE_BINDING?: D1Database;
 		ACTIVITYPUB_PRIVATE_KEY_PEM?: string;
 		ACTIVITYPUB_PUBLIC_KEY_PEM?: string;

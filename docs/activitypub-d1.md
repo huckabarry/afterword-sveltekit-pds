@@ -6,7 +6,7 @@ This repo is prepared to use a Cloudflare D1 database for ActivityPub follower s
 
 In Cloudflare, create a D1 database. Your current setup uses:
 
-- binding: `D1_DATABASE_BINDING`
+- binding: `D1_DATABASE`
 - database name: `d1-database`
 
 You can do this in the dashboard or with Wrangler:
@@ -23,7 +23,7 @@ In [wrangler.jsonc](/Users/bryanrobb/Git/afterword-sveltekit-pds/wrangler.jsonc)
 
 Binding name:
 
-- `D1_DATABASE_BINDING`
+- `D1_DATABASE`
 
 ## 3. Apply the schema
 

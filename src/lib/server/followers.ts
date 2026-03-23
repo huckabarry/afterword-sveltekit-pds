@@ -25,7 +25,12 @@ export type CreateFollowerInput = {
 };
 
 function getDb(event: Pick<RequestEvent, 'platform'>) {
-	return event.platform?.env?.D1_DATABASE_BINDING ?? event.platform?.env?.AP_DB ?? null;
+	return (
+		event.platform?.env?.D1_DATABASE ??
+		event.platform?.env?.D1_DATABASE_BINDING ??
+		event.platform?.env?.AP_DB ??
+		null
+	);
 }
 
 export function hasFollowerDb(event: Pick<RequestEvent, 'platform'>) {
