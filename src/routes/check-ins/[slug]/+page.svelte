@@ -8,6 +8,9 @@
 	}: {
 		data: {
 			item: Checkin;
+			absoluteUrl: string;
+			ogImageUrl: string;
+			description: string;
 			previousItem: Checkin | null;
 			nextItem: Checkin | null;
 		};
@@ -16,6 +19,20 @@
 
 <svelte:head>
 	<title>{data.item.name} | Check-ins</title>
+	<meta name="description" content={data.description} />
+	<link rel="canonical" href={data.absoluteUrl} />
+	<meta property="og:type" content="article" />
+	<meta property="og:title" content={`${data.item.name} | Check-ins`} />
+	<meta property="og:description" content={data.description} />
+	<meta property="og:url" content={data.absoluteUrl} />
+	<meta property="og:image" content={data.ogImageUrl} />
+	<meta property="og:image:type" content="image/svg+xml" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={`${data.item.name} | Check-ins`} />
+	<meta name="twitter:description" content={data.description} />
+	<meta name="twitter:image" content={data.ogImageUrl} />
 </svelte:head>
 
 <article class="entry entry--checkin">
