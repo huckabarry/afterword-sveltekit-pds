@@ -4,6 +4,7 @@ import { requireMastodonAccessToken } from '$lib/server/mastodon-auth';
 import {
 	buildHomeTimeline,
 	decodeMastodonAccountId,
+	fetchRemoteStatusesForActor,
 	resolveAccountByIdOrAcct
 } from '$lib/server/mastodon-api';
 
@@ -21,5 +22,5 @@ export async function GET(event) {
 	}
 
 	await resolveAccountByIdOrAcct(event, actorId);
-	return json([]);
+	return json(await fetchRemoteStatusesForActor(event, actorId, limit));
 }

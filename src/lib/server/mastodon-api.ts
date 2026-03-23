@@ -79,6 +79,10 @@ function isoDate(value: string | Date) {
 	return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
+function getString(value: unknown) {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 export async function buildLocalAccount(event: Pick<RequestEvent, 'platform' | 'url'>) {
 	const origin = getActivityPubOrigin(event);
 	const profile = await getSiteProfile(event);
@@ -308,18 +312,177 @@ export async function serializeMirroredStatus(
 	};
 }
 
+function serializeRemoteObjectAttachments(attachment: unknown) {
+	const items = Array.isArray(attachment) ? attachment : attachment ? [attachment] : [];
+
+	return items
+		.map((item) => {
+			if (!item || typeof item !== 'object') return null;
+			const record = item as Record<string, unknown>;
+			const url = getString(record.url);
+			if (!url) return null;
+			const mediaType = getString(record.mediaType) || 'image/jpeg';
+			return {
+				id: encodeMastodonMediaId(url),
+				type: mediaType.startsWith('video/') ? 'video' : 'image',
+				url,
+				preview_url: url,
+				remote_url: url,
+				meta: null,
+				description: getString(record.name),
+				blurhash: null
+			};
+		})
+		.filter(Boolean);
+}
+
+async function serializeRemoteObjectStatus(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	actorId: string,
+	object: Record<string, unknown>
+) {
+	const objectId = getString(object.id) || getString(object.url);
+	if (!objectId) return null;
+
+	const account = await buildRemoteAccount(event, actorId);
+	const favourited = await isObjectFavourited(event, objectId);
+	const tags = Array.isArray(object.tag) ? object.tag : [];
+	const mentions = tags
+		.map((item) => {
+			if (!item || typeof item !== 'object') return null;
+			const record = item as Record<string, unknown>;
+			if (String(record.type || '') !== 'Mention') return null;
+			const url = getString(record.href);
+			const name = getString(record.name);
+			if (!url || !name) return null;
+			const acct = name.replace(/^@/, '');
+			return {
+				id: encodeMastodonAccountId(url),
+				username: acct.split('@')[0] || acct,
+				url,
+				acct
+			};
+		})
+		.filter(Boolean);
+
+	return {
+		id: encodeMastodonStatusId(objectId),
+		created_at: isoDate(getString(object.published) || getString(object.updated) || new Date().toISOString()),
+		in_reply_to_id: getString(object.inReplyTo) ? encodeMastodonStatusId(String(object.inReplyTo)) : null,
+		in_reply_to_account_id: null,
+		sensitive: false,
+		spoiler_text: '',
+		visibility: 'public',
+		language: 'en',
+		uri: objectId,
+		url: getString(object.url) || objectId,
+		replies_count: 0,
+		reblogs_count: 0,
+		favourites_count: favourited ? 1 : 0,
+		favourited,
+		reblogged: false,
+		bookmarked: false,
+		content: getString(object.content) || `<p>${toExcerpt(getString(object.summary) || '')}</p>`,
+		reblog: null,
+		application: {
+			name: 'ActivityPub',
+			website: getString(object.url) || objectId
+		},
+		account,
+		media_attachments: serializeRemoteObjectAttachments(object.attachment),
+		mentions,
+		tags: [],
+		emojis: [],
+		card: null,
+		poll: null
+	};
+}
+
+async function expandOrderedItems(collectionOrPage: Record<string, unknown>) {
+	const directItems = Array.isArray(collectionOrPage.orderedItems) ? collectionOrPage.orderedItems : [];
+	if (directItems.length) return directItems;
+
+	const first = collectionOrPage.first;
+	if (typeof first === 'string' && first) {
+		const firstPage = await fetchActivityJson(first);
+		return Array.isArray(firstPage.orderedItems) ? firstPage.orderedItems : [];
+	}
+
+	if (first && typeof first === 'object') {
+		const firstPage = first as Record<string, unknown>;
+		return Array.isArray(firstPage.orderedItems) ? firstPage.orderedItems : [];
+	}
+
+	return [];
+}
+
+export async function fetchRemoteStatusesForActor(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	actorId: string,
+	limit = 20
+) {
+	const actor = await fetchActivityJson(actorId);
+	const outboxUrl = getString(actor.outbox);
+	if (!outboxUrl) return [];
+
+	const outbox = await fetchActivityJson(outboxUrl);
+	const orderedItems = await expandOrderedItems(outbox);
+	const statuses: Array<Record<string, unknown>> = [];
+
+	for (const item of orderedItems) {
+		if (statuses.length >= limit) break;
+
+		let record: Record<string, unknown> | null = null;
+		if (typeof item === 'string') {
+			record = await fetchActivityJson(item).catch(() => null);
+		} else if (item && typeof item === 'object') {
+			record = item as Record<string, unknown>;
+		}
+		if (!record) continue;
+
+		const type = String(record.type || '');
+		let object = record;
+
+		if (type === 'Create') {
+			const activityObject = record.object;
+			if (typeof activityObject === 'string') {
+				object = (await fetchActivityJson(activityObject).catch(() => null)) || {};
+			} else if (activityObject && typeof activityObject === 'object') {
+				object = activityObject as Record<string, unknown>;
+			}
+		}
+
+		const objectType = String(object.type || '');
+		if (!['Note', 'Article', 'Page'].includes(objectType)) continue;
+		statuses.push(object);
+	}
+
+	return (
+		await Promise.all(statuses.map((item) => serializeRemoteObjectStatus(event, actorId, item)))
+	).filter(Boolean);
+}
+
 export async function buildHomeTimeline(event: Pick<RequestEvent, 'platform' | 'url'>, limit = 40) {
-	const [localNotes, mirroredStatuses] = await Promise.all([
+	const following = await listFollowing(event);
+	const remoteLimit = following.length ? Math.max(1, Math.floor(limit / Math.min(following.length, 5))) : 0;
+
+	const [localNotes, mirroredStatuses, remoteStatuses] = await Promise.all([
 		listLocalNotes(event, limit),
-		getStatuses()
+		getStatuses(),
+		Promise.all(
+			following.slice(0, 5).map((item) => fetchRemoteStatusesForActor(event, item.actorId, remoteLimit || 5).catch(() => []))
+		)
 	]);
 
 	const localStatuses = await Promise.all(localNotes.map((note) => serializeLocalNoteStatus(event, note)));
 	const mirrored = await Promise.all(
 		mirroredStatuses.slice(0, limit).map((status) => serializeMirroredStatus(event, status))
 	);
+	const remote = remoteStatuses
+		.flat()
+		.filter((item): item is NonNullable<(typeof remoteStatuses)[number][number]> => Boolean(item));
 
-	return [...localStatuses, ...mirrored]
+	return [...localStatuses, ...mirrored, ...remote]
 		.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
 		.slice(0, limit);
 }
