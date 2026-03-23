@@ -101,3 +101,21 @@ This will:
 - skip follower/post pairs already marked as delivered
 - only send missing deliveries
 - record new delivery attempts in `ap_deliveries`
+
+## 7. Automate delivery with GitHub Actions
+
+This repo includes a scheduled workflow:
+
+- [.github/workflows/activitypub-delivery.yml](/Users/bryanrobb/Git/afterword-sveltekit-pds/.github/workflows/activitypub-delivery.yml)
+
+It runs hourly and calls:
+
+- `POST https://afterword.blog/ap/admin/deliver-missing?limit=10`
+
+To enable it, add this GitHub Actions repository secret:
+
+- `ACTIVITYPUB_DELIVERY_TOKEN`
+
+Use the same token value you added to Cloudflare.
+
+You can also run it manually from the GitHub Actions tab with `workflow_dispatch`.
