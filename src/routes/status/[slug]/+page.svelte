@@ -10,10 +10,10 @@
 </svelte:head>
 
 <section class="status-list status-list--single">
-	<article class="status-row status-row--single">
-		<div class="status-row__avatar">
+	<article class="status-row status-row--single h-entry">
+		<div class="status-row__avatar h-card">
 			{#if data.post.avatar}
-				<img src={data.post.avatar} alt={data.post.displayName} loading="lazy" />
+				<img class="u-photo" src={data.post.avatar} alt={data.post.displayName} loading="lazy" />
 			{/if}
 		</div>
 		<div class="status-row__body">
@@ -27,13 +27,17 @@
 			{/if}
 			<div class="status-row__meta">
 				<div class="status-row__byline">
-					<span class="status-row__name">{data.post.displayName}</span>
-					<span class="status-row__handle">{data.post.handle}</span>
+					<span class="status-row__name p-author h-card">
+						<span class="p-name">{data.post.displayName}</span>
+						<span class="u-url" hidden>{data.post.blueskyUrl}</span>
+					</span>
+					<span class="status-row__handle p-nickname">{data.post.handle}</span>
 					<span>·</span>
-					<span>{formatDate(data.post.date)}</span>
+					<time class="dt-published" datetime={new Date(data.post.date).toISOString()}>{formatDate(data.post.date)}</time>
 				</div>
 			</div>
-			<div class="status-row__content">
+			<a class="u-url" href={`/status/${data.post.slug}`} hidden>{`/status/${data.post.slug}`}</a>
+			<div class="status-row__content e-content">
 				{@html data.post.html}
 			</div>
 			{#if data.post.images.length}

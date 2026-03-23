@@ -7,6 +7,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	<link rel="webmention" href="/webmention" />
 	<link
 		rel="stylesheet"
 		href="https://fonts.bunny.net/css?family=fira-sans:400,600,800|ibm-plex-mono:400,400i,500,500i,600,600i,700,700i&display=swap"
@@ -18,10 +19,10 @@
 </svelte:head>
 
 <div class="site-shell">
-	<header class="site-header">
-		<a class="site-header-avatar-link" href="/">
+	<header class="site-header h-card">
+		<a class="site-header-avatar-link u-url u-uid" href="/">
 			<img
-				class="avatar"
+				class="avatar u-photo"
 				src="/assets/images/status-avatar.jpg"
 				alt="Bryan Robb"
 			/>
@@ -29,8 +30,8 @@
 
 		<div class="site-header-copy">
 			<div class="site-title-row">
-				<div class="site-title">
-					<a href="/">
+				<div class="site-title p-name">
+					<a class="u-url" href="/">
 						<span class="site-title__name">Bryan Robb</span>
 					</a>
 				</div>
@@ -64,7 +65,7 @@
 			<span class="site-foot-separator">/</span>
 			<a class="site-foot-nav-item" href="/now">Now</a>
 			<span class="site-foot-separator">/</span>
-			<a class="site-foot-nav-item" href="https://bsky.app/profile/afterword.blog" target="_blank" rel="noreferrer">Bluesky</a>
+			<a class="site-foot-nav-item" href="https://bsky.app/profile/afterword.blog" target="_blank" rel="noreferrer me">Bluesky</a>
 		</div>
 	</footer>
 </div>

@@ -16,29 +16,33 @@
 	<title>{data.post.title} | Blog</title>
 </svelte:head>
 
-<article class="entry entry--blog">
+<article class="entry entry--blog h-entry">
 	<div class="entry__meta">
 		<a href="/blog">Blog</a>
-		<time>{new Date(data.post.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</time>
+		<time
+			class="dt-published"
+			datetime={new Date(data.post.publishedAt).toISOString()}
+		>{new Date(data.post.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</time>
 	</div>
 
-	<h1 class="entry__title">{data.post.title}</h1>
+	<h1 class="entry__title p-name">{data.post.title}</h1>
+	<a class="p-author h-card" href="/">Bryan Robb</a>
 
 	{#if data.post.publicTags.length}
 		<div class="entry__tags">
 			{#each data.post.publicTags as tag}
-				<a class="tag-pill entry__tag" href={tag.path}>{tag.label}</a>
+				<a class="tag-pill entry__tag p-category" href={tag.path}>{tag.label}</a>
 			{/each}
 		</div>
 	{/if}
 
 	{#if data.post.coverImage}
 		<figure class="entry__figure">
-			<img src={data.post.coverImage} alt={data.post.title} />
+			<img class="u-photo" src={data.post.coverImage} alt={data.post.title} />
 		</figure>
 	{/if}
 
-	<div class="entry__content">
+	<div class="entry__content e-content">
 		{@html data.post.html}
 	</div>
 

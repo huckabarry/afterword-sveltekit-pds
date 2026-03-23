@@ -15,10 +15,10 @@
 
 <section class="status-list">
 	{#each data.statuses as post}
-		<article class="status-row">
-			<div class="status-row__avatar">
+		<article class="status-row h-entry">
+			<div class="status-row__avatar h-card">
 				{#if post.avatar}
-					<img src={post.avatar} alt={post.displayName} loading="lazy" />
+					<img class="u-photo" src={post.avatar} alt={post.displayName} loading="lazy" />
 				{/if}
 			</div>
 			<div class="status-row__body">
@@ -32,14 +32,17 @@
 				{/if}
 				<div class="status-row__meta">
 					<div class="status-row__byline">
-						<span class="status-row__name">{post.displayName}</span>
-						<span class="status-row__handle">{post.handle}</span>
+						<span class="status-row__name p-author h-card">
+							<span class="p-name">{post.displayName}</span>
+							<span class="u-url" hidden>{post.blueskyUrl}</span>
+						</span>
+						<span class="status-row__handle p-nickname">{post.handle}</span>
 						<span>·</span>
-						<span>{formatDate(post.date)}</span>
+						<time class="dt-published" datetime={new Date(post.date).toISOString()}>{formatDate(post.date)}</time>
 					</div>
 				</div>
-				<a class="status-row__permalink" href={`/status/${post.slug}`}>
-					<div class="status-row__content">
+				<a class="status-row__permalink u-url" href={`/status/${post.slug}`}>
+					<div class="status-row__content e-content">
 						{@html post.html}
 					</div>
 				</a>
