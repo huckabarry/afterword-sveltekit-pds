@@ -3,6 +3,15 @@
 	"name": "afterword-sveltekit-pds",
 	"compatibility_date": "2026-03-22",
 	"compatibility_flags": ["nodejs_compat", "nodejs_als"],
+	// After creating a D1 database in Cloudflare, uncomment and fill this in.
+	// If you want to match the current dashboard binding, use "D1_DATABASE_BINDING":
+	// "d1_databases": [
+	// 	{
+	// 		"binding": "D1_DATABASE_BINDING",
+	// 		"database_name": "d1-database",
+	// 		"database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+	// 	}
+	// ],
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"assets": {
 		"binding": "ASSETS",
