@@ -465,6 +465,73 @@ export function buildRelationship(accountId: string, input: { following: boolean
 	};
 }
 
+function matchesQuery(value: string | null | undefined, query: string) {
+	return String(value || '').toLowerCase().includes(query.toLowerCase());
+}
+
+export async function searchAccounts(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	query: string,
+	options?: { resolve?: boolean; limit?: number; followingOnly?: boolean }
+) {
+	const q = String(query || '').trim();
+	if (!q) return [];
+
+	const limit = Math.max(1, Math.min(options?.limit || 20, 40));
+	const localAccount = await buildLocalAccount(event);
+	const followers = options?.followingOnly ? [] : await listFollowers(event);
+	const following = await listFollowing(event);
+	const accounts = new Map<string, Awaited<ReturnType<typeof buildLocalAccount>>>();
+
+	const push = (account: Awaited<ReturnType<typeof buildLocalAccount>> | null | undefined) => {
+		if (!account?.id) return;
+		if (!accounts.has(account.id)) {
+			accounts.set(account.id, account);
+		}
+	};
+
+	if (
+		matchesQuery(localAccount.username, q) ||
+		matchesQuery(localAccount.acct, q) ||
+		matchesQuery(localAccount.display_name, q) ||
+		matchesQuery(localAccount.url, q)
+	) {
+		push(localAccount);
+	}
+
+	for (const actor of following) {
+		if (
+			matchesQuery(actor.handle, q) ||
+			matchesQuery(actor.displayName, q) ||
+			matchesQuery(actor.actorId, q) ||
+			matchesQuery(actor.profileUrl, q)
+		) {
+			push(await buildRemoteAccount(event, actor.actorId));
+		}
+	}
+
+	if (!options?.followingOnly) {
+		for (const actor of followers) {
+			if (
+				matchesQuery(actor.handle, q) ||
+				matchesQuery(actor.displayName, q) ||
+				matchesQuery(actor.actorId, q)
+			) {
+				push(await buildRemoteAccount(event, actor.actorId));
+			}
+		}
+	}
+
+	const looksResolvable = q.includes('@') || q.startsWith('http');
+	if (options?.resolve !== false && looksResolvable) {
+		try {
+			push(await resolveAccountByIdOrAcct(event, q));
+		} catch {}
+	}
+
+	return Array.from(accounts.values()).slice(0, limit);
+}
+
 export function parseMastodonBody(request: Request) {
 	const contentType = request.headers.get('content-type') || '';
 	if (contentType.includes('application/json')) {
