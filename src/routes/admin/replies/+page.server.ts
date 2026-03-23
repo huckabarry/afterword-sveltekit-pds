@@ -45,21 +45,27 @@ export const load: PageServerLoad = async (event) => {
 	const replies = await listRecentInboxReplies(event, origin, 50);
 	const enrichedReplies = await enrichReplies(event, replies);
 	const repliesWithContext = await Promise.all(
-		enrichedReplies.map(async (reply) => ({
-			...reply,
-			replyContext: reply.inReplyToObjectId ? await resolveReplyContext(event, origin, reply.inReplyToObjectId) : null,
-			threadRootContext:
-				reply.threadRootObjectId && reply.threadRootObjectId !== reply.inReplyToObjectId
-					? await resolveReplyContext(event, origin, reply.threadRootObjectId)
-					: null,
-			actorAvatarUrl:
-				reply.origin === 'local'
-					? profile.avatarUrl.startsWith('http')
-						? profile.avatarUrl
-						: `${origin}${profile.avatarUrl}`
-					: reply.avatarUrl,
-			actorProfileUrl: reply.origin === 'local' ? `${origin}/` : reply.profileUrl
-		}))
+		enrichedReplies.map(async (reply) => {
+			const effectiveThreadRootId = reply.inReplyToObjectId
+				? await resolveThreadRootObjectId(reply.inReplyToObjectId, origin, event)
+				: reply.threadRootObjectId;
+
+			return {
+				...reply,
+				replyContext: reply.inReplyToObjectId ? await resolveReplyContext(event, origin, reply.inReplyToObjectId) : null,
+				threadRootContext:
+					effectiveThreadRootId && effectiveThreadRootId !== reply.inReplyToObjectId
+						? await resolveReplyContext(event, origin, effectiveThreadRootId)
+						: null,
+				actorAvatarUrl:
+					reply.origin === 'local'
+						? profile.avatarUrl.startsWith('http')
+							? profile.avatarUrl
+							: `${origin}${profile.avatarUrl}`
+						: reply.avatarUrl,
+				actorProfileUrl: reply.origin === 'local' ? `${origin}/` : reply.profileUrl
+			};
+		})
 	);
 
 	return {
@@ -80,7 +86,7 @@ export const actions: Actions = {
 		}
 
 		const origin = getActivityPubOrigin(event);
-		const threadRootObjectId = await resolveThreadRootObjectId(replyTo, origin);
+		const threadRootObjectId = await resolveThreadRootObjectId(replyTo, origin, event);
 		const contentHtml = textToParagraphHtml(content);
 		const reply = await createLocalReply(event, {
 			inReplyToObjectId: replyTo,

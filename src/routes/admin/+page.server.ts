@@ -5,6 +5,7 @@ import { getStatuses } from '$lib/server/atproto';
 import { listFollowers } from '$lib/server/followers';
 import { getSiteProfile } from '$lib/server/profile';
 import { resolveReplyContext } from '$lib/server/admin-reply-context';
+import { resolveThreadRootObjectId } from '$lib/server/activitypub-replies';
 import { listRecentWebmentions } from '$lib/server/webmentions';
 import type { PageServerLoad } from './$types';
 
@@ -19,21 +20,27 @@ export const load: PageServerLoad = async (event) => {
 	]);
 	const enrichedReplies = await enrichReplies(event, replies);
 	const repliesWithContext = await Promise.all(
-		enrichedReplies.map(async (reply) => ({
-			...reply,
-			replyContext: reply.inReplyToObjectId ? await resolveReplyContext(event, origin, reply.inReplyToObjectId) : null,
-			threadRootContext:
-				reply.threadRootObjectId && reply.threadRootObjectId !== reply.inReplyToObjectId
-					? await resolveReplyContext(event, origin, reply.threadRootObjectId)
-					: null,
-			actorAvatarUrl:
-				reply.origin === 'local'
-					? profile.avatarUrl.startsWith('http')
-						? profile.avatarUrl
-						: `${origin}${profile.avatarUrl}`
-					: reply.avatarUrl,
-			actorProfileUrl: reply.origin === 'local' ? `${origin}/` : reply.profileUrl
-		}))
+		enrichedReplies.map(async (reply) => {
+			const effectiveThreadRootId = reply.inReplyToObjectId
+				? await resolveThreadRootObjectId(reply.inReplyToObjectId, origin, event)
+				: reply.threadRootObjectId;
+
+			return {
+				...reply,
+				replyContext: reply.inReplyToObjectId ? await resolveReplyContext(event, origin, reply.inReplyToObjectId) : null,
+				threadRootContext:
+					effectiveThreadRootId && effectiveThreadRootId !== reply.inReplyToObjectId
+						? await resolveReplyContext(event, origin, effectiveThreadRootId)
+						: null,
+				actorAvatarUrl:
+					reply.origin === 'local'
+						? profile.avatarUrl.startsWith('http')
+							? profile.avatarUrl
+							: `${origin}${profile.avatarUrl}`
+						: reply.avatarUrl,
+				actorProfileUrl: reply.origin === 'local' ? `${origin}/` : reply.profileUrl
+			};
+		})
 	);
 
 	return {

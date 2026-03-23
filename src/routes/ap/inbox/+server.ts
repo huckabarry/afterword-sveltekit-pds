@@ -199,7 +199,7 @@ export async function POST(event) {
 				return new Response(null, { status: 202 });
 			}
 
-			const threadRootObjectId = await resolveThreadRootObjectId(inReplyTo, origin);
+			const threadRootObjectId = await resolveThreadRootObjectId(inReplyTo, origin, event);
 
 			await storeRemoteReply(event, {
 				noteId,

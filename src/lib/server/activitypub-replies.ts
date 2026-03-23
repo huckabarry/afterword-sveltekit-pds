@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { activityJson, getActorId } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
+import { getLocalReplyBySlug } from '$lib/server/ap-notes';
 import type { ApNoteRecord } from '$lib/server/ap-notes';
 
 type RemoteActor = {
@@ -83,7 +84,11 @@ export async function fetchRemoteActor(actorId: string): Promise<RemoteActor> {
 	};
 }
 
-export async function resolveThreadRootObjectId(inReplyToObjectId: string, origin: string) {
+export async function resolveThreadRootObjectId(
+	inReplyToObjectId: string,
+	origin: string,
+	event?: { platform: App.Platform | undefined }
+) {
 	let currentId = String(inReplyToObjectId || '').trim();
 	let lastKnown = currentId;
 
@@ -93,6 +98,30 @@ export async function resolveThreadRootObjectId(inReplyToObjectId: string, origi
 		}
 
 		if (currentId.startsWith(`${origin}/ap/replies/`)) {
+			const slug = currentId.slice(`${origin}/ap/replies/`.length);
+			if (event?.platform) {
+				const note = await getLocalReplyBySlug(event, slug).catch(() => null);
+				const nextTarget = note?.threadRootObjectId || note?.inReplyToObjectId;
+				if (nextTarget && nextTarget !== currentId) {
+					lastKnown = currentId;
+					currentId = nextTarget;
+					continue;
+				}
+			}
+			return currentId;
+		}
+
+		if (currentId.startsWith(`${origin}/ap/notes/`)) {
+			const slug = currentId.slice(`${origin}/ap/notes/`.length);
+			if (event?.platform) {
+				const note = await getLocalReplyBySlug(event, slug).catch(() => null);
+				const nextTarget = note?.threadRootObjectId || note?.inReplyToObjectId;
+				if (nextTarget && nextTarget !== currentId) {
+					lastKnown = currentId;
+					currentId = nextTarget;
+					continue;
+				}
+			}
 			return currentId;
 		}
 
