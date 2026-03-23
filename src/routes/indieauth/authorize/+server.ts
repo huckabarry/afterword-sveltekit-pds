@@ -117,7 +117,8 @@ export async function POST(event) {
 			redirectUri,
 			code,
 			me,
-			state
+			state,
+			origin: event.url.origin
 		});
 	} catch (err) {
 		if (isRedirectError(err)) {
