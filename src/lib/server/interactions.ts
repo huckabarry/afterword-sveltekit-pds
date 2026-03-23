@@ -48,3 +48,41 @@ export async function recordInteraction(
 		)
 		.run();
 }
+
+export type InteractionSummary = {
+	likeCount: number;
+	announceCount: number;
+	totalCount: number;
+};
+
+export async function getInteractionSummary(
+	event: Pick<RequestEvent, 'platform'>,
+	objectId: string
+): Promise<InteractionSummary> {
+	const db = getDb(event);
+	if (!db) {
+		return {
+			likeCount: 0,
+			announceCount: 0,
+			totalCount: 0
+		};
+	}
+
+	const result = await db
+		.prepare(
+			`SELECT
+				SUM(CASE WHEN activity_type = 'Like' THEN 1 ELSE 0 END) AS like_count,
+				SUM(CASE WHEN activity_type = 'Announce' THEN 1 ELSE 0 END) AS announce_count,
+				COUNT(*) AS total_count
+			 FROM ap_interactions
+			 WHERE object_id = ?`
+		)
+		.bind(objectId)
+		.first<Record<string, unknown>>();
+
+	return {
+		likeCount: Number(result?.like_count || 0),
+		announceCount: Number(result?.announce_count || 0),
+		totalCount: Number(result?.total_count || 0)
+	};
+}

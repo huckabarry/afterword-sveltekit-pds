@@ -2,7 +2,18 @@
 	import { formatDate } from '$lib/format';
 	import type { StatusPost } from '$lib/server/atproto';
 
-	let { data }: { data: { post: StatusPost } } = $props();
+	let {
+		data
+	}: {
+		data: {
+			post: StatusPost;
+			fediverse: {
+				likeCount: number;
+				announceCount: number;
+				totalCount: number;
+			};
+		};
+	} = $props();
 </script>
 
 <svelte:head>
@@ -92,6 +103,22 @@
 					</a>
 				</div>
 			</div>
+			{#if data.fediverse.totalCount > 0}
+				<div class="fedi-summary fedi-summary--status" aria-label="Fediverse interactions">
+					<span class="fedi-summary__title">Fediverse</span>
+					<span class="fedi-summary__text">
+						{#if data.fediverse.announceCount > 0}
+							<span>{data.fediverse.announceCount} boost{data.fediverse.announceCount === 1 ? '' : 's'}</span>
+						{/if}
+						{#if data.fediverse.announceCount > 0 && data.fediverse.likeCount > 0}
+							<span> · </span>
+						{/if}
+						{#if data.fediverse.likeCount > 0}
+							<span>{data.fediverse.likeCount} favorite{data.fediverse.likeCount === 1 ? '' : 's'}</span>
+						{/if}
+					</span>
+				</div>
+			{/if}
 			{#if data.post.replies && data.post.replies.length}
 				<section class="status-thread">
 					<h2>Replies</h2>

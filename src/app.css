@@ -221,6 +221,33 @@ p:last-child {
 	border-top: 1px solid var(--border);
 }
 
+.fedi-summary {
+	margin-top: 1rem;
+	padding-top: 0.95rem;
+	border-top: 1px solid var(--border);
+}
+
+.fedi-summary__title {
+	display: block;
+	margin: 0 0 0.22rem;
+	color: var(--muted);
+	font-size: 0.78rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.fedi-summary__text {
+	color: var(--muted);
+	font-size: 0.92rem;
+	line-height: 1.5;
+}
+
+.fedi-summary--status {
+	margin-top: 0.85rem;
+	padding-top: 0.85rem;
+}
+
 .entry-webmentions__title {
 	margin: 0 0 0.8rem;
 	font-size: 1.05rem;

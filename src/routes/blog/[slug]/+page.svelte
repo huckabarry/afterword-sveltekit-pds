@@ -10,6 +10,11 @@
 			previousPost: BlogPost | null;
 			nextPost: BlogPost | null;
 			webmentions: WebmentionRecord[];
+			fediverse: {
+				likeCount: number;
+				announceCount: number;
+				totalCount: number;
+			};
 		};
 	} = $props();
 </script>
@@ -52,6 +57,23 @@
 		<a class="post-action-link" href="/contact">Reply by email</a>
 		<a class="post-action-link" href="/blog">Back to all posts</a>
 	</footer>
+
+	{#if data.fediverse.totalCount > 0}
+		<section class="fedi-summary" aria-label="Fediverse interactions">
+			<h2 class="fedi-summary__title">Fediverse</h2>
+			<p class="fedi-summary__text">
+				{#if data.fediverse.announceCount > 0}
+					<span>{data.fediverse.announceCount} boost{data.fediverse.announceCount === 1 ? '' : 's'}</span>
+				{/if}
+				{#if data.fediverse.announceCount > 0 && data.fediverse.likeCount > 0}
+					<span> · </span>
+				{/if}
+				{#if data.fediverse.likeCount > 0}
+					<span>{data.fediverse.likeCount} favorite{data.fediverse.likeCount === 1 ? '' : 's'}</span>
+				{/if}
+			</p>
+		</section>
+	{/if}
 
 	{#if data.webmentions.length}
 		<section class="entry-webmentions" aria-labelledby="webmentions-title">
