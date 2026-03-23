@@ -6,18 +6,27 @@ function toString(value: FormDataEntryValue | unknown) {
 }
 
 export async function POST(event) {
-	const form = await event.request.formData().catch(() => null);
-	const body = form
-		? {
-				client_name: toString(form.get('client_name')),
-				redirect_uris: toString(form.get('redirect_uris')),
-				scopes: toString(form.get('scopes')),
-				website: toString(form.get('website'))
-			}
-		: await event.request.json().catch(() => ({}));
+	const contentType = event.request.headers.get('content-type') || '';
+	let body: Record<string, unknown>;
 
-	const clientName = String(body.client_name || 'Afterword App').trim();
-	const redirectUris = String(body.redirect_uris || '').trim();
+	if (contentType.includes('application/json')) {
+		body = (await event.request.json().catch(() => ({}))) as Record<string, unknown>;
+	} else {
+		const form = await event.request.formData().catch(() => null);
+		body = form
+			? {
+					client_name: toString(form.get('client_name')),
+					clientName: toString(form.get('clientName')),
+					redirect_uris: toString(form.get('redirect_uris')),
+					redirectUris: toString(form.get('redirectUris')),
+					scopes: toString(form.get('scopes')),
+					website: toString(form.get('website'))
+				}
+			: {};
+	}
+
+	const clientName = String(body.client_name || body.clientName || 'Afterword App').trim();
+	const redirectUris = String(body.redirect_uris || body.redirectUris || '').trim();
 	const scopes = String(body.scopes || 'read write').trim() || 'read write';
 	const website = String(body.website || '').trim() || null;
 

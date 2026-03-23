@@ -18,12 +18,33 @@ export function OPTIONS() {
 }
 
 export async function POST(event) {
-	const form = await event.request.formData().catch(() => null);
-	const grantType = String(form?.get('grant_type') || '').trim();
-	const code = String(form?.get('code') || '').trim();
-	const clientId = String(form?.get('client_id') || '').trim();
-	const clientSecret = String(form?.get('client_secret') || '').trim();
-	const redirectUri = String(form?.get('redirect_uri') || '').trim();
+	const contentType = event.request.headers.get('content-type') || '';
+	let body: Record<string, unknown> = {};
+
+	if (contentType.includes('application/json')) {
+		body = (await event.request.json().catch(() => ({}))) as Record<string, unknown>;
+	} else {
+		const form = await event.request.formData().catch(() => null);
+		body = form
+			? {
+					grant_type: form.get('grant_type'),
+					grantType: form.get('grantType'),
+					code: form.get('code'),
+					client_id: form.get('client_id'),
+					clientId: form.get('clientId'),
+					client_secret: form.get('client_secret'),
+					clientSecret: form.get('clientSecret'),
+					redirect_uri: form.get('redirect_uri'),
+					redirectUri: form.get('redirectUri')
+				}
+			: {};
+	}
+
+	const grantType = String(body.grant_type || body.grantType || '').trim();
+	const code = String(body.code || '').trim();
+	const clientId = String(body.client_id || body.clientId || '').trim();
+	const clientSecret = String(body.client_secret || body.clientSecret || '').trim();
+	const redirectUri = String(body.redirect_uri || body.redirectUri || '').trim();
 
 	if (grantType !== 'authorization_code') {
 		return json({ error: 'unsupported_grant_type' }, { status: 400, headers: corsHeaders() });
