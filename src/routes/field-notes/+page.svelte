@@ -67,8 +67,10 @@
 	.field-notes-row__image {
 		display: block;
 		width: 100%;
-		aspect-ratio: 4 / 3;
-		object-fit: cover;
+		height: auto;
+		max-height: 24rem;
+		object-fit: contain;
+		object-position: top;
 		border-radius: 0.5rem;
 	}
 
