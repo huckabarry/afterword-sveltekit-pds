@@ -92,6 +92,7 @@ p:last-child {
 }
 
 .site-header-copy {
+	flex: 1 1 auto;
 	min-width: 0;
 }
 
@@ -134,20 +135,21 @@ p:last-child {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.55rem;
-	margin: 0.16rem 0 0;
+	margin: 0;
 	padding: 0;
 	list-style: none;
 }
 
 .site-nav-row {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: 1rem;
 	margin-top: 0.16rem;
 }
 
 .site-nav {
+	flex: 1 1 auto;
 	min-width: 0;
 }
 
@@ -165,11 +167,14 @@ p:last-child {
 .site-nav-search {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
 	padding: 0;
 	border: 0;
 	background: transparent;
 	color: #ffffff;
 	cursor: pointer;
+	transform: translateY(0.14rem);
 }
 
 .site-nav-search svg {
