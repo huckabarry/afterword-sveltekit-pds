@@ -23,33 +23,45 @@
 </script>
 
 <svelte:head>
-	<title>{data.nowPost?.title || data.intro.title} | Bryan Robb</title>
+	<title>{data.intro.title} | Bryan Robb</title>
 </svelte:head>
 
 <section class="section-block">
-	<h1 class="section-title">{data.nowPost?.title || data.intro.title}</h1>
+	<h1 class="section-title">{data.intro.title}</h1>
 	<article class="content content-page">
 		<div class="post-full-content">
 			<section class="content-body">
 				<p>{data.intro.description}</p>
-				{#if data.nowPost}
+				{#each data.intro.paragraphs as paragraph}
+					<p>{paragraph}</p>
+				{/each}
+			</section>
+		</div>
+	</article>
+</section>
+
+{#if data.nowPost}
+	<section class="section-block">
+		<h2 class="section-title">Latest Now</h2>
+		<article class="content content-page">
+			<div class="post-full-content">
+				<section class="content-body">
 					<div class="entry__meta">
 						<time datetime={data.nowPost.publishedAt.toISOString()}>
 							{formatDate(data.nowPost.publishedAt)}
 						</time>
 					</div>
+					<h3 class="entry__title">
+						<a href={data.nowPost.path}>{data.nowPost.title}</a>
+					</h3>
 					<div class="entry__content">
 						{@html data.nowPost.html}
 					</div>
-				{:else}
-					{#each data.intro.paragraphs as paragraph}
-						<p>{paragraph}</p>
-					{/each}
-				{/if}
-			</section>
-		</div>
-	</article>
-</section>
+				</section>
+			</div>
+		</article>
+	</section>
+{/if}
 
 {#if data.latestCheckin}
 	<section class="section-block section-block-checkin">
