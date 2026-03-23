@@ -85,7 +85,8 @@ export async function buildLocalAccount(event: Pick<RequestEvent, 'platform' | '
 	const followers = await listFollowers(event);
 	const notes = await listLocalNotes(event, 500);
 	const handle = getActivityPubHandle(origin);
-	const username = handle.startsWith('@') ? handle.slice(1).split('@')[0] : handle;
+	const normalizedHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+	const username = normalizedHandle.split('@')[0] || normalizedHandle;
 	const avatar = normalizeUrl(origin, profile.avatarUrl) || `${origin}/assets/images/status-avatar.jpg`;
 	const header = normalizeUrl(origin, profile.headerImageUrl) || avatar;
 
