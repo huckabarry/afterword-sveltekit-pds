@@ -114,6 +114,8 @@
 						<section class="now-carousel" aria-label="Now post images">
 							<div
 								class="now-carousel__frame"
+								role="group"
+								aria-label="Now post image carousel"
 								ontouchstart={handleNowTouchStart}
 								ontouchmove={handleNowTouchMove}
 								ontouchend={handleNowTouchEnd}
