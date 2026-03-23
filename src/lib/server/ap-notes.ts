@@ -268,27 +268,3 @@ export async function getLocalReplyBySlug(
 
 	return row ? mapNote(row) : null;
 }
-
-export async function listRecentLocalNotes(
-	event: Pick<RequestEvent, 'platform'>,
-	limit = 20
-): Promise<ApNoteRecord[]> {
-	const db = getDb(event);
-	if (!db) {
-		return [];
-	}
-
-	const safeLimit = Math.max(1, Math.min(limit, 100));
-	const result = await db
-		.prepare(
-			`SELECT *
-			 FROM ap_notes
-			 WHERE origin = 'local'
-			 ORDER BY published_at DESC, created_at DESC
-			 LIMIT ?`
-		)
-		.bind(safeLimit)
-		.all<Record<string, unknown>>();
-
-	return (result.results || []).map(mapNote);
-}

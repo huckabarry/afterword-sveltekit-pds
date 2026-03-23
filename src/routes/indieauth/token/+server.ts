@@ -1,4 +1,4 @@
-import { exchangeAuthorizationCode, getAccessTokenRecord, getMe, requireMicropubToken, validateClientId, validateMe, validateRedirectUri } from '$lib/server/indieauth';
+import { exchangeAuthorizationCode, getAccessTokenRecord, getMe, requireMicropubToken, validateClientId, validateRedirectUri } from '$lib/server/indieauth';
 
 function json(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body, null, 2), {
@@ -42,7 +42,7 @@ export async function POST(event) {
 	const clientId = validateClientId(getFormValue(form, 'client_id'));
 	const redirectUri = validateRedirectUri(getFormValue(form, 'redirect_uri'));
 	const codeVerifier = getFormValue(form, 'code_verifier') || null;
-	const me = validateMe(getFormValue(form, 'me') || getMe(event.url.origin), event.url.origin);
+	const me = getMe(event.url.origin);
 
 	const token = await exchangeAuthorizationCode(event, {
 		code,
@@ -56,6 +56,6 @@ export async function POST(event) {
 		access_token: token.accessToken,
 		token_type: 'Bearer',
 		scope: token.scope,
-		me: token.me
+		me
 	});
 }
