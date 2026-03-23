@@ -45,7 +45,7 @@ export async function POST(event) {
 	}
 
 	const accessToken = await createAccessToken(event, {
-		clientId,
+		appId: app.id,
 		scope: authorization.scope
 	});
 

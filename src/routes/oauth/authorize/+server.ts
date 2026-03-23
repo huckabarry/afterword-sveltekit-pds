@@ -126,7 +126,7 @@ export async function POST(event) {
 	}
 
 	const code = await createAuthorizationCode(event, {
-		clientId,
+		appId: app.id,
 		redirectUri,
 		scope
 	});

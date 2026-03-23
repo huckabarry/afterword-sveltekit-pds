@@ -5,6 +5,7 @@ type MastodonAppRow = Record<string, unknown>;
 type AccessTokenRow = Record<string, unknown>;
 
 export type MastodonApp = {
+	id: number;
 	name: string;
 	website: string | null;
 	redirectUris: string[];
@@ -45,7 +46,8 @@ function mapApp(row: MastodonAppRow | null | undefined): MastodonApp | null {
 	if (!row) return null;
 
 	return {
-		name: String(row.name || ''),
+		id: Number(row.id || 0),
+		name: String(row.client_name || ''),
 		website: row.website ? String(row.website) : null,
 		redirectUris: parseRedirectUris(String(row.redirect_uris || '')),
 		scopes: String(row.scopes || 'read write'),
@@ -60,7 +62,7 @@ function mapAccessToken(row: AccessTokenRow | null | undefined): MastodonAccessT
 	return {
 		token: String(row.token || ''),
 		clientId: String(row.client_id || ''),
-		scope: String(row.scope || ''),
+		scope: String(row.scopes || ''),
 		createdAt: String(row.created_at || '')
 	};
 }
@@ -86,14 +88,14 @@ export async function createMastodonApp(
 	await db
 		.prepare(
 			`INSERT INTO mastodon_apps (
-				name, website, redirect_uris, scopes, client_id, client_secret
+				client_name, redirect_uris, scopes, website, client_id, client_secret
 			) VALUES (?, ?, ?, ?, ?, ?)`
 		)
 		.bind(
 			String(input.name || 'Afterword App').trim(),
-			input.website ? String(input.website).trim() : null,
 			redirectUris,
 			String(input.scopes || 'read write').trim() || 'read write',
+			input.website ? String(input.website).trim() : null,
 			clientId,
 			clientSecret
 		)
@@ -114,7 +116,7 @@ export async function getMastodonAppByClientId(
 
 	const row = await db
 		.prepare(
-			`SELECT name, website, redirect_uris, scopes, client_id, client_secret
+			`SELECT id, client_name, website, redirect_uris, scopes, client_id, client_secret
 			 FROM mastodon_apps
 			 WHERE client_id = ?
 			 LIMIT 1`
@@ -132,7 +134,7 @@ export function redirectUriAllowed(app: MastodonApp, redirectUri: string) {
 export async function createAuthorizationCode(
 	event: Pick<RequestEvent, 'platform'>,
 	input: {
-		clientId: string;
+		appId: number;
 		redirectUri: string;
 		scope: string;
 	}
@@ -147,11 +149,11 @@ export async function createAuthorizationCode(
 
 	await db
 		.prepare(
-			`INSERT INTO mastodon_oauth_codes (
-				code, client_id, redirect_uri, scope, expires_at
+			`INSERT INTO mastodon_auth_codes (
+				code, app_id, redirect_uri, scopes, expires_at
 			) VALUES (?, ?, ?, ?, ?)`
 		)
-		.bind(code, input.clientId, input.redirectUri, input.scope, expiresAt)
+		.bind(code, input.appId, input.redirectUri, input.scope, expiresAt)
 		.run();
 
 	return code;
@@ -170,8 +172,9 @@ export async function consumeAuthorizationCode(
 
 	const row = await db
 		.prepare(
-			`SELECT code, client_id, redirect_uri, scope, expires_at, used_at
-			 FROM mastodon_oauth_codes
+			`SELECT c.code, c.redirect_uri, c.scopes, c.expires_at, c.used_at, a.client_id
+			 FROM mastodon_auth_codes c
+			 JOIN mastodon_apps a ON a.id = c.app_id
 			 WHERE code = ?
 			 LIMIT 1`
 		)
@@ -185,19 +188,19 @@ export async function consumeAuthorizationCode(
 	if (Date.parse(String(row.expires_at || '')) < Date.now()) return null;
 
 	await db
-		.prepare(`UPDATE mastodon_oauth_codes SET used_at = CURRENT_TIMESTAMP WHERE code = ?`)
+		.prepare(`UPDATE mastodon_auth_codes SET used_at = CURRENT_TIMESTAMP WHERE code = ?`)
 		.bind(input.code)
 		.run();
 
 	return {
-		scope: String(row.scope || 'read write')
+		scope: String(row.scopes || 'read write')
 	};
 }
 
 export async function createAccessToken(
 	event: Pick<RequestEvent, 'platform'>,
 	input: {
-		clientId: string;
+		appId: number;
 		scope: string;
 	}
 ) {
@@ -210,10 +213,10 @@ export async function createAccessToken(
 
 	await db
 		.prepare(
-			`INSERT INTO mastodon_access_tokens (token, client_id, scope)
+			`INSERT INTO mastodon_access_tokens (token, app_id, scopes)
 			 VALUES (?, ?, ?)`
 		)
-		.bind(token, input.clientId, input.scope)
+		.bind(token, input.appId, input.scope)
 		.run();
 
 	return token;
@@ -228,8 +231,9 @@ export async function getAccessToken(
 
 	const row = await db
 		.prepare(
-			`SELECT token, client_id, scope, created_at
-			 FROM mastodon_access_tokens
+			`SELECT t.token, t.scopes, t.created_at, a.client_id
+			 FROM mastodon_access_tokens t
+			 JOIN mastodon_apps a ON a.id = t.app_id
 			 WHERE token = ?
 			 LIMIT 1`
 		)
