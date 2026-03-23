@@ -28,7 +28,7 @@
 			map = leaflet.map(mapEl, {
 				scrollWheelZoom: false,
 				zoomControl: true
-			}).setView([latitude, longitude], 14);
+			}).setView([latitude, longitude], compact ? 15 : 16);
 
 			leaflet
 				.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
