@@ -903,6 +903,7 @@ p:last-child {
 	align-items: center;
 	gap: 1rem;
 	margin-top: 0.85rem;
+	margin-bottom: 0.65rem;
 	color: var(--muted);
 	font-size: 0.92rem;
 }
@@ -965,11 +966,21 @@ p:last-child {
 }
 
 .status-row__reply-pill--button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.38rem;
+	padding: 0.18rem 0.55rem;
+	border-radius: 0.45rem;
 	border: 0;
+	outline: 0;
 	cursor: pointer;
 	font: inherit;
 	color: inherit;
-	background: transparent;
+	background: var(--surface);
+	text-decoration: none;
+	appearance: none;
+	-webkit-appearance: none;
+	box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .status-row__reply-pill-icon {
