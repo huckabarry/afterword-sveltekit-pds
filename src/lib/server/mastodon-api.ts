@@ -528,8 +528,25 @@ export async function buildHomeTimeline(event: Pick<RequestEvent, 'platform' | '
 	const remote = remoteStatuses
 		.flat()
 		.filter((item): item is NonNullable<(typeof remoteStatuses)[number][number]> => Boolean(item));
+	const ownStatuses = [...localStatuses, ...mirrored].sort(
+		(a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)
+	);
+	const followedStatuses = [...remote].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 
-	return [...localStatuses, ...mirrored, ...remote]
+	if (!following.length || !followedStatuses.length) {
+		return [...ownStatuses, ...followedStatuses]
+			.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+			.slice(0, limit);
+	}
+
+	const reservedRemote = Math.min(
+		followedStatuses.length,
+		Math.max(5, Math.floor(limit / 3))
+	);
+	const ownSlice = ownStatuses.slice(0, Math.max(0, limit - reservedRemote));
+	const remoteSlice = followedStatuses.slice(0, reservedRemote);
+
+	return [...ownSlice, ...remoteSlice]
 		.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
 		.slice(0, limit);
 }
