@@ -12,6 +12,8 @@ declare global {
 		ACTIVITYPUB_ALSO_KNOWN_AS?: string;
 		ADMIN_API_TOKEN?: string;
 		ACTIVITYPUB_DELIVERY_TOKEN?: string;
+		MICROPUB_PASSWORD?: string;
+		INDIEAUTH_PASSWORD?: string;
 	}
 
 	namespace App {

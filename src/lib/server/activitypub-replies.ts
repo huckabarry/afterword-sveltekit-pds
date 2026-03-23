@@ -125,11 +125,16 @@ export function localReplyToNote(reply: ApNoteRecord, origin: string) {
 		to: ['https://www.w3.org/ns/activitystreams#Public'],
 		cc: [`${origin}/ap/followers`],
 		inReplyTo: reply.inReplyToObjectId || undefined,
+		name: reply.title || undefined,
 		content: reply.contentHtml,
 		contentMap: {
 			en: reply.contentHtml
 		},
 		mediaType: 'text/html',
+		tag: reply.category.map((label) => ({
+			type: 'Hashtag',
+			name: `#${label.replace(/\s+/g, '')}`
+		})),
 		source: {
 			content: reply.contentText || stripHtmlToText(reply.contentHtml),
 			mediaType: 'text/plain'
