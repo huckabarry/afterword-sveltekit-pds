@@ -342,7 +342,7 @@
 	}
 
 	.track-row--now {
-		grid-template-columns: auto minmax(0, 1fr);
+		grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
 		row-gap: 0.7rem;
 	}
 
@@ -350,9 +350,15 @@
 		align-self: center;
 	}
 
+	.track-row--now .track-row__art-link {
+		display: block;
+		width: 100%;
+	}
+
 	.track-row--now .track-row__art {
-		width: 4.25rem;
-		height: 4.25rem;
+		width: 100%;
+		height: auto;
+		aspect-ratio: 1 / 1;
 	}
 
 	.track-row--now .track-row__date {
@@ -380,6 +386,10 @@
 
 	.track-preview--now {
 		margin-top: 0;
+	}
+
+	.track-preview--now audio {
+		max-width: none;
 	}
 
 	.track-row__actions--now {
@@ -488,6 +498,10 @@
 	}
 
 	@media (max-width: 640px) {
+		.track-row--now {
+			grid-template-columns: 1fr;
+		}
+
 		.cover-grid {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
