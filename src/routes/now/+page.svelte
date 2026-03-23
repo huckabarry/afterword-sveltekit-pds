@@ -265,8 +265,7 @@
 	}
 
 	.now-carousel__frame {
-		display: grid;
-		gap: 0.6rem;
+		position: relative;
 	}
 
 	.now-carousel__image-link {
@@ -284,11 +283,19 @@
 	}
 
 	.now-carousel__controls {
-		display: flex;
+		position: absolute;
+		top: 0.75rem;
+		right: 0.75rem;
+		display: inline-flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		color: var(--muted);
+		justify-content: flex-end;
+		gap: 0.45rem;
+		padding: 0.35rem 0.45rem;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 999px;
+		background: rgba(23, 24, 25, 0.72);
+		backdrop-filter: blur(8px);
+		color: #d4d7d8;
 		font-size: 0.84rem;
 	}
 
@@ -296,21 +303,23 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		padding: 0.2rem 0.55rem;
-		border: 1px solid var(--border);
-		border-radius: 0.45rem;
-		background: transparent;
-		color: var(--muted);
+		padding: 0.18rem 0.5rem;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.03);
+		color: #d4d7d8;
 		font: inherit;
 		cursor: pointer;
 	}
 
 	.now-carousel__button:hover {
-		color: var(--text);
-		border-color: var(--muted);
+		color: #ffffff;
+		border-color: rgba(255, 255, 255, 0.25);
 	}
 
 	.now-carousel__position {
 		white-space: nowrap;
+		font-size: 0.8rem;
+		line-height: 1;
 	}
 </style>
