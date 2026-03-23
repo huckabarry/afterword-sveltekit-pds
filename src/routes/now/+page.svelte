@@ -28,6 +28,8 @@
 	} = $props();
 
 	let nowImageIndex = $state(0);
+	let touchStartX = 0;
+	let touchDeltaX = 0;
 
 	function shouldRenderIntroParagraph(paragraph: string) {
 		const normalizedParagraph = paragraph.trim().toLowerCase();
@@ -46,6 +48,31 @@
 
 	function showNextNowImage() {
 		nowImageIndex = (nowImageIndex + 1) % data.nowImages.length;
+	}
+
+	function handleNowTouchStart(event: TouchEvent) {
+		touchStartX = event.touches[0]?.clientX ?? 0;
+		touchDeltaX = 0;
+	}
+
+	function handleNowTouchMove(event: TouchEvent) {
+		const currentX = event.touches[0]?.clientX ?? touchStartX;
+		touchDeltaX = currentX - touchStartX;
+	}
+
+	function handleNowTouchEnd() {
+		if (Math.abs(touchDeltaX) < 40) {
+			touchDeltaX = 0;
+			return;
+		}
+
+		if (touchDeltaX < 0) {
+			showNextNowImage();
+		} else {
+			showPrevNowImage();
+		}
+
+		touchDeltaX = 0;
 	}
 </script>
 
@@ -85,7 +112,12 @@
 					</h3>
 					{#if data.nowImages.length > 1}
 						<section class="now-carousel" aria-label="Now post images">
-							<div class="now-carousel__frame">
+							<div
+								class="now-carousel__frame"
+								ontouchstart={handleNowTouchStart}
+								ontouchmove={handleNowTouchMove}
+								ontouchend={handleNowTouchEnd}
+							>
 								<a
 									class="now-carousel__image-link"
 									href={data.nowImages[nowImageIndex].imageUrl}
@@ -321,5 +353,11 @@
 		white-space: nowrap;
 		font-size: 0.8rem;
 		line-height: 1;
+	}
+
+	@media (max-width: 640px) {
+		.now-carousel__controls {
+			display: none;
+		}
 	}
 </style>
