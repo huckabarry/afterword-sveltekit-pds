@@ -1,15 +1,5 @@
 import { createAuthorizationCode, redirectWithCode, requireMicropubPassword, validateClientId, validateRedirectUri } from '$lib/server/indieauth';
 
-function isRedirectError(error: unknown): error is { status: number; location: string } {
-	return Boolean(
-		error &&
-			typeof error === 'object' &&
-			'status' in error &&
-			'location' in error &&
-			typeof (error as { status: unknown }).status === 'number'
-	);
-}
-
 function pageHtml(input: {
 	clientId: string;
 	redirectUri: string;
@@ -114,10 +104,6 @@ export async function POST(event) {
 			origin: event.url.origin
 		});
 	} catch (err) {
-		if (isRedirectError(err)) {
-			throw err;
-		}
-
 		return new Response(
 			pageHtml({
 				clientId,
