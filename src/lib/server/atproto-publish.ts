@@ -107,34 +107,3 @@ export async function createAtprotoStatus(text: string) {
 		text: trimmed
 	};
 }
-
-export async function createAtprotoLike(input: { uri: string; cid: string }) {
-	const session = await getSession();
-	const createdAt = new Date().toISOString();
-	const response = await fetch(`${getPdsUrl()}${CREATE_RECORD_URL}`, {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			accept: 'application/json',
-			authorization: `Bearer ${session.accessJwt}`
-		},
-		body: JSON.stringify({
-			repo: session.did,
-			collection: 'app.bsky.feed.like',
-			record: {
-				$type: 'app.bsky.feed.like',
-				subject: {
-					uri: input.uri,
-					cid: input.cid
-				},
-				createdAt
-			}
-		})
-	});
-
-	if (!response.ok) {
-		throw error(500, `ATProto like createRecord failed with ${response.status}`);
-	}
-
-	return await response.json();
-}
