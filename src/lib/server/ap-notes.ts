@@ -401,6 +401,23 @@ export async function getLocalReplyBySlug(
 	return row ? mapNote(row) : null;
 }
 
+export async function getNoteById(
+	event: Pick<RequestEvent, 'platform'>,
+	noteId: string
+): Promise<ApNoteRecord | null> {
+	const db = getDb(event);
+	if (!db) {
+		return null;
+	}
+
+	const row = await db
+		.prepare(`SELECT * FROM ap_notes WHERE note_id = ? LIMIT 1`)
+		.bind(noteId)
+		.first<Record<string, unknown>>();
+
+	return row ? mapNote(row) : null;
+}
+
 export async function updateLocalNoteBySlug(
 	event: Pick<RequestEvent, 'platform'>,
 	slug: string,
