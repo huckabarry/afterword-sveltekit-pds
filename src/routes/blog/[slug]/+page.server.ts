@@ -4,39 +4,7 @@ import { listDirectRepliesToObject } from '$lib/server/ap-notes';
 import { listVerifiedWebmentionsForTarget } from '$lib/server/webmentions';
 import { getInteractionSummary } from '$lib/server/interactions';
 import { getNoteObjectId } from '$lib/server/activitypub';
-
-function getString(value: unknown) {
-	return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-async function fetchActorPreview(actorId: string) {
-	try {
-		const response = await fetch(actorId, {
-			headers: {
-				Accept:
-					'application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams", application/json'
-			}
-		});
-
-		if (!response.ok) return { avatarUrl: null, profileUrl: actorId };
-
-		const actor = (await response.json()) as Record<string, unknown>;
-		const icon =
-			actor.icon && typeof actor.icon === 'object'
-				? (actor.icon as Record<string, unknown>)
-				: null;
-
-		return {
-			avatarUrl: getString(icon?.url) || null,
-			profileUrl: getString(actor.url) || actorId
-		};
-	} catch {
-		return {
-			avatarUrl: null,
-			profileUrl: actorId
-		};
-	}
-}
+import { enrichReplies } from '$lib/server/activitypub-reply-previews';
 
 export async function load(event) {
 	const { params } = event;
@@ -53,18 +21,7 @@ export async function load(event) {
 		getInteractionSummary(event, objectId),
 		listDirectRepliesToObject(event, objectId)
 	]);
-	const replies = await Promise.all(
-		apReplies
-			.filter((reply) => reply.origin === 'remote')
-			.map(async (reply) => {
-				const actorPreview = await fetchActorPreview(reply.actorId);
-				return {
-					...reply,
-					avatarUrl: actorPreview.avatarUrl,
-					profileUrl: actorPreview.profileUrl
-				};
-			})
-	);
+	const replies = await enrichReplies(event, apReplies);
 
 	return {
 		post,

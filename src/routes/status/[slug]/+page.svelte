@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { formatDate } from '$lib/format';
 	import type { StatusPost } from '$lib/server/atproto';
+	import { browser } from '$app/environment';
 
 	let {
 		data
 	}: {
 		data: {
 			post: StatusPost;
+			origin: string;
 			fediverse: {
 				likeCount: number;
 				announceCount: number;
@@ -21,9 +23,29 @@
 				contentHtml: string;
 				publishedAt: string;
 				inReplyToObjectId: string | null;
+				avatarUrl: string | null;
+				profileUrl: string;
 			}>;
 		};
 	} = $props();
+
+	function openFediverseReply(targetUrl: string) {
+		if (!browser) return;
+
+		const input = window.prompt('Enter your Mastodon or fediverse instance domain', 'mastodon.social');
+		const normalized = String(input || '')
+			.trim()
+			.replace(/^https?:\/\//, '')
+			.replace(/\/+$/, '');
+
+		if (!normalized) return;
+
+		window.open(
+			`https://${normalized}/authorize_interaction?uri=${encodeURIComponent(targetUrl)}`,
+			'_blank',
+			'noreferrer'
+		);
+	}
 </script>
 
 <svelte:head>
@@ -115,14 +137,18 @@
 						</span>
 						<span>Reply on Bluesky</span>
 					</a>
-					<a class="tag-pill status-row__reply-pill" href="/contact">
+					<button
+						class="tag-pill status-row__reply-pill status-row__reply-pill--button"
+						type="button"
+						onclick={() => openFediverseReply(`${data.origin}/status/${data.post.slug}`)}
+					>
 						<span class="status-row__reply-pill-icon" aria-hidden="true">
 							<svg viewBox="0 0 24 24" focusable="false">
-								<path d="M3.75 5.25h16.5a1.5 1.5 0 0 1 1.5 1.5v10.5a1.5 1.5 0 0 1-1.5 1.5H3.75a1.5 1.5 0 0 1-1.5-1.5V6.75a1.5 1.5 0 0 1 1.5-1.5Zm0 1.5v.34l8.25 5.9 8.25-5.9v-.34H3.75Zm16.5 10.5V8.93l-7.81 5.59a.75.75 0 0 1-.88 0L3.75 8.93v8.32h16.5Z"></path>
+								<path d="M17.46 7.85c-.28-2.1-1.76-3.35-4.26-3.35-2.64 0-4.25 1.43-4.25 3.72 0 1.74.95 2.86 2.9 3.3l1.81.42c1.34.31 1.88.8 1.88 1.69 0 1.03-.91 1.72-2.3 1.72-1.45 0-2.33-.64-2.52-1.84H8.2c.16 2.3 1.84 3.67 4.72 3.67 2.84 0 4.66-1.46 4.66-3.82 0-1.79-.92-2.82-3-3.3l-1.66-.39c-1.4-.33-1.93-.78-1.93-1.63 0-.98.86-1.68 2.08-1.68 1.28 0 2.05.61 2.23 1.67h2.16Z"></path>
 							</svg>
 						</span>
-						<span>Reply by email</span>
-					</a>
+						<span>Reply from Fediverse</span>
+					</button>
 				</div>
 			</div>
 			{#if data.fediverse.totalCount > 0}
@@ -164,18 +190,29 @@
 					<h2>Fediverse Replies</h2>
 					{#each data.apReplies as reply}
 						<article class="status-reply">
-							<div class="status-row__meta">
-								<div class="status-row__byline">
-									<span class="status-row__name">{reply.actorName || 'ActivityPub reply'}</span>
+							<div class="entry-replies__avatar entry-replies__avatar--status">
+								{#if reply.avatarUrl}
+									<img src={reply.avatarUrl} alt={reply.actorName || reply.actorHandle || reply.actorId} loading="lazy" />
+								{:else}
+									<span>{(reply.actorName || reply.actorHandle || '?').slice(0, 1).toUpperCase()}</span>
+								{/if}
+							</div>
+							<div class="status-reply__body">
+								<div class="status-row__meta">
+									<div class="status-row__byline">
+										<a class="status-row__name status-row__name--link" href={reply.profileUrl} target="_blank" rel="noreferrer">
+											{reply.actorName || reply.actorHandle || 'ActivityPub reply'}
+										</a>
 									{#if reply.actorHandle}
 										<span class="status-row__handle">@{reply.actorHandle}</span>
 									{/if}
 									<span>·</span>
 									<time datetime={reply.publishedAt}>{formatDate(new Date(reply.publishedAt))}</time>
+									</div>
 								</div>
-							</div>
-							<div class="status-row__content">
-								{@html reply.contentHtml}
+								<div class="status-row__content">
+									{@html reply.contentHtml}
+								</div>
 							</div>
 						</article>
 					{/each}
@@ -201,8 +238,31 @@
 
 	.status-reply {
 		display: grid;
-		gap: 0.4rem;
+		grid-template-columns: auto 1fr;
+		gap: 0.85rem;
+		align-items: start;
 		padding-left: 0.9rem;
 		border-left: 1px solid var(--border);
 	}
+
+	.status-reply__body {
+		display: grid;
+		gap: 0.35rem;
+		min-width: 0;
+	}
+
+	.status-row__name--link {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.status-row__name--link:hover {
+		text-decoration: underline;
+	}
+
+	.entry-replies__avatar--status {
+		width: 2.75rem;
+		height: 2.75rem;
+	}
+
 </style>
