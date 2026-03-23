@@ -104,6 +104,7 @@
 	}
 
 	.photo-card {
+		position: relative;
 		break-inside: avoid;
 		margin: 0 0 0.75rem;
 	}
