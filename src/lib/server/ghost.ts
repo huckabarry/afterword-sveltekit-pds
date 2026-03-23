@@ -47,6 +47,7 @@ export type BlogPost = {
 	publishedAt: Date;
 	updatedAt: Date;
 	coverImage: string | null;
+	coverImageCaption: string | null;
 	tags: string[];
 	primaryTag: string | null;
 	publicTags: GhostTag[];
@@ -206,6 +207,7 @@ function normalizePost(post: Record<string, any>, siteUrl: string): BlogPost {
 		publishedAt,
 		updatedAt,
 		coverImage: extractCoverImage(post),
+		coverImageCaption: stripHtml(post.feature_image_caption || '') || null,
 		tags: Array.isArray(post.tags)
 			? post.tags.map((tag: Record<string, any>) => String(tag.slug || '').trim()).filter(Boolean)
 			: [],

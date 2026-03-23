@@ -7,12 +7,8 @@
 				title: string;
 				excerpt: string;
 				path: string;
+				coverImage: string | null;
 				publishedAt: string | Date;
-				publicTags: Array<{
-					slug: string;
-					label: string;
-					path: string;
-				}>;
 			}>;
 		};
 	} = $props();
@@ -31,25 +27,23 @@
 
 <section class="blog-list blog-list--archive" aria-label="Blog posts">
 	{#each data.posts as post}
-		<article class="blog-row h-entry">
+		<article class="blog-row blog-row--with-image h-entry">
 			<a class="blog-row__link u-url" href={post.path}>
-				<time class="blog-row__date dt-published" datetime={new Date(post.publishedAt).toISOString()}>
-					{new Date(post.publishedAt).toLocaleDateString('en-GB', {
-						day: '2-digit',
-						month: 'short',
-						year: 'numeric'
-					})}
-				</time>
-				{#if post.publicTags.length}
-					<div class="blog-row__tags">
-						{#each post.publicTags as tag}
-							<span class="tag-pill blog-row__tag p-category">{tag.label}</span>
-						{/each}
-					</div>
+				{#if post.coverImage}
+					<img class="blog-row__image" src={post.coverImage} alt={post.title} loading="lazy" />
 				{/if}
-				<h2 class="p-name">{post.title}</h2>
-				<p class="p-summary">{post.excerpt}</p>
-				<span class="blog-row__read-more">Read more <span aria-hidden="true">→</span></span>
+				<div class="blog-row__body">
+					<time class="blog-row__date dt-published" datetime={new Date(post.publishedAt).toISOString()}>
+						{new Date(post.publishedAt).toLocaleDateString('en-GB', {
+							day: '2-digit',
+							month: 'short',
+							year: 'numeric'
+						})}
+					</time>
+					<h2 class="p-name">{post.title}</h2>
+					<p class="p-summary">{post.excerpt}</p>
+					<span class="blog-row__read-more">Read more <span aria-hidden="true">→</span></span>
+				</div>
 			</a>
 		</article>
 	{:else}
@@ -58,3 +52,29 @@
 		</article>
 	{/each}
 </section>
+
+<style>
+	.blog-row--with-image .blog-row__link {
+		display: grid;
+		grid-template-columns: 11rem minmax(0, 1fr);
+		gap: 1rem;
+		align-items: start;
+	}
+
+	.blog-row__image {
+		display: block;
+		width: 100%;
+		height: auto;
+		border-radius: 0.5rem;
+	}
+
+	.blog-row__body {
+		min-width: 0;
+	}
+
+	@media (max-width: 640px) {
+		.blog-row--with-image .blog-row__link {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>
