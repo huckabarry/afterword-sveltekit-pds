@@ -62,12 +62,31 @@ To send signed `Accept` activities and later signed post delivery, add these Clo
 Optional:
 
 - `ACTIVITYPUB_KEY_ID`
+- `ACTIVITYPUB_ALSO_KNOWN_AS`
 
 If `ACTIVITYPUB_KEY_ID` is omitted, the app uses:
 
 - `https://afterword.blog/ap/actor#main-key`
 
 The actor endpoint will expose the public key when `ACTIVITYPUB_PUBLIC_KEY_PEM` is present.
+
+If you want this actor to advertise a migration alias target, set:
+
+- `ACTIVITYPUB_ALSO_KNOWN_AS`
+
+Use one or more full actor/profile URLs separated by commas. Example:
+
+```text
+https://mastodon.social/@bryan
+```
+
+or:
+
+```text
+https://mastodon.social/@bryan,https://urbanists.social/@bryan
+```
+
+This will publish `alsoKnownAs` on the actor document, which can help with receiving-side alias configuration during account migration.
 
 ## 6. Manual delivery trigger
 

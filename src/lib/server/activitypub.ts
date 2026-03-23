@@ -55,6 +55,13 @@ export function getActivityPubPrivateKeyPem() {
 	return String(env.ACTIVITYPUB_PRIVATE_KEY_PEM || '').trim() || null;
 }
 
+export function getAlsoKnownAs() {
+	return String(env.ACTIVITYPUB_ALSO_KNOWN_AS || '')
+		.split(',')
+		.map((value) => value.trim())
+		.filter(Boolean);
+}
+
 export function getNoteObjectId(origin: string, slug: string) {
 	return `${origin}/ap/posts/${slug}`;
 }
@@ -86,6 +93,7 @@ export function jrdJson(body: unknown, init?: ResponseInit) {
 export function createActor(origin: string) {
 	const actorId = getActorId(origin);
 	const publicKeyPem = getActivityPubPublicKeyPem();
+	const alsoKnownAs = getAlsoKnownAs();
 
 	return {
 		'@context': [ACTIVITY_STREAMS_CONTEXT, 'https://w3id.org/security/v1'],
@@ -104,6 +112,11 @@ export function createActor(origin: string) {
 		outbox: `${origin}${OUTBOX_PATH}`,
 		followers: `${origin}${FOLLOWERS_PATH}`,
 		following: `${origin}${FOLLOWING_PATH}`,
+		...(alsoKnownAs.length
+			? {
+					alsoKnownAs
+				}
+			: {}),
 		...(publicKeyPem
 			? {
 					publicKey: {
