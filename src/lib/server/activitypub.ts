@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
 import { getBlogPostBySlug, getBlogPosts, type BlogPost } from '$lib/server/ghost';
+import { getStatusBySlug, type StatusPost } from '$lib/server/atproto';
 
 const ACTIVITY_STREAMS_CONTEXT = 'https://www.w3.org/ns/activitystreams';
 const PUBLIC_COLLECTION = 'https://www.w3.org/ns/activitystreams#Public';
@@ -56,6 +57,10 @@ export function getActivityPubPrivateKeyPem() {
 
 export function getNoteObjectId(origin: string, slug: string) {
 	return `${origin}/ap/posts/${slug}`;
+}
+
+export function getStatusObjectId(origin: string, slug: string) {
+	return `${origin}/ap/status/${slug}`;
 }
 
 export function activityJson(body: unknown, init?: ResponseInit) {
@@ -197,6 +202,65 @@ export function blogPostToCreateActivity(post: BlogPost, origin: string) {
 	};
 }
 
+export function statusPostToNote(post: StatusPost, origin: string) {
+	const actorId = getActorId(origin);
+	const objectId = getStatusObjectId(origin, post.slug);
+
+	return {
+		'@context': ACTIVITY_STREAMS_CONTEXT,
+		id: objectId,
+		type: 'Note',
+		attributedTo: actorId,
+		published: post.date.toISOString(),
+		url: `${origin}/status/${post.slug}`,
+		to: [PUBLIC_COLLECTION],
+		cc: [`${origin}${FOLLOWERS_PATH}`],
+		content: post.html,
+		contentMap: {
+			en: post.html
+		},
+		mediaType: 'text/html',
+		inReplyTo: post.replyTo?.uri ? post.replyTo.blueskyUrl : undefined,
+		attachment: [
+			...post.images.map((image) => ({
+				type: 'Image',
+				url: image.fullsize || image.thumb,
+				name: image.alt || post.displayName
+			})),
+			...(post.external
+				? [
+						{
+							type: 'Link',
+							href: post.external.uri,
+							name: post.external.title,
+							summary: post.external.description
+						}
+					]
+				: [])
+		],
+		source: {
+			content: post.text,
+			mediaType: 'text/plain'
+		}
+	};
+}
+
+export function statusPostToCreateActivity(post: StatusPost, origin: string) {
+	const actorId = getActorId(origin);
+	const object = statusPostToNote(post, origin);
+
+	return {
+		'@context': ACTIVITY_STREAMS_CONTEXT,
+		id: `${object.id}#create`,
+		type: 'Create',
+		actor: actorId,
+		published: post.date.toISOString(),
+		to: [PUBLIC_COLLECTION],
+		cc: [`${origin}${FOLLOWERS_PATH}`],
+		object
+	};
+}
+
 export async function getOutboxPage(origin: string, pageNumber = 1, pageSize = 10) {
 	const posts = await getBlogPosts();
 	const start = Math.max(0, (pageNumber - 1) * pageSize);
@@ -215,4 +279,10 @@ export async function getActivityObjectBySlug(slug: string, origin: string) {
 	const post = await getBlogPostBySlug(slug);
 	if (!post) return null;
 	return blogPostToArticle(post, origin);
+}
+
+export async function getStatusActivityObjectBySlug(slug: string, origin: string) {
+	const post = await getStatusBySlug(slug);
+	if (!post) return null;
+	return statusPostToNote(post, origin);
 }

@@ -102,6 +102,22 @@ This will:
 - only send missing deliveries
 - record new delivery attempts in `ap_deliveries`
 
+To manually deliver one status post:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  https://afterword.blog/ap/admin/deliver-status/YOUR-STATUS-SLUG
+```
+
+To deliver only recent missing status posts:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  "https://afterword.blog/ap/admin/deliver-missing-statuses?limit=20"
+```
+
 ## 7. Automate delivery with GitHub Actions
 
 This repo includes a scheduled workflow:
@@ -111,6 +127,7 @@ This repo includes a scheduled workflow:
 It runs hourly and calls:
 
 - `POST https://afterword.blog/ap/admin/deliver-missing?limit=10`
+- `POST https://afterword.blog/ap/admin/deliver-missing-statuses?limit=20`
 
 To enable it, add this GitHub Actions repository secret:
 
