@@ -20,6 +20,17 @@
 			tracks: TrackEntry[];
 		};
 	} = $props();
+
+	function shouldRenderIntroParagraph(paragraph: string) {
+		const normalizedParagraph = paragraph.trim().toLowerCase();
+		const normalizedDescription = data.intro.description.trim().toLowerCase();
+
+		if (!normalizedParagraph || normalizedParagraph === normalizedDescription) {
+			return false;
+		}
+
+		return !normalizedParagraph.startsWith(normalizedDescription.replace(/[.:!?]+$/g, ''));
+	}
 </script>
 
 <svelte:head>
@@ -33,7 +44,9 @@
 			<section class="content-body">
 				<p>{data.intro.description}</p>
 				{#each data.intro.paragraphs as paragraph}
-					<p>{paragraph}</p>
+					{#if shouldRenderIntroParagraph(paragraph)}
+						<p>{paragraph}</p>
+					{/if}
 				{/each}
 			</section>
 		</div>
