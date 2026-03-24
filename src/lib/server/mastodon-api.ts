@@ -22,6 +22,7 @@ import {
 	type CachedRemoteStatus
 } from '$lib/server/mastodon-remote-statuses';
 import type { RequestEvent } from '@sveltejs/kit';
+import sharp from 'sharp';
 
 function base64UrlEncode(value: string) {
 	if (typeof Buffer !== 'undefined') {
@@ -249,16 +250,103 @@ export async function buildRemoteAccount(event: Pick<RequestEvent, 'platform' | 
 }
 
 function serializeMediaAttachments(attachments: Array<{ url: string; mediaType: string; alt: string }>) {
-	return attachments.map((attachment) => ({
-		id: encodeMastodonMediaId(attachment.url),
-		type: attachment.mediaType.startsWith('video/') ? 'video' : 'image',
-		url: attachment.url,
-		preview_url: attachment.url,
-		remote_url: null,
-		meta: null,
-		description: attachment.alt || null,
+	return Promise.all(attachments.map((attachment) => serializeMediaAttachment(attachment)));
+}
+
+type MediaAttachmentInput = {
+	url: string;
+	mediaType: string;
+	alt: string;
+	previewUrl?: string | null;
+	remoteUrl?: string | null;
+};
+
+type MediaAttachmentMeta = {
+	original: {
+		width: number;
+		height: number;
+		size: string;
+		aspect: number;
+	};
+	small: {
+		width: number;
+		height: number;
+		size: string;
+		aspect: number;
+	};
+	focus: {
+		x: number;
+		y: number;
+	};
+};
+
+const mediaMetaCache = new Map<string, MediaAttachmentMeta | null>();
+
+async function getImageMeta(url: string): Promise<MediaAttachmentMeta | null> {
+	if (!url) return null;
+	if (mediaMetaCache.has(url)) {
+		return mediaMetaCache.get(url) ?? null;
+	}
+
+	try {
+		const response = await fetch(url, {
+			headers: { Accept: 'image/*,*/*;q=0.8' }
+		});
+		if (!response.ok) {
+			mediaMetaCache.set(url, null);
+			return null;
+		}
+
+		const bytes = new Uint8Array(await response.arrayBuffer());
+		const metadata = await sharp(bytes).metadata();
+		const width = Number(metadata.width || 0);
+		const height = Number(metadata.height || 0);
+		if (!width || !height) {
+			mediaMetaCache.set(url, null);
+			return null;
+		}
+
+		const aspect = width / height;
+		const meta = {
+			original: {
+				width,
+				height,
+				size: `${width}x${height}`,
+				aspect
+			},
+			small: {
+				width,
+				height,
+				size: `${width}x${height}`,
+				aspect
+			},
+			focus: {
+				x: 0,
+				y: 0
+			}
+		} satisfies MediaAttachmentMeta;
+
+		mediaMetaCache.set(url, meta);
+		return meta;
+	} catch {
+		mediaMetaCache.set(url, null);
+		return null;
+	}
+}
+
+async function serializeMediaAttachment(input: MediaAttachmentInput) {
+	const meta = input.mediaType.startsWith('image/') ? await getImageMeta(input.previewUrl || input.url) : null;
+
+	return {
+		id: encodeMastodonMediaId(input.url),
+		type: input.mediaType.startsWith('video/') ? 'video' : 'image',
+		url: input.url,
+		preview_url: input.previewUrl || input.url,
+		remote_url: input.remoteUrl ?? null,
+		meta,
+		description: input.alt || null,
 		blurhash: null
-	}));
+	};
 }
 
 function serializeCard(status: StatusPost) {
@@ -312,7 +400,7 @@ export async function serializeLocalNoteStatus(
 			website: `${event.url.origin}/`
 		},
 		account,
-		media_attachments: serializeMediaAttachments(note.attachments),
+		media_attachments: await serializeMediaAttachments(note.attachments),
 		mentions: [],
 		tags: [],
 		emojis: [],
@@ -330,14 +418,11 @@ export async function serializeMirroredStatus(
 	const objectId = `${origin}/ap/status/${status.slug}`;
 	const favourited = await isObjectFavourited(event, objectId);
 	const mediaAttachments = status.images.map((image) => ({
-		id: encodeMastodonMediaId(image.fullsize),
-		type: 'image',
 		url: image.fullsize,
-		preview_url: image.thumb,
-		remote_url: image.fullsize,
-		meta: null,
-		description: image.alt || null,
-		blurhash: null
+		mediaType: 'image/jpeg',
+		alt: image.alt || '',
+		previewUrl: image.thumb,
+		remoteUrl: image.fullsize
 	}));
 
 	return {
@@ -364,7 +449,7 @@ export async function serializeMirroredStatus(
 			website: status.blueskyUrl
 		},
 		account,
-		media_attachments: mediaAttachments,
+		media_attachments: await Promise.all(mediaAttachments.map((item) => serializeMediaAttachment(item))),
 		mentions: [],
 		tags: [],
 		emojis: [],
@@ -373,28 +458,26 @@ export async function serializeMirroredStatus(
 	};
 }
 
-function serializeRemoteObjectAttachments(attachment: unknown) {
+function serializeRemoteObjectAttachments(attachment: unknown): MediaAttachmentInput[] {
 	const items = Array.isArray(attachment) ? attachment : attachment ? [attachment] : [];
+	const attachments: MediaAttachmentInput[] = [];
 
-	return items
-		.map((item) => {
-			if (!item || typeof item !== 'object') return null;
-			const record = item as Record<string, unknown>;
-			const url = getString(record.url);
-			if (!url) return null;
-			const mediaType = getString(record.mediaType) || 'image/jpeg';
-			return {
-				id: encodeMastodonMediaId(url),
-				type: mediaType.startsWith('video/') ? 'video' : 'image',
-				url,
-				preview_url: url,
-				remote_url: url,
-				meta: null,
-				description: getString(record.name),
-				blurhash: null
-			};
-		})
-		.filter(Boolean);
+	for (const item of items) {
+		if (!item || typeof item !== 'object') continue;
+		const record = item as Record<string, unknown>;
+		const url = getString(record.url);
+		if (!url) continue;
+		const mediaType = getString(record.mediaType) || 'image/jpeg';
+		attachments.push({
+			url,
+			mediaType,
+			alt: getString(record.name) || '',
+			previewUrl: url,
+			remoteUrl: url
+		});
+	}
+
+	return attachments;
 }
 
 async function serializeRemoteObjectStatus(
@@ -453,7 +536,9 @@ async function serializeRemoteObjectStatus(
 			website: getString(object.url) || objectId
 		},
 		account,
-		media_attachments: serializeRemoteObjectAttachments(object.attachment),
+		media_attachments: await Promise.all(
+			serializeRemoteObjectAttachments(object.attachment).map((item) => serializeMediaAttachment(item))
+		),
 		mentions,
 		tags: [],
 		emojis: [],
@@ -536,7 +621,7 @@ async function serializeCachedRemoteStatus(
 			website: status.objectUrl || status.objectId
 		},
 		account: buildRemoteAccountFromCachedStatus(event, status),
-		media_attachments: serializeMediaAttachments(status.attachments),
+		media_attachments: await serializeMediaAttachments(status.attachments),
 		mentions: status.mentions.map((mention) => {
 			const acct = mention.name.replace(/^@/, '');
 			return {
@@ -930,7 +1015,7 @@ async function serializeReplyNote(event: Pick<RequestEvent, 'platform' | 'url'>,
 			website: note.objectUrl || note.noteId
 		},
 		account: profile,
-		media_attachments: serializeMediaAttachments(note.attachments),
+		media_attachments: await serializeMediaAttachments(note.attachments),
 		mentions: [],
 		tags: [],
 		emojis: [],
