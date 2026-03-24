@@ -60,7 +60,12 @@
 				<p class="admin-eyebrow">Feed</p>
 				<h2>Followed posts</h2>
 			</div>
-			<a href="/admin/following/accounts">Manage following</a>
+			<div class="admin-thread__actions admin-thread__actions--social">
+				<form method="POST" action="?/refresh">
+					<button class="admin-pill-link" type="submit">Refresh feed</button>
+				</form>
+				<a href="/admin/following/accounts">Manage following</a>
+			</div>
 		</div>
 
 		{#if flash.liked}
@@ -73,6 +78,10 @@
 
 		{#if flash.replied}
 			<p class="admin-form-success">Reply published.</p>
+		{/if}
+
+		{#if data.refreshed}
+			<p class="admin-form-success">Feed refreshed.</p>
 		{/if}
 
 		{#if statuses.length}

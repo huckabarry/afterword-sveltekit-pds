@@ -41,16 +41,6 @@ async function sendBoost(origin: string, objectId: string) {
 export const load: PageServerLoad = async (event) => {
 	const following = await listFollowing(event);
 
-	await Promise.all(
-		following.map((account) =>
-			syncRemoteStatusesForActor(event, account.actorId, {
-				freshnessMs: 60_000,
-				maxPages: 3,
-				maxItems: 80
-			}).catch(() => [])
-		)
-	);
-
 	const statuses = following.length
 		? await listCachedRemoteStatusesForActors(
 				event,
@@ -74,7 +64,8 @@ export const load: PageServerLoad = async (event) => {
 		unfollowed: event.url.searchParams.get('unfollowed') === '1',
 		liked: event.url.searchParams.get('liked') === '1',
 		boosted: event.url.searchParams.get('boosted') === '1',
-		replied: event.url.searchParams.get('replied') === '1'
+		replied: event.url.searchParams.get('replied') === '1',
+		refreshed: event.url.searchParams.get('refreshed') === '1'
 	};
 };
 
@@ -149,5 +140,19 @@ export const actions: Actions = {
 		}
 
 		return { replied: true, replyTo };
+	},
+	refresh: async (event) => {
+		const following = await listFollowing(event);
+
+		for (const account of following) {
+			await syncRemoteStatusesForActor(event, account.actorId, {
+				force: true,
+				freshnessMs: 0,
+				maxPages: 2,
+				maxItems: 60
+			}).catch(() => []);
+		}
+
+		return { refreshed: true };
 	}
 };
