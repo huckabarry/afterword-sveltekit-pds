@@ -14,6 +14,13 @@ import { fetchActivityJson, fetchRemoteActor, stripHtmlToText } from '$lib/serve
 import { getStatusBySlug, getStatuses, type StatusPost } from '$lib/server/atproto';
 import { getFollowingByActorId, listFollowing } from '$lib/server/activitypub-follows';
 import { isObjectFavourited } from '$lib/server/mastodon-state';
+import {
+	getCachedRemoteStatus,
+	listCachedRemoteStatusesForActor,
+	listCachedRemoteStatusesForActors,
+	syncRemoteStatusesForActor,
+	type CachedRemoteStatus
+} from '$lib/server/mastodon-remote-statuses';
 import type { RequestEvent } from '@sveltejs/kit';
 
 function base64UrlEncode(value: string) {
@@ -455,6 +462,97 @@ async function serializeRemoteObjectStatus(
 	};
 }
 
+function buildRemoteAccountFromCachedStatus(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	status: CachedRemoteStatus
+) {
+	const origin = getActivityPubOrigin(event);
+	const acct =
+		status.actorHandle?.replace(/^@+/, '') || `${new URL(status.actorId).pathname.split('/').pop() || 'remote'}@${new URL(status.actorId).host}`;
+	const username = acct.split('@')[0] || acct;
+	const avatar = status.actorAvatarUrl || `${origin}/assets/images/status-avatar.jpg`;
+	const header = status.actorHeaderUrl || avatar;
+
+	return {
+		id: encodeMastodonAccountId(status.actorId),
+		username,
+		acct,
+		display_name: status.actorName || username,
+		note: status.actorSummary || '',
+		url: status.actorUrl || status.actorId,
+		uri: status.actorId,
+		avatar,
+		avatar_static: avatar,
+		header,
+		header_static: header,
+		locked: false,
+		bot: false,
+		discoverable: true,
+		group: false,
+		created_at: '2026-01-01T00:00:00.000Z',
+		followers_count: 0,
+		following_count: 0,
+		statuses_count: 0,
+		last_status_at: status.publishedAt ? status.publishedAt.slice(0, 10) : null,
+		emojis: [],
+		fields: [],
+		source: {
+			note: status.actorSummary || '',
+			fields: [],
+			privacy: 'public',
+			sensitive: false,
+			language: 'en'
+		}
+	};
+}
+
+async function serializeCachedRemoteStatus(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	status: CachedRemoteStatus
+) {
+	const favourited = await isObjectFavourited(event, status.objectId);
+
+	return {
+		id: encodeMastodonStatusId(status.objectId, status.publishedAt),
+		created_at: isoDate(status.publishedAt),
+		in_reply_to_id: status.inReplyToObjectId ? encodeMastodonStatusId(status.inReplyToObjectId) : null,
+		in_reply_to_account_id: null,
+		sensitive: false,
+		spoiler_text: '',
+		visibility: 'public',
+		language: 'en',
+		uri: status.objectId,
+		url: status.objectUrl || status.objectId,
+		replies_count: 0,
+		reblogs_count: 0,
+		favourites_count: favourited ? 1 : 0,
+		favourited,
+		reblogged: false,
+		bookmarked: false,
+		content: status.contentHtml || textToHtmlFallback(status.contentText),
+		reblog: null,
+		application: {
+			name: 'ActivityPub',
+			website: status.objectUrl || status.objectId
+		},
+		account: buildRemoteAccountFromCachedStatus(event, status),
+		media_attachments: serializeMediaAttachments(status.attachments),
+		mentions: status.mentions.map((mention) => {
+			const acct = mention.name.replace(/^@/, '');
+			return {
+				id: encodeMastodonAccountId(mention.href),
+				username: acct.split('@')[0] || acct,
+				url: mention.href,
+				acct
+			};
+		}),
+		tags: [],
+		emojis: [],
+		card: null,
+		poll: null
+	};
+}
+
 async function expandOrderedItems(collectionOrPage: Record<string, unknown>) {
 	const directItems = Array.isArray(collectionOrPage.orderedItems) ? collectionOrPage.orderedItems : [];
 	if (directItems.length) return directItems;
@@ -481,93 +579,64 @@ export async function fetchRemoteStatusesForActor(
 		preferOriginals?: boolean;
 	}
 ) {
-	const actor = await fetchActivityJson(actorId);
-	const outboxUrl = getString(actor.outbox);
-	if (!outboxUrl) return [];
-
-	const outbox = await fetchActivityJson(outboxUrl);
-	const orderedItems = await expandOrderedItems(outbox);
-	const originals: Array<Record<string, unknown>> = [];
-	const replies: Array<Record<string, unknown>> = [];
-	const scanLimit = Math.max(limit * 4, 40);
-
-	for (const item of orderedItems) {
-		if (!options?.preferOriginals && originals.length + replies.length >= limit) break;
-		if (options?.preferOriginals && originals.length >= limit && originals.length + replies.length >= scanLimit) {
-			break;
-		}
-		if (originals.length + replies.length >= scanLimit) break;
-
-		let record: Record<string, unknown> | null = null;
-		if (typeof item === 'string') {
-			record = await fetchActivityJson(item).catch(() => null);
-		} else if (item && typeof item === 'object') {
-			record = item as Record<string, unknown>;
-		}
-		if (!record) continue;
-
-		const type = String(record.type || '');
-		let object = record;
-
-		if (type === 'Create') {
-			const activityObject = record.object;
-			if (typeof activityObject === 'string') {
-				object = (await fetchActivityJson(activityObject).catch(() => null)) || {};
-			} else if (activityObject && typeof activityObject === 'object') {
-				object = activityObject as Record<string, unknown>;
-			}
-		}
-
-		const objectType = String(object.type || '');
-		if (!['Note', 'Article', 'Page'].includes(objectType)) continue;
-
-		if (getString(object.inReplyTo)) {
-			replies.push(object);
-		} else {
-			originals.push(object);
-		}
-	}
-
-	const statuses = options?.preferOriginals
+	await syncRemoteStatusesForActor(event, actorId, {
+		freshnessMs: 60_000,
+		maxPages: 4,
+		maxItems: Math.max(limit * 8, 160)
+	});
+	const cached = await listCachedRemoteStatusesForActor(event, actorId, { limit: Math.max(limit * 4, 80) });
+	const originals = cached.filter((item: CachedRemoteStatus) => !item.inReplyToObjectId);
+	const replies = cached.filter((item: CachedRemoteStatus) => item.inReplyToObjectId);
+	const selected = options?.preferOriginals
 		? [...originals, ...replies].slice(0, limit)
-		: [...originals, ...replies]
-				.sort(
-					(a, b) =>
-						Date.parse(getString(b.published) || getString(b.updated) || '') -
-						Date.parse(getString(a.published) || getString(a.updated) || '')
-				)
-				.slice(0, limit);
+		: [...cached].slice(0, limit);
 
 	return (
-		await Promise.all(statuses.map((item) => serializeRemoteObjectStatus(event, actorId, item)))
+		await Promise.all(selected.map((item) => serializeCachedRemoteStatus(event, item)))
 	).filter(Boolean);
 }
 
 export async function buildHomeTimeline(event: Pick<RequestEvent, 'platform' | 'url'>, limit = 40) {
 	const following = await listFollowing(event);
-	const remoteLimit = following.length ? Math.max(1, Math.floor(limit / Math.min(following.length, 5))) : 0;
+	const followedActors = following.slice(0, 8);
+	const remoteLimit = followedActors.length ? Math.max(6, Math.floor((limit * 2) / Math.min(followedActors.length, 4))) : 0;
 
-	const [localNotes, mirroredStatuses, remoteStatuses] = await Promise.all([
+	await Promise.all(
+		followedActors.map((item) =>
+			syncRemoteStatusesForActor(event, item.actorId, {
+				freshnessMs: 60_000,
+				maxPages: 4,
+				maxItems: Math.max(remoteLimit * 6, 120)
+			}).catch(() => [])
+		)
+	);
+
+	const [localNotes, mirroredStatuses, cachedRemoteStatuses] = await Promise.all([
 		listLocalNotes(event, limit),
 		getStatuses(),
-		Promise.all(
-			following
-				.slice(0, 5)
-				.map((item) =>
-					fetchRemoteStatusesForActor(event, item.actorId, remoteLimit || 5, {
-						preferOriginals: true
-					}).catch(() => [])
-				)
+		listCachedRemoteStatusesForActors(
+			event,
+			followedActors.map((item) => item.actorId),
+			{ limit: Math.max(remoteLimit * followedActors.length, 80) }
 		)
 	]);
 
-	const localStatuses = await Promise.all(localNotes.map((note) => serializeLocalNoteStatus(event, note)));
-	const mirrored = await Promise.all(
-		mirroredStatuses.slice(0, limit).map((status) => serializeMirroredStatus(event, status))
+	const localStatuses = await Promise.all(
+		localNotes.map((note: LocalApNoteListItem) => serializeLocalNoteStatus(event, note))
 	);
-	const remote = remoteStatuses
-		.flat()
-		.filter((item): item is NonNullable<(typeof remoteStatuses)[number][number]> => Boolean(item));
+	const mirrored = await Promise.all(
+		mirroredStatuses.slice(0, limit).map((status: StatusPost) => serializeMirroredStatus(event, status))
+	);
+	const remote = (
+		await Promise.all(
+			cachedRemoteStatuses
+				.filter((item: CachedRemoteStatus) =>
+					followedActors.some((actor) => actor.actorId === item.actorId)
+				)
+				.slice(0, Math.max(limit * 3, 80))
+				.map((item: CachedRemoteStatus) => serializeCachedRemoteStatus(event, item))
+		)
+	).filter(Boolean);
 	const ownStatuses = [...localStatuses, ...mirrored].sort(
 		(a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)
 	);
@@ -603,31 +672,44 @@ export async function buildPublicTimeline(
 ) {
 	const limit = Math.max(1, Math.min(options?.limit || 40, 80));
 	const following = options?.local ? [] : await listFollowing(event);
-	const remoteLimit = following.length ? Math.max(1, Math.floor(limit / Math.min(following.length, 5))) : 0;
+	const followedActors = following.slice(0, 8);
+	const remoteLimit = followedActors.length ? Math.max(8, Math.floor((limit * 3) / Math.min(followedActors.length, 4))) : 0;
 
-	const [localNotes, mirroredStatuses, remoteStatuses] = await Promise.all([
+	await Promise.all(
+		followedActors.map((item) =>
+			syncRemoteStatusesForActor(event, item.actorId, {
+				freshnessMs: 60_000,
+				maxPages: 4,
+				maxItems: Math.max(remoteLimit * 6, 120)
+			}).catch(() => [])
+		)
+	);
+
+	const [localNotes, mirroredStatuses, cachedRemoteStatuses] = await Promise.all([
 		listLocalNotes(event, limit),
 		getStatuses(),
 		options?.local
 			? Promise.resolve([])
-			: Promise.all(
-					following
-						.slice(0, 5)
-						.map((item) =>
-							fetchRemoteStatusesForActor(event, item.actorId, remoteLimit || 5, {
-								preferOriginals: true
-							}).catch(() => [])
-						)
+			: listCachedRemoteStatusesForActors(
+					event,
+					followedActors.map((item) => item.actorId),
+					{ limit: Math.max(remoteLimit * followedActors.length, 100) }
 			  )
 	]);
 
-	const localStatuses = await Promise.all(localNotes.map((note) => serializeLocalNoteStatus(event, note)));
-	const mirrored = await Promise.all(
-		mirroredStatuses.slice(0, limit).map((status) => serializeMirroredStatus(event, status))
+	const localStatuses = await Promise.all(
+		localNotes.map((note: LocalApNoteListItem) => serializeLocalNoteStatus(event, note))
 	);
-	const remote = (Array.isArray(remoteStatuses) ? remoteStatuses : [])
-		.flat()
-		.filter((item): item is NonNullable<(typeof remoteStatuses extends Array<infer U> ? U : never)[number]> => Boolean(item));
+	const mirrored = await Promise.all(
+		mirroredStatuses.slice(0, limit).map((status: StatusPost) => serializeMirroredStatus(event, status))
+	);
+	const remote = (
+		await Promise.all(
+			(Array.isArray(cachedRemoteStatuses) ? cachedRemoteStatuses : [])
+				.slice(0, Math.max(limit * 4, 100))
+				.map((item) => serializeCachedRemoteStatus(event, item))
+		)
+	).filter(Boolean);
 	const ownStatuses = [...localStatuses, ...mirrored].sort(
 		(a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)
 	);
@@ -783,6 +865,11 @@ export async function resolveStatusByObjectId(
 		const listItem =
 			localNotes.find((item) => item.noteId === note.noteId) || ({ ...note, incomingReplyCount: 0 } as LocalApNoteListItem);
 		return await serializeLocalNoteStatus(event, listItem);
+	}
+
+	const cachedRemoteStatus = await getCachedRemoteStatus(event, objectId);
+	if (cachedRemoteStatus) {
+		return serializeCachedRemoteStatus(event, cachedRemoteStatus);
 	}
 
 	if (objectId.startsWith('http')) {
