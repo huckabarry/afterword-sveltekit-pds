@@ -47,6 +47,22 @@ async function ensureTables(event: Pick<RequestEvent, 'platform'>) {
 				.run();
 			await db
 				.prepare(
+					`CREATE TABLE IF NOT EXISTS mastodon_status_mutes (
+						object_id TEXT PRIMARY KEY,
+						created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+					)`
+				)
+				.run();
+			await db
+				.prepare(
+					`CREATE TABLE IF NOT EXISTS mastodon_pins (
+						object_id TEXT PRIMARY KEY,
+						created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+					)`
+				)
+				.run();
+			await db
+				.prepare(
 					`CREATE TABLE IF NOT EXISTS mastodon_mutes (
 						actor_id TEXT PRIMARY KEY,
 						notifications INTEGER NOT NULL DEFAULT 0,
@@ -108,7 +124,12 @@ async function getActivityId(
 
 async function upsertObjectState(
 	event: Pick<RequestEvent, 'platform'>,
-	table: 'mastodon_favourites' | 'mastodon_bookmarks' | 'mastodon_reblogs',
+	table:
+		| 'mastodon_favourites'
+		| 'mastodon_bookmarks'
+		| 'mastodon_reblogs'
+		| 'mastodon_status_mutes'
+		| 'mastodon_pins',
 	objectId: string,
 	activityId?: string | null
 ) {
@@ -116,10 +137,10 @@ async function upsertObjectState(
 	if (!db) throw new Error('D1 database is not configured');
 	await ensureTables(event);
 
-	if (table === 'mastodon_bookmarks') {
+	if (table === 'mastodon_bookmarks' || table === 'mastodon_status_mutes' || table === 'mastodon_pins') {
 		await db
 			.prepare(
-				`INSERT INTO mastodon_bookmarks (object_id)
+				`INSERT INTO ${table} (object_id)
 				 VALUES (?)
 				 ON CONFLICT(object_id) DO NOTHING`
 			)
@@ -140,7 +161,12 @@ async function upsertObjectState(
 
 async function deleteObjectState(
 	event: Pick<RequestEvent, 'platform'>,
-	table: 'mastodon_favourites' | 'mastodon_bookmarks' | 'mastodon_reblogs',
+	table:
+		| 'mastodon_favourites'
+		| 'mastodon_bookmarks'
+		| 'mastodon_reblogs'
+		| 'mastodon_status_mutes'
+		| 'mastodon_pins',
 	objectId: string
 ) {
 	const db = getDb(event);
@@ -286,6 +312,30 @@ export async function reblogObject(
 
 export async function unreblogObject(event: Pick<RequestEvent, 'platform'>, objectId: string) {
 	return deleteObjectState(event, 'mastodon_reblogs', objectId);
+}
+
+export async function isStatusMuted(event: Pick<RequestEvent, 'platform'>, objectId: string) {
+	return hasRow(event, 'mastodon_status_mutes', 'object_id', objectId);
+}
+
+export async function muteStatus(event: Pick<RequestEvent, 'platform'>, objectId: string) {
+	return upsertObjectState(event, 'mastodon_status_mutes', objectId);
+}
+
+export async function unmuteStatus(event: Pick<RequestEvent, 'platform'>, objectId: string) {
+	return deleteObjectState(event, 'mastodon_status_mutes', objectId);
+}
+
+export async function isStatusPinned(event: Pick<RequestEvent, 'platform'>, objectId: string) {
+	return hasRow(event, 'mastodon_pins', 'object_id', objectId);
+}
+
+export async function pinStatus(event: Pick<RequestEvent, 'platform'>, objectId: string) {
+	return upsertObjectState(event, 'mastodon_pins', objectId);
+}
+
+export async function unpinStatus(event: Pick<RequestEvent, 'platform'>, objectId: string) {
+	return deleteObjectState(event, 'mastodon_pins', objectId);
 }
 
 export async function isActorMuted(event: Pick<RequestEvent, 'platform'>, actorId: string) {

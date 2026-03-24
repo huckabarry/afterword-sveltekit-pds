@@ -18,7 +18,9 @@ import {
 	isActorMuted,
 	isObjectBookmarked,
 	isObjectFavourited,
-	isObjectReblogged
+	isObjectReblogged,
+	isStatusMuted,
+	isStatusPinned
 } from '$lib/server/mastodon-state';
 import {
 	getCachedRemoteStatus,
@@ -383,6 +385,8 @@ export async function serializeLocalNoteStatus(
 	const favourited = await isObjectFavourited(event, note.noteId);
 	const bookmarked = await isObjectBookmarked(event, note.noteId);
 	const reblogged = await isObjectReblogged(event, note.noteId);
+	const muted = await isStatusMuted(event, note.noteId);
+	const pinned = await isStatusPinned(event, note.noteId);
 
 	return {
 		id: encodeMastodonStatusId(note.noteId, note.publishedAt),
@@ -400,8 +404,11 @@ export async function serializeLocalNoteStatus(
 		favourites_count: favourited ? 1 : 0,
 		favourited,
 		reblogged,
+		muted,
 		bookmarked,
+		pinned,
 		content: note.contentHtml,
+		text: note.contentText || stripHtmlToText(note.contentHtml || ''),
 		reblog: null,
 		application: {
 			name: 'Afterword',
@@ -413,7 +420,9 @@ export async function serializeLocalNoteStatus(
 		tags: [],
 		emojis: [],
 		card: null,
-		poll: null
+		poll: null,
+		filtered: [],
+		edited_at: null
 	};
 }
 
@@ -427,6 +436,8 @@ export async function serializeMirroredStatus(
 	const favourited = await isObjectFavourited(event, objectId);
 	const bookmarked = await isObjectBookmarked(event, objectId);
 	const reblogged = await isObjectReblogged(event, objectId);
+	const muted = await isStatusMuted(event, objectId);
+	const pinned = await isStatusPinned(event, objectId);
 	const mediaAttachments = status.images.map((image) => ({
 		url: image.fullsize,
 		mediaType: 'image/jpeg',
@@ -451,8 +462,11 @@ export async function serializeMirroredStatus(
 		favourites_count: status.likeCount + (favourited ? 1 : 0),
 		favourited,
 		reblogged,
+		muted,
 		bookmarked,
+		pinned,
 		content: status.html,
+		text: status.text,
 		reblog: null,
 		application: {
 			name: 'Bluesky mirror',
@@ -464,7 +478,9 @@ export async function serializeMirroredStatus(
 		tags: [],
 		emojis: [],
 		card: serializeCard(status),
-		poll: null
+		poll: null,
+		filtered: [],
+		edited_at: null
 	};
 }
 
@@ -610,6 +626,8 @@ async function serializeCachedRemoteStatus(
 	const favourited = await isObjectFavourited(event, status.objectId);
 	const bookmarked = await isObjectBookmarked(event, status.objectId);
 	const reblogged = await isObjectReblogged(event, status.objectId);
+	const muted = await isStatusMuted(event, status.objectId);
+	const pinned = await isStatusPinned(event, status.objectId);
 
 	return {
 		id: encodeMastodonStatusId(status.objectId, status.publishedAt),
@@ -627,8 +645,11 @@ async function serializeCachedRemoteStatus(
 		favourites_count: favourited ? 1 : 0,
 		favourited,
 		reblogged,
+		muted,
 		bookmarked,
+		pinned,
 		content: status.contentHtml || textToHtmlFallback(status.contentText),
+		text: status.contentText || stripHtmlToText(status.contentHtml || ''),
 		reblog: null,
 		application: {
 			name: 'ActivityPub',
@@ -648,7 +669,9 @@ async function serializeCachedRemoteStatus(
 		tags: [],
 		emojis: [],
 		card: null,
-		poll: null
+		poll: null,
+		filtered: [],
+		edited_at: null
 	};
 }
 
