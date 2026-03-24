@@ -77,7 +77,11 @@ export async function GET(event) {
 	const accessToken = await requireMastodonAccessToken(event);
 	const subscription = await getPushSubscription(event, accessToken.token);
 	if (!subscription) {
-		throw error(404, 'Push subscription not found');
+		return json(null, {
+			headers: {
+				'cache-control': 'no-store'
+			}
+		});
 	}
 
 	return json(subscription, {
