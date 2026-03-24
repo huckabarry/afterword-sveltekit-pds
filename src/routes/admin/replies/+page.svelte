@@ -98,8 +98,8 @@
 				{#each replies as reply}
 					<li class="admin-social-card">
 						<div class="admin-social-card__avatar-wrap">
-							{#if reply.actorProfileUrl}
-								<a href={reply.actorProfileUrl} target="_blank" rel="noreferrer">
+							{#if reply.actorId}
+								<a href={`/admin/people?actor=${encodeURIComponent(reply.actorId)}`}>
 									<img
 										class="admin-social-card__avatar"
 										src={reply.actorAvatarUrl || '/assets/images/status-avatar.jpg'}
@@ -116,7 +116,11 @@
 						</div>
 						<div class="admin-social-card__body">
 							<div class="admin-social-card__meta">
-								<strong>{reply.actorName || reply.actorHandle || reply.actorId}</strong>
+								<strong>
+									<a href={`/admin/people?actor=${encodeURIComponent(reply.actorId)}`}>
+										{reply.actorName || reply.actorHandle || reply.actorId}
+									</a>
+								</strong>
 								{#if reply.actorHandle && reply.actorHandle !== reply.actorName}
 									<span>{reply.actorHandle}</span>
 								{/if}

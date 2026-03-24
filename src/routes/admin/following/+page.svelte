@@ -89,8 +89,8 @@
 				{#each statuses as status}
 					<li class="admin-social-card">
 						<div class="admin-social-card__avatar-wrap">
-							{#if status.actorUrl}
-								<a href={status.actorUrl} target="_blank" rel="noreferrer">
+							{#if status.actorId}
+								<a href={`/admin/people?actor=${encodeURIComponent(status.actorId)}`}>
 									<img
 										class="admin-social-card__avatar"
 										src={status.actorAvatarUrl || '/assets/images/status-avatar.jpg'}
@@ -107,7 +107,11 @@
 						</div>
 						<div class="admin-social-card__body">
 							<div class="admin-social-card__meta">
-								<strong>{status.actorName || status.actorHandle || status.actorId}</strong>
+								<strong>
+									<a href={`/admin/people?actor=${encodeURIComponent(status.actorId)}`}>
+										{status.actorName || status.actorHandle || status.actorId}
+									</a>
+								</strong>
 								{#if status.actorHandle}
 									<span>@{status.actorHandle}</span>
 								{/if}

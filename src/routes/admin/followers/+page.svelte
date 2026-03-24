@@ -51,8 +51,8 @@
 				{#each followers as follower}
 					<li class="admin-social-card">
 						<div class="admin-social-card__avatar-wrap">
-							{#if follower.profileUrl}
-								<a href={follower.profileUrl} target="_blank" rel="noreferrer">
+							{#if follower.actorId}
+								<a href={`/admin/people?actor=${encodeURIComponent(follower.actorId)}`}>
 									<img
 										class="admin-social-card__avatar"
 										src={follower.avatarUrl || '/assets/images/status-avatar.jpg'}
@@ -69,7 +69,11 @@
 						</div>
 						<div class="admin-social-card__body">
 							<div class="admin-social-card__meta">
-								<strong>{follower.displayName || follower.handle || follower.actorId}</strong>
+								<strong>
+									<a href={`/admin/people?actor=${encodeURIComponent(follower.actorId)}`}>
+										{follower.displayName || follower.handle || follower.actorId}
+									</a>
+								</strong>
 								{#if follower.handle}
 									<span>{follower.handle}</span>
 								{/if}

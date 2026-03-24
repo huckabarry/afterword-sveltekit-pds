@@ -68,8 +68,8 @@
 				{#each following as account}
 					<li class="admin-social-card">
 						<div class="admin-social-card__avatar-wrap">
-							{#if account.profileUrl}
-								<a href={account.profileUrl} target="_blank" rel="noreferrer">
+							{#if account.actorId}
+								<a href={`/admin/people?actor=${encodeURIComponent(account.actorId)}`}>
 									<img
 										class="admin-social-card__avatar"
 										src={account.avatarUrl || '/assets/images/status-avatar.jpg'}
@@ -86,7 +86,11 @@
 						</div>
 						<div class="admin-social-card__body">
 							<div class="admin-social-card__meta">
-								<strong>{account.displayName || account.handle || account.actorId}</strong>
+								<strong>
+									<a href={`/admin/people?actor=${encodeURIComponent(account.actorId)}`}>
+										{account.displayName || account.handle || account.actorId}
+									</a>
+								</strong>
 								{#if account.handle}
 									<span>@{account.handle}</span>
 								{/if}

@@ -55,6 +55,8 @@
 							Following feed
 						{:else if data.pathname === '/admin/following/accounts'}
 							Following
+						{:else if data.pathname === '/admin/people'}
+							Profile
 						{:else if data.pathname === '/admin/compose'}
 							Compose
 						{:else if data.pathname.startsWith('/admin/posts')}
