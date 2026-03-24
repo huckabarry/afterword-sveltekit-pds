@@ -288,10 +288,19 @@ type MediaAttachmentMeta = {
 	};
 };
 
-const mediaMetaCache = new Map<string, MediaAttachmentMeta | null>();
+function getMediaMetaCache() {
+	const scope = globalThis as typeof globalThis & {
+		__afterwordMediaMetaCache?: Map<string, MediaAttachmentMeta | null>;
+	};
+	if (!scope.__afterwordMediaMetaCache) {
+		scope.__afterwordMediaMetaCache = new Map<string, MediaAttachmentMeta | null>();
+	}
+	return scope.__afterwordMediaMetaCache;
+}
 
 async function getImageMeta(url: string): Promise<MediaAttachmentMeta | null> {
 	if (!url) return null;
+	const mediaMetaCache = getMediaMetaCache();
 	if (mediaMetaCache.has(url)) {
 		return mediaMetaCache.get(url) ?? null;
 	}
