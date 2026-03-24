@@ -31,9 +31,8 @@ function buildPrefillText(url: URL) {
 	return pieces.join(pieces.length > 1 ? '\n\n' : '').trim();
 }
 
-function extractImageUrls(content: string) {
-	const matches = String(content || '').match(/https?:\/\/\S+/g) || [];
-	return matches.filter((item) => /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(item));
+function extractUrls(content: string) {
+	return String(content || '').match(/https?:\/\/\S+/g) || [];
 }
 
 export const load: PageServerLoad = async ({ url, cookies }) => {
@@ -49,15 +48,18 @@ export const actions: Actions = {
 		const originalContent = normalizeMentionText(String(form.get('content') || '').trim());
 		const password = String(form.get('password') || '').trim();
 		const loggedIn = await hasAdminSession(event.cookies);
-		const imageUrls = extractImageUrls(originalContent);
-		const importedAttachments = await uploadRemoteImageUrls(event, imageUrls, {
+		const candidateUrls = extractUrls(originalContent);
+		const importedAttachments = await uploadRemoteImageUrls(event, candidateUrls, {
 			scope: 'ap-notes',
 			prefix: 'share'
 		});
+		const importedSourceUrls = new Set(
+			importedAttachments.map((item) => String(item.sourceUrl || '').trim()).filter(Boolean)
+		);
 		const content = normalizeMentionText(
 			originalContent
 				.replace(/https?:\/\/\S+/g, (match) =>
-					imageUrls.includes(match) ? '' : match
+					importedSourceUrls.has(match) ? '' : match
 				)
 				.replace(/\n{3,}/g, '\n\n')
 				.trim()

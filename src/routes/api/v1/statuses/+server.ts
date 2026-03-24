@@ -59,9 +59,8 @@ function readEntries(source: FormData | Record<string, unknown>, key: string) {
 	return [];
 }
 
-function extractImageUrls(content: string) {
-	const matches = String(content || '').match(/https?:\/\/\S+/g) || [];
-	return matches.filter((item) => /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(item));
+function extractUrls(content: string) {
+	return String(content || '').match(/https?:\/\/\S+/g) || [];
 }
 
 export async function GET(event) {
@@ -87,14 +86,17 @@ export async function POST(event) {
 	const originalContent = normalizeMentionText(getValue('status'));
 	const inReplyToId = getValue('in_reply_to_id');
 	const mediaIds = [...readEntries(parsed, 'media_ids[]'), ...readEntries(parsed, 'media_ids')];
-	const imageUrls = extractImageUrls(originalContent);
-	const importedAttachments = await uploadRemoteImageUrls(event, imageUrls, {
+	const candidateUrls = extractUrls(originalContent);
+	const importedAttachments = await uploadRemoteImageUrls(event, candidateUrls, {
 		scope: 'ap-notes',
 		prefix: 'mastodon-share'
 	});
+	const importedSourceUrls = new Set(
+		importedAttachments.map((item) => String(item.sourceUrl || '').trim()).filter(Boolean)
+	);
 	const content = normalizeMentionText(
 		originalContent
-			.replace(/https?:\/\/\S+/g, (match) => (imageUrls.includes(match) ? '' : match))
+			.replace(/https?:\/\/\S+/g, (match) => (importedSourceUrls.has(match) ? '' : match))
 			.replace(/\n{3,}/g, '\n\n')
 			.trim()
 	);

@@ -5,6 +5,7 @@ type UploadedMedia = {
 	key: string;
 	mediaType: string;
 	alt: string;
+	sourceUrl?: string;
 };
 
 type FileLike = {
@@ -172,7 +173,8 @@ export async function uploadRemoteImageUrls(
 				key,
 				url: `${event.url.origin}/media/${key}`,
 				mediaType: contentType || `image/${extension === 'jpg' ? 'jpeg' : extension || 'jpeg'}`,
-				alt: ''
+				alt: '',
+				sourceUrl: remoteUrl
 			});
 		} catch {
 			continue;
