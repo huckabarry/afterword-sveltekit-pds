@@ -72,7 +72,7 @@
 		{/if}
 	</div>
 
-	<div class="admin-card">
+	<div class="admin-card admin-feed-card">
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Feed</p>

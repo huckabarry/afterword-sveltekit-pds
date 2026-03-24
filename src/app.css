@@ -1793,6 +1793,12 @@ p:last-child {
 	max-width: 720px;
 }
 
+.admin-feed-card {
+	max-width: 550px;
+	width: 100%;
+	justify-self: center;
+}
+
 .admin-profile-preview {
 	display: grid;
 	gap: 1rem;
@@ -1967,11 +1973,21 @@ p:last-child {
 .admin-social-card__media-strip img {
 	display: block;
 	width: 100%;
-	height: 168px;
-	object-fit: cover;
+	height: auto;
+	max-height: 540px;
+	object-fit: contain;
 	border-radius: 14px;
 	border: 1px solid rgba(17, 17, 17, 0.08);
 	background: rgba(17, 17, 17, 0.04);
+}
+
+.admin-social-card__media-strip img:only-child {
+	grid-column: 1 / -1;
+	width: 100%;
+	max-width: 100%;
+	max-height: none;
+	object-fit: contain;
+	justify-self: stretch;
 }
 
 .admin-social-card__metrics {
@@ -2308,6 +2324,10 @@ p:last-child {
 
 	.admin-social-card__media-strip {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.admin-feed-card {
+		max-width: none;
 	}
 
 	.admin-mobile-nav {

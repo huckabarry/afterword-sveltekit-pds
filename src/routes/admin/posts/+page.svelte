@@ -7,7 +7,7 @@
 </script>
 
 <section class="admin-panel">
-	<div class="admin-card">
+	<div class="admin-card admin-feed-card">
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Outbox</p>
@@ -70,7 +70,7 @@
 		{/if}
 	</div>
 
-	<div class="admin-card">
+	<div class="admin-card admin-feed-card">
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Mirrored lane</p>
