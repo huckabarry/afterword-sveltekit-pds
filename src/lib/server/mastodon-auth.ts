@@ -250,6 +250,42 @@ export async function getAccessToken(
 	return mapAccessToken(row);
 }
 
+export async function revokeAccessToken(
+	event: Pick<RequestEvent, 'platform'>,
+	input: {
+		token: string;
+		clientId?: string | null;
+	}
+) {
+	const db = getDb(event);
+	if (!db) return false;
+
+	const token = String(input.token || '').trim();
+	if (!token) return false;
+
+	if (input.clientId) {
+		const result = await db
+			.prepare(
+				`DELETE FROM mastodon_access_tokens
+				 WHERE token = ?
+				   AND app_id IN (
+					 SELECT id FROM mastodon_apps WHERE client_id = ?
+				   )`
+			)
+			.bind(token, String(input.clientId).trim())
+			.run();
+
+		return Number(result.meta.changes || 0) > 0;
+	}
+
+	const result = await db
+		.prepare(`DELETE FROM mastodon_access_tokens WHERE token = ?`)
+		.bind(token)
+		.run();
+
+	return Number(result.meta.changes || 0) > 0;
+}
+
 function getBearerToken(event: Pick<RequestEvent, 'request'>) {
 	const header = event.request.headers.get('authorization')?.trim() || '';
 	if (!header.toLowerCase().startsWith('bearer ')) return '';
