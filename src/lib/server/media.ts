@@ -104,3 +104,80 @@ export async function uploadImageFiles(
 
 	return uploads;
 }
+
+function guessExtensionFromUrl(url: string) {
+	try {
+		const pathname = new URL(url).pathname;
+		const match = pathname.match(/\.([a-zA-Z0-9]+)$/);
+		if (!match) return '';
+		return sanitizeSegment(match[1] || '');
+	} catch {
+		return '';
+	}
+}
+
+export async function uploadRemoteImageUrls(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	urls: string[],
+	options: {
+		scope: 'ap-notes' | 'profile';
+		prefix?: string;
+	}
+): Promise<UploadedMedia[]> {
+	const bucket = getBucket(event);
+	if (!bucket || !urls.length) return [];
+
+	const uploads: UploadedMedia[] = [];
+	const prefix = sanitizeSegment(options.prefix || 'item') || 'item';
+
+	for (const inputUrl of urls) {
+		const remoteUrl = String(inputUrl || '').trim();
+		if (!remoteUrl) continue;
+
+		try {
+			const response = await fetch(remoteUrl, {
+				headers: {
+					Accept: 'image/*,*/*;q=0.8'
+				}
+			});
+			if (!response.ok) continue;
+
+			const contentType = String(response.headers.get('content-type') || '').trim();
+			const extension =
+				guessExtensionFromUrl(remoteUrl) ||
+				(contentType === 'image/jpeg'
+					? 'jpg'
+					: contentType === 'image/png'
+						? 'png'
+						: contentType === 'image/webp'
+							? 'webp'
+							: contentType === 'image/gif'
+								? 'gif'
+								: '');
+			const looksLikeImage =
+				contentType.startsWith('image/') || ['jpg', 'png', 'webp', 'gif'].includes(extension);
+			if (!looksLikeImage) continue;
+
+			const bytes = await response.arrayBuffer();
+			if (!bytes.byteLength) continue;
+
+			const key = `${options.scope}/${prefix}/${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}.${extension || 'jpg'}`;
+			await bucket.put(key, bytes, {
+				httpMetadata: {
+					contentType: contentType || `image/${extension === 'jpg' ? 'jpeg' : extension || 'jpeg'}`
+				}
+			});
+
+			uploads.push({
+				key,
+				url: `${event.url.origin}/media/${key}`,
+				mediaType: contentType || `image/${extension === 'jpg' ? 'jpeg' : extension || 'jpeg'}`,
+				alt: ''
+			});
+		} catch {
+			continue;
+		}
+	}
+
+	return uploads;
+}
