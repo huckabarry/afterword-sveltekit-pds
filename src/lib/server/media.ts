@@ -7,6 +7,13 @@ type UploadedMedia = {
 	alt: string;
 };
 
+type FileLike = {
+	name?: string;
+	type?: string;
+	size?: number;
+	arrayBuffer: () => Promise<ArrayBuffer>;
+};
+
 function getBucket(event: Pick<RequestEvent, 'platform'>) {
 	return event.platform?.env?.R2_BUCKET ?? null;
 }
@@ -19,13 +26,24 @@ function sanitizeSegment(value: string) {
 		.slice(0, 80);
 }
 
-function fileExtension(file: File) {
-	const namePart = file.name.includes('.') ? file.name.split('.').pop() || '' : '';
+function isFileLike(value: unknown): value is FileLike {
+	if (!value || typeof value !== 'object') return false;
+	const record = value as Record<string, unknown>;
+	return (
+		typeof record.arrayBuffer === 'function' &&
+		typeof record.size === 'number' &&
+		typeof record.type === 'string'
+	);
+}
+
+function fileExtension(file: FileLike) {
+	const name = String(file.name || '');
+	const namePart = name.includes('.') ? name.split('.').pop() || '' : '';
 	const normalizedName = sanitizeSegment(namePart);
 
 	if (normalizedName) return normalizedName;
 
-	switch (file.type) {
+	switch (String(file.type || '')) {
 		case 'image/jpeg':
 			return 'jpg';
 		case 'image/png':
@@ -41,7 +59,7 @@ function fileExtension(file: File) {
 
 export async function uploadImageFiles(
 	event: Pick<RequestEvent, 'platform' | 'url'>,
-	files: File[],
+	files: FileLike[],
 	options: {
 		scope: 'ap-notes' | 'profile';
 		prefix?: string;
@@ -54,8 +72,8 @@ export async function uploadImageFiles(
 	const prefix = sanitizeSegment(options.prefix || 'item') || 'item';
 
 	for (const file of files) {
-		if (!(file instanceof File) || file.size === 0) continue;
-		if (!file.type.startsWith('image/')) continue;
+		if (!isFileLike(file) || Number(file.size || 0) === 0) continue;
+		if (!String(file.type || '').startsWith('image/')) continue;
 
 		const extension = fileExtension(file);
 		const key = `${options.scope}/${prefix}/${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}.${extension}`;
@@ -63,15 +81,15 @@ export async function uploadImageFiles(
 
 		await bucket.put(key, bytes, {
 			httpMetadata: {
-				contentType: file.type
+				contentType: String(file.type || 'application/octet-stream')
 			}
 		});
 
 		uploads.push({
 			key,
 			url: `${event.url.origin}/media/${key}`,
-			mediaType: file.type || 'application/octet-stream',
-			alt: file.name || ''
+			mediaType: String(file.type || 'application/octet-stream'),
+			alt: String(file.name || '')
 		});
 	}
 

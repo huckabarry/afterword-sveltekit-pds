@@ -3,13 +3,30 @@ import { requireMastodonAccessToken } from '$lib/server/mastodon-auth';
 import { encodeMastodonMediaId } from '$lib/server/mastodon-api';
 import { uploadImageFiles } from '$lib/server/media';
 
+type FileLike = {
+	name?: string;
+	type?: string;
+	size?: number;
+	arrayBuffer: () => Promise<ArrayBuffer>;
+};
+
+function isFileLike(value: unknown): value is FileLike {
+	if (!value || typeof value !== 'object') return false;
+	const record = value as Record<string, unknown>;
+	return (
+		typeof record.arrayBuffer === 'function' &&
+		typeof record.size === 'number' &&
+		typeof record.type === 'string'
+	);
+}
+
 function collectFiles(formData: FormData) {
 	const keys = ['file', 'file[]', 'files', 'files[]', 'media', 'media[]'];
-	const entries: File[] = [];
+	const entries: FileLike[] = [];
 
 	for (const key of keys) {
 		for (const item of formData.getAll(key)) {
-			if (item instanceof File && item.size > 0) {
+			if (isFileLike(item) && Number(item.size || 0) > 0) {
 				entries.push(item);
 			}
 		}
@@ -18,7 +35,7 @@ function collectFiles(formData: FormData) {
 	// Some clients send a single unnamed/blob part under an unexpected field name.
 	if (!entries.length) {
 		for (const [, value] of formData.entries()) {
-			if (value instanceof File && value.size > 0) {
+			if (isFileLike(value) && Number(value.size || 0) > 0) {
 				entries.push(value);
 			}
 		}
