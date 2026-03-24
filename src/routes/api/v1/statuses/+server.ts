@@ -24,6 +24,7 @@ import {
 	resolveThreadRootObjectId,
 	textToParagraphHtml
 } from '$lib/server/activitypub-replies';
+import { uploadRemoteImageUrls } from '$lib/server/media';
 
 function isLocalReplyTarget(origin: string, objectId: string) {
 	return String(objectId || '').startsWith(`${origin}/ap/`);
@@ -58,6 +59,11 @@ function readEntries(source: FormData | Record<string, unknown>, key: string) {
 	return [];
 }
 
+function extractImageUrls(content: string) {
+	const matches = String(content || '').match(/https?:\/\/\S+/g) || [];
+	return matches.filter((item) => /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(item));
+}
+
 export async function GET(event) {
 	await requireMastodonAccessToken(event);
 	const limit = Math.max(1, Math.min(Number.parseInt(event.url.searchParams.get('limit') || '20', 10) || 20, 40));
@@ -78,23 +84,37 @@ export async function POST(event) {
 	const getValue = (key: string) =>
 		parsed instanceof FormData ? String(parsed.get(key) || '').trim() : String(parsed[key] || '').trim();
 
-	const content = normalizeMentionText(getValue('status'));
+	const originalContent = normalizeMentionText(getValue('status'));
 	const inReplyToId = getValue('in_reply_to_id');
 	const mediaIds = [...readEntries(parsed, 'media_ids[]'), ...readEntries(parsed, 'media_ids')];
-	const hasMedia = mediaIds.length > 0;
+	const imageUrls = extractImageUrls(originalContent);
+	const importedAttachments = await uploadRemoteImageUrls(event, imageUrls, {
+		scope: 'ap-notes',
+		prefix: 'mastodon-share'
+	});
+	const content = normalizeMentionText(
+		originalContent
+			.replace(/https?:\/\/\S+/g, (match) => (imageUrls.includes(match) ? '' : match))
+			.replace(/\n{3,}/g, '\n\n')
+			.trim()
+	);
+	const hasMedia = mediaIds.length > 0 || importedAttachments.length > 0;
 
 	if (!content && !hasMedia) {
 		return json({ error: 'status is required' }, { status: 422 });
 	}
 
-	const attachments = mediaIds
-		.map((item) => decodeMastodonMediaId(item))
-		.filter((item): item is string => Boolean(item))
-		.map((key) => ({
-			url: `${event.url.origin}/media/${key}`,
-			mediaType: 'image/jpeg',
-			alt: ''
-		}));
+	const attachments = [
+		...mediaIds
+			.map((item) => decodeMastodonMediaId(item))
+			.filter((item): item is string => Boolean(item))
+			.map((key) => ({
+				url: `${event.url.origin}/media/${key}`,
+				mediaType: 'image/jpeg',
+				alt: ''
+			})),
+		...importedAttachments
+	];
 
 	const origin = getActivityPubOrigin(event);
 	const contentHtml = content ? textToParagraphHtml(content) : '<p></p>';
