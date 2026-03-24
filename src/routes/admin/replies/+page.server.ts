@@ -12,6 +12,7 @@ import { enrichReplies } from '$lib/server/activitypub-reply-previews';
 import { listFollowers } from '$lib/server/followers';
 import { getSiteProfile } from '$lib/server/profile';
 import { resolveReplyContext } from '$lib/server/admin-reply-context';
+import { followRemoteActor, listFollowing, unfollowRemoteActor } from '$lib/server/activitypub-follows';
 import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
@@ -44,7 +45,11 @@ function isLocalReplyTarget(origin: string, objectId: string) {
 export const load: PageServerLoad = async (event) => {
 	const origin = getActivityPubOrigin(event);
 	const profile = await getSiteProfile(event);
-	const replies = await listRecentInboxReplies(event, origin, 50);
+	const [replies, following] = await Promise.all([
+		listRecentInboxReplies(event, origin, 50),
+		listFollowing(event)
+	]);
+	const followingActorIds = new Set(following.map((account) => account.actorId));
 	const enrichedReplies = await enrichReplies(event, replies);
 	const repliesWithContext = await Promise.all(
 		enrichedReplies.map(async (reply) => {
@@ -65,7 +70,8 @@ export const load: PageServerLoad = async (event) => {
 							? profile.avatarUrl
 							: `${origin}${profile.avatarUrl}`
 						: reply.avatarUrl,
-				actorProfileUrl: reply.origin === 'local' ? `${origin}/` : reply.profileUrl
+				actorProfileUrl: reply.origin === 'local' ? `${origin}/` : reply.profileUrl,
+				isFollowing: reply.origin !== 'local' && followingActorIds.has(reply.actorId)
 			};
 		})
 	);
@@ -73,7 +79,9 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		replies: repliesWithContext,
 		sent: event.url.searchParams.get('sent') === '1',
-		liked: event.url.searchParams.get('liked') === '1'
+		liked: event.url.searchParams.get('liked') === '1',
+		followed: event.url.searchParams.get('followed') === '1',
+		unfollowed: event.url.searchParams.get('unfollowed') === '1'
 	};
 };
 
@@ -127,5 +135,27 @@ export const actions: Actions = {
 
 		await deliverLikeToRemoteObject(getActivityPubOrigin(event), objectId);
 		throw redirect(303, '/admin/replies?liked=1');
+	},
+	follow: async (event) => {
+		const form = await event.request.formData();
+		const actorId = String(form.get('actorId') || '').trim();
+
+		if (!actorId) {
+			return fail(400, { error: 'Missing account to follow.' });
+		}
+
+		await followRemoteActor(event, actorId);
+		throw redirect(303, '/admin/replies?followed=1');
+	},
+	unfollow: async (event) => {
+		const form = await event.request.formData();
+		const actorId = String(form.get('actorId') || '').trim();
+
+		if (!actorId) {
+			return fail(400, { error: 'Missing account to unfollow.' });
+		}
+
+		await unfollowRemoteActor(event, actorId);
+		throw redirect(303, '/admin/replies?unfollowed=1');
 	}
 };

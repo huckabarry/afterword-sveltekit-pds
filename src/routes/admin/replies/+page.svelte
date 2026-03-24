@@ -24,6 +24,14 @@
 			<p class="admin-form-success">Like sent.</p>
 		{/if}
 
+		{#if data.followed}
+			<p class="admin-form-success">Follow request sent.</p>
+		{/if}
+
+		{#if data.unfollowed}
+			<p class="admin-form-success">Unfollowed.</p>
+		{/if}
+
 		{#if data.replies.length}
 			<ul class="admin-social-list">
 				{#each data.replies as reply}
@@ -50,6 +58,14 @@
 								<strong>{reply.actorName || reply.actorHandle || reply.actorId}</strong>
 								{#if reply.actorHandle && reply.actorHandle !== reply.actorName}
 									<span>{reply.actorHandle}</span>
+								{/if}
+								{#if reply.origin !== 'local'}
+									<form method="POST" action={reply.isFollowing ? '?/unfollow' : '?/follow'}>
+										<input type="hidden" name="actorId" value={reply.actorId} />
+										<button class="admin-pill-link" type="submit">
+											{reply.isFollowing ? 'Following' : 'Follow'}
+										</button>
+									</form>
 								{/if}
 								<span>{formatDate(reply.publishedAt)}</span>
 							</div>

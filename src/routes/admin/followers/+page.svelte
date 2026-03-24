@@ -11,6 +11,14 @@
 			</div>
 		</div>
 
+		{#if data.followed}
+			<p class="admin-form-success">Follow request sent.</p>
+		{/if}
+
+		{#if data.unfollowed}
+			<p class="admin-form-success">Unfollowed.</p>
+		{/if}
+
 		{#if data.followers.length}
 			<ul class="admin-thread-list">
 				{#each data.followers as follower}
@@ -20,6 +28,12 @@
 							{#if follower.handle}
 								<span>{follower.handle}</span>
 							{/if}
+							<form method="POST" action={follower.isFollowing ? '?/unfollow' : '?/follow'}>
+								<input type="hidden" name="actorId" value={follower.actorId} />
+								<button class="admin-pill-link" type="submit">
+									{follower.isFollowing ? 'Following' : 'Follow'}
+								</button>
+							</form>
 							<span>{follower.lastDeliveryStatus || 'no delivery yet'}</span>
 						</div>
 						<p class="admin-thread__content">{follower.actorId}</p>

@@ -4,7 +4,7 @@ import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { createLocalReply, updateLocalReplyDeliveryStatus } from '$lib/server/ap-notes';
 import { deliverLikeToRemoteObject } from '$lib/server/activitypub-likes';
 import { fetchActivityJson, fetchRemoteActor, localReplyToRemoteCreateActivity, normalizeMentionText, resolveThreadRootObjectId, textToParagraphHtml } from '$lib/server/activitypub-replies';
-import { followRemoteActor, listFollowing, unfollowRemoteActor } from '$lib/server/activitypub-follows';
+import { listFollowing } from '$lib/server/activitypub-follows';
 import { isObjectFavourited, isObjectReblogged, reblogObject } from '$lib/server/mastodon-state';
 import { listCachedRemoteStatusesForActors, syncRemoteStatusesForActor, type CachedRemoteStatus } from '$lib/server/mastodon-remote-statuses';
 import type { Actions, PageServerLoad } from './$types';
@@ -79,34 +79,6 @@ export const load: PageServerLoad = async (event) => {
 };
 
 export const actions: Actions = {
-	follow: async (event) => {
-		const form = await event.request.formData();
-		const actor = String(form.get('actor') || '').trim();
-
-		if (!actor) {
-			return fail(400, { error: 'Enter an ActivityPub actor URL to follow.' });
-		}
-
-		try {
-			await followRemoteActor(event, actor);
-		} catch (followError) {
-			const message = followError instanceof Error ? followError.message : String(followError);
-			return fail(400, { error: message || 'Unable to follow account right now.' });
-		}
-
-		throw redirect(303, '/admin/following?followed=1');
-	},
-	unfollow: async (event) => {
-		const form = await event.request.formData();
-		const actorId = String(form.get('actorId') || '').trim();
-
-		if (!actorId) {
-			return fail(400, { error: 'Missing account to unfollow.' });
-		}
-
-		await unfollowRemoteActor(event, actorId);
-		throw redirect(303, '/admin/following?unfollowed=1');
-	},
 	like: async (event) => {
 		const form = await event.request.formData();
 		const objectId = String(form.get('objectId') || '').trim();

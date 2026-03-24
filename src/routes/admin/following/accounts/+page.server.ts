@@ -1,17 +1,10 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { followRemoteActor, listFollowing, unfollowRemoteActor } from '$lib/server/activitypub-follows';
-import { listFollowers } from '$lib/server/followers';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	const [followers, following] = await Promise.all([listFollowers(event), listFollowing(event)]);
-	const followingActorIds = new Set(following.map((account) => account.actorId));
-
 	return {
-		followers: followers.map((follower) => ({
-			...follower,
-			isFollowing: followingActorIds.has(follower.actorId)
-		})),
+		following: await listFollowing(event),
 		followed: event.url.searchParams.get('followed') === '1',
 		unfollowed: event.url.searchParams.get('unfollowed') === '1'
 	};
@@ -20,14 +13,20 @@ export const load: PageServerLoad = async (event) => {
 export const actions: Actions = {
 	follow: async (event) => {
 		const form = await event.request.formData();
-		const actorId = String(form.get('actorId') || '').trim();
+		const actor = String(form.get('actor') || '').trim();
 
-		if (!actorId) {
-			return fail(400, { error: 'Missing account to follow.' });
+		if (!actor) {
+			return fail(400, { error: 'Enter an ActivityPub actor URL to follow.' });
 		}
 
-		await followRemoteActor(event, actorId);
-		throw redirect(303, '/admin/followers?followed=1');
+		try {
+			await followRemoteActor(event, actor);
+		} catch (followError) {
+			const message = followError instanceof Error ? followError.message : String(followError);
+			return fail(400, { error: message || 'Unable to follow account right now.' });
+		}
+
+		throw redirect(303, '/admin/following/accounts?followed=1');
 	},
 	unfollow: async (event) => {
 		const form = await event.request.formData();
@@ -38,6 +37,6 @@ export const actions: Actions = {
 		}
 
 		await unfollowRemoteActor(event, actorId);
-		throw redirect(303, '/admin/followers?unfollowed=1');
+		throw redirect(303, '/admin/following/accounts?unfollowed=1');
 	}
 };

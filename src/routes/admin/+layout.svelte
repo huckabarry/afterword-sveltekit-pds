@@ -5,7 +5,8 @@
 		{ href: '/admin', label: 'Home', shortLabel: 'Home' },
 		{ href: '/admin/profile', label: 'Profile', shortLabel: 'Profile' },
 		{ href: '/admin/followers', label: 'Followers', shortLabel: 'Followers' },
-		{ href: '/admin/following', label: 'Following', shortLabel: 'Following' },
+		{ href: '/admin/following', label: 'Feed', shortLabel: 'Feed' },
+		{ href: '/admin/following/accounts', label: 'Following', shortLabel: 'Following' },
 		{ href: '/admin/posts', label: 'Posts', shortLabel: 'Posts' },
 		{ href: '/admin/compose', label: 'Compose', shortLabel: 'Write' },
 		{ href: '/admin/replies', label: 'Replies', shortLabel: 'Replies' },
@@ -51,6 +52,8 @@
 						{:else if data.pathname === '/admin/followers'}
 							Followers
 						{:else if data.pathname === '/admin/following'}
+							Following feed
+						{:else if data.pathname === '/admin/following/accounts'}
 							Following
 						{:else if data.pathname === '/admin/compose'}
 							Compose
