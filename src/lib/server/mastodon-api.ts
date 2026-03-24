@@ -30,7 +30,6 @@ import {
 	type CachedRemoteStatus
 } from '$lib/server/mastodon-remote-statuses';
 import type { RequestEvent } from '@sveltejs/kit';
-import sharp from 'sharp';
 
 function base64UrlEncode(value: string) {
 	if (typeof Buffer !== 'undefined') {
@@ -298,6 +297,15 @@ function getMediaMetaCache() {
 	return scope.__afterwordMediaMetaCache;
 }
 
+let sharpLoader: Promise<any> | null = null;
+
+async function loadSharp() {
+	if (!sharpLoader) {
+		sharpLoader = import('sharp').catch(() => null);
+	}
+	return sharpLoader;
+}
+
 async function getImageMeta(url: string): Promise<MediaAttachmentMeta | null> {
 	if (!url) return null;
 	const mediaMetaCache = getMediaMetaCache();
@@ -306,6 +314,12 @@ async function getImageMeta(url: string): Promise<MediaAttachmentMeta | null> {
 	}
 
 	try {
+		const sharpModule = await loadSharp();
+		if (!sharpModule?.default) {
+			mediaMetaCache.set(url, null);
+			return null;
+		}
+
 		const response = await fetch(url, {
 			headers: { Accept: 'image/*,*/*;q=0.8' }
 		});
@@ -315,7 +329,7 @@ async function getImageMeta(url: string): Promise<MediaAttachmentMeta | null> {
 		}
 
 		const bytes = new Uint8Array(await response.arrayBuffer());
-		const metadata = await sharp(bytes).metadata();
+		const metadata = await sharpModule.default(bytes).metadata();
 		const width = Number(metadata.width || 0);
 		const height = Number(metadata.height || 0);
 		if (!width || !height) {
