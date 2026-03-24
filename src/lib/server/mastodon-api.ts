@@ -551,6 +551,42 @@ export async function buildHomeTimeline(event: Pick<RequestEvent, 'platform' | '
 		.slice(0, limit);
 }
 
+export async function buildPublicTimeline(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	options?: {
+		limit?: number;
+		local?: boolean;
+	}
+) {
+	const limit = Math.max(1, Math.min(options?.limit || 40, 80));
+	const following = options?.local ? [] : await listFollowing(event);
+	const remoteLimit = following.length ? Math.max(1, Math.floor(limit / Math.min(following.length, 5))) : 0;
+
+	const [localNotes, mirroredStatuses, remoteStatuses] = await Promise.all([
+		listLocalNotes(event, limit),
+		getStatuses(),
+		options?.local
+			? Promise.resolve([])
+			: Promise.all(
+					following
+						.slice(0, 5)
+						.map((item) => fetchRemoteStatusesForActor(event, item.actorId, remoteLimit || 5).catch(() => []))
+			  )
+	]);
+
+	const localStatuses = await Promise.all(localNotes.map((note) => serializeLocalNoteStatus(event, note)));
+	const mirrored = await Promise.all(
+		mirroredStatuses.slice(0, limit).map((status) => serializeMirroredStatus(event, status))
+	);
+	const remote = (Array.isArray(remoteStatuses) ? remoteStatuses : [])
+		.flat()
+		.filter((item): item is NonNullable<(typeof remoteStatuses extends Array<infer U> ? U : never)[number]> => Boolean(item));
+
+	return [...localStatuses, ...mirrored, ...remote]
+		.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+		.slice(0, limit);
+}
+
 export async function listMastodonNotifications(
 	event: Pick<RequestEvent, 'platform' | 'url'>,
 	limit = 20
@@ -636,6 +672,23 @@ export async function listGroupedMastodonNotifications(
 		statuses: notifications.map((notification) => notification.status).filter(Boolean),
 		notification_groups: groups
 	};
+}
+
+export async function listMastodonConversations(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	limit = 20
+) {
+	const origin = getActivityPubOrigin(event);
+	const replies = await listRecentInboxReplies(event, origin, limit);
+
+	return await Promise.all(
+		replies.map(async (reply) => ({
+			id: encodeMastodonStatusId(`conversation:${reply.noteId}`, reply.publishedAt),
+			unread: false,
+			accounts: [await buildRemoteAccount(event, reply.actorId)],
+			last_status: await serializeReplyNote(event, reply)
+		}))
+	);
 }
 
 export async function resolveStatusByObjectId(
