@@ -17,6 +17,8 @@ export async function GET(event) {
 	const actorId = decodeMastodonAccountId(event.params.id) || event.params.id;
 	const limit = Math.max(1, Math.min(Number.parseInt(event.url.searchParams.get('limit') || '20', 10) || 20, 40));
 	const maxId = event.url.searchParams.get('max_id');
+	const sinceId = event.url.searchParams.get('since_id');
+	const minId = event.url.searchParams.get('min_id');
 	const excludeReplies = event.url.searchParams.get('exclude_replies') === 'true';
 	const excludeReblogs = event.url.searchParams.get('exclude_reblogs') === 'true';
 	const onlyMedia = event.url.searchParams.get('only_media') === 'true';
@@ -28,7 +30,7 @@ export async function GET(event) {
 		return json(
 			filterMastodonStatuses(
 				timeline.filter((item) => String(item.account?.uri || '') === localActorId),
-				{ maxId, excludeReplies, excludeReblogs, onlyMedia, pinned, limit }
+				{ maxId, sinceId, minId, excludeReplies, excludeReblogs, onlyMedia, pinned, limit }
 			),
 			{
 			headers: {
@@ -45,6 +47,8 @@ export async function GET(event) {
 	return json(
 		filterMastodonStatuses(remoteStatuses, {
 			maxId,
+			sinceId,
+			minId,
 			excludeReplies,
 			excludeReblogs,
 			onlyMedia,

@@ -476,7 +476,10 @@ async function expandOrderedItems(collectionOrPage: Record<string, unknown>) {
 export async function fetchRemoteStatusesForActor(
 	event: Pick<RequestEvent, 'platform' | 'url'>,
 	actorId: string,
-	limit = 20
+	limit = 20,
+	options?: {
+		preferOriginals?: boolean;
+	}
 ) {
 	const actor = await fetchActivityJson(actorId);
 	const outboxUrl = getString(actor.outbox);
@@ -484,10 +487,16 @@ export async function fetchRemoteStatusesForActor(
 
 	const outbox = await fetchActivityJson(outboxUrl);
 	const orderedItems = await expandOrderedItems(outbox);
-	const statuses: Array<Record<string, unknown>> = [];
+	const originals: Array<Record<string, unknown>> = [];
+	const replies: Array<Record<string, unknown>> = [];
+	const scanLimit = Math.max(limit * 4, 40);
 
 	for (const item of orderedItems) {
-		if (statuses.length >= limit) break;
+		if (!options?.preferOriginals && originals.length + replies.length >= limit) break;
+		if (options?.preferOriginals && originals.length >= limit && originals.length + replies.length >= scanLimit) {
+			break;
+		}
+		if (originals.length + replies.length >= scanLimit) break;
 
 		let record: Record<string, unknown> | null = null;
 		if (typeof item === 'string') {
@@ -511,8 +520,23 @@ export async function fetchRemoteStatusesForActor(
 
 		const objectType = String(object.type || '');
 		if (!['Note', 'Article', 'Page'].includes(objectType)) continue;
-		statuses.push(object);
+
+		if (getString(object.inReplyTo)) {
+			replies.push(object);
+		} else {
+			originals.push(object);
+		}
 	}
+
+	const statuses = options?.preferOriginals
+		? [...originals, ...replies].slice(0, limit)
+		: [...originals, ...replies]
+				.sort(
+					(a, b) =>
+						Date.parse(getString(b.published) || getString(b.updated) || '') -
+						Date.parse(getString(a.published) || getString(a.updated) || '')
+				)
+				.slice(0, limit);
 
 	return (
 		await Promise.all(statuses.map((item) => serializeRemoteObjectStatus(event, actorId, item)))
@@ -527,7 +551,13 @@ export async function buildHomeTimeline(event: Pick<RequestEvent, 'platform' | '
 		listLocalNotes(event, limit),
 		getStatuses(),
 		Promise.all(
-			following.slice(0, 5).map((item) => fetchRemoteStatusesForActor(event, item.actorId, remoteLimit || 5).catch(() => []))
+			following
+				.slice(0, 5)
+				.map((item) =>
+					fetchRemoteStatusesForActor(event, item.actorId, remoteLimit || 5, {
+						preferOriginals: true
+					}).catch(() => [])
+				)
 		)
 	]);
 
@@ -583,7 +613,11 @@ export async function buildPublicTimeline(
 			: Promise.all(
 					following
 						.slice(0, 5)
-						.map((item) => fetchRemoteStatusesForActor(event, item.actorId, remoteLimit || 5).catch(() => []))
+						.map((item) =>
+							fetchRemoteStatusesForActor(event, item.actorId, remoteLimit || 5, {
+								preferOriginals: true
+							}).catch(() => [])
+						)
 			  )
 	]);
 
@@ -644,6 +678,8 @@ export function filterMastodonStatuses(
 	statuses: Array<Record<string, unknown>>,
 	options?: {
 		maxId?: string | null;
+		sinceId?: string | null;
+		minId?: string | null;
 		excludeReplies?: boolean;
 		excludeReblogs?: boolean;
 		onlyMedia?: boolean;
@@ -670,10 +706,15 @@ export function filterMastodonStatuses(
 	}
 
 	if (options?.maxId) {
-		const index = filtered.findIndex((item) => String(item.id || '') === options.maxId);
-		if (index >= 0) {
-			filtered = filtered.slice(index + 1);
-		}
+		filtered = filtered.filter((item) => String(item.id || '') < options.maxId!);
+	}
+
+	if (options?.sinceId) {
+		filtered = filtered.filter((item) => String(item.id || '') > options.sinceId!);
+	}
+
+	if (options?.minId) {
+		filtered = filtered.filter((item) => String(item.id || '') > options.minId!);
 	}
 
 	if (options?.limit) {
