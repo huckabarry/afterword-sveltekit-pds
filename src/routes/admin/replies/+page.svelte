@@ -41,9 +41,18 @@
 	}
 
 	function enhanceLike() {
-		return async ({ result }: { result: { type: string } }) => {
-			if (result.type !== 'success') return;
-			flash.liked = true;
+		return ({ formData }: { formData: FormData }) => {
+			const objectId = String(formData.get('objectId') || '');
+
+			return async ({ result }: { result: { type: string } }) => {
+				if (result.type !== 'success') return;
+				if (objectId) {
+					replies = replies.map((reply) =>
+						reply.noteId === objectId ? { ...reply, favourited: true } : reply
+					);
+				}
+				flash.liked = true;
+			};
 		};
 	}
 
@@ -180,9 +189,17 @@
 							{/if}
 
 							<div class="admin-thread__actions admin-thread__actions--social">
-								<form method="POST" action="?/like" use:enhance={enhanceLike}>
+								<form method="POST" action="?/like" use:enhance={enhanceLike()}>
 									<input type="hidden" name="objectId" value={reply.noteId} />
-									<button class="admin-pill-link" type="submit">Like</button>
+									<button class:admin-pill-link-liked={reply.favourited} class="admin-pill-link" type="submit">
+										{#if reply.favourited}
+											<span aria-hidden="true">♥</span>
+											<span>Liked</span>
+										{:else}
+											<span aria-hidden="true">♡</span>
+											<span>Like</span>
+										{/if}
+									</button>
 								</form>
 								<a class="admin-pill-link" href={reply.noteId} target="_blank" rel="noreferrer">Open object</a>
 							</div>

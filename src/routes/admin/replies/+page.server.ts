@@ -14,6 +14,7 @@ import { getSiteProfile } from '$lib/server/profile';
 import { resolveReplyContext } from '$lib/server/admin-reply-context';
 import { followRemoteActor, listFollowing, unfollowRemoteActor } from '$lib/server/activitypub-follows';
 import { favouriteObject } from '$lib/server/mastodon-state';
+import { isObjectFavourited } from '$lib/server/mastodon-state';
 import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
@@ -72,7 +73,8 @@ export const load: PageServerLoad = async (event) => {
 							: `${origin}${profile.avatarUrl}`
 						: reply.avatarUrl,
 				actorProfileUrl: reply.origin === 'local' ? `${origin}/` : reply.profileUrl,
-				isFollowing: reply.origin !== 'local' && followingActorIds.has(reply.actorId)
+				isFollowing: reply.origin !== 'local' && followingActorIds.has(reply.actorId),
+				favourited: await isObjectFavourited(event, reply.noteId)
 			};
 		})
 	);

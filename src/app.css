@@ -2132,6 +2132,7 @@ p:last-child {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	gap: 0.35rem;
 	border-radius: 999px;
 	padding: 0.45rem 0.82rem;
 	font-size: 0.84rem;
@@ -2149,6 +2150,12 @@ p:last-child {
 	color: #111111;
 	border: 1px solid rgba(17, 17, 17, 0.1);
 	box-shadow: none;
+}
+
+.admin-pill-link-liked {
+	background: #fff1f3;
+	color: #b4233c;
+	border-color: rgba(180, 35, 60, 0.18);
 }
 
 .admin-button {

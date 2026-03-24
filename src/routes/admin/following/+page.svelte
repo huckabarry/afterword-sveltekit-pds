@@ -153,8 +153,14 @@
 							<div class="admin-thread__actions admin-thread__actions--social">
 								<form method="POST" action="?/like" use:enhance={enhanceStatusAction('like')}>
 									<input type="hidden" name="objectId" value={status.objectId} />
-									<button class="admin-pill-link" type="submit">
-										{status.favourited ? 'Liked' : 'Like'}
+									<button class:admin-pill-link-liked={status.favourited} class="admin-pill-link" type="submit">
+										{#if status.favourited}
+											<span aria-hidden="true">♥</span>
+											<span>Liked</span>
+										{:else}
+											<span aria-hidden="true">♡</span>
+											<span>Like</span>
+										{/if}
 									</button>
 								</form>
 								<form method="POST" action="?/boost" use:enhance={enhanceStatusAction('boost')}>
