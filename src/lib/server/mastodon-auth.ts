@@ -35,6 +35,31 @@ function randomToken(size = 32) {
 	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function base64UrlEncode(value: string) {
+	if (typeof Buffer !== 'undefined') {
+		return Buffer.from(value, 'utf8').toString('base64url');
+	}
+
+	return btoa(unescape(encodeURIComponent(value)))
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/=+$/g, '');
+}
+
+function base64UrlDecode(value: string) {
+	if (typeof Buffer !== 'undefined') {
+		return Buffer.from(value, 'base64url').toString('utf8');
+	}
+
+	const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+	return decodeURIComponent(escape(atob(normalized)));
+}
+
+async function sha256Hex(value: string) {
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function parseRedirectUris(value: string) {
 	return String(value || '')
 		.split(/\s+/)
@@ -53,6 +78,117 @@ function normalizeRedirectUri(value: string) {
 	} catch {
 		return trimmed.replace(/\/+$/, '');
 	}
+}
+
+function getMastodonClientSecretSeed() {
+	return getAdminPassword() || 'afterword-mastodon-oauth';
+}
+
+async function buildStatelessAppCredentials(input: {
+	name: string;
+	redirectUris: string[];
+	scopes: string;
+	website?: string | null;
+}) {
+	const payload = {
+		n: String(input.name || 'Afterword App').trim(),
+		r: input.redirectUris.map((uri) => normalizeRedirectUri(uri)).filter(Boolean),
+		s: String(input.scopes || 'read write').trim() || 'read write',
+		w: input.website ? String(input.website).trim() : null
+	};
+	const encoded = base64UrlEncode(JSON.stringify(payload));
+	const signature = (await sha256Hex(`${getMastodonClientSecretSeed()}:mastodon-app:${encoded}`)).slice(0, 24);
+	const clientId = `afterword.${encoded}.${signature}`;
+	const clientSecret = await sha256Hex(`${getMastodonClientSecretSeed()}:mastodon-secret:${encoded}`);
+
+	return {
+		clientId,
+		clientSecret,
+		name: payload.n,
+		redirectUris: payload.r,
+		scopes: payload.s,
+		website: payload.w
+	};
+}
+
+async function decodeStatelessApp(clientId: string) {
+	const parts = String(clientId || '').trim().split('.');
+	if (parts.length !== 3 || parts[0] !== 'afterword') return null;
+
+	const encoded = parts[1];
+	const signature = parts[2];
+	const expected = (await sha256Hex(`${getMastodonClientSecretSeed()}:mastodon-app:${encoded}`)).slice(0, 24);
+	if (signature !== expected) return null;
+
+	try {
+		const payload = JSON.parse(base64UrlDecode(encoded)) as {
+			n?: string;
+			r?: string[];
+			s?: string;
+			w?: string | null;
+		};
+
+		const redirectUris = Array.isArray(payload.r)
+			? payload.r.map((uri) => normalizeRedirectUri(uri)).filter(Boolean)
+			: [];
+		if (!redirectUris.length) return null;
+
+		return {
+			id: 0,
+			name: String(payload.n || 'Afterword App'),
+			website: payload.w ? String(payload.w) : null,
+			redirectUris,
+			scopes: String(payload.s || 'read write'),
+			clientId,
+			clientSecret: await sha256Hex(`${getMastodonClientSecretSeed()}:mastodon-secret:${encoded}`)
+		} satisfies MastodonApp;
+	} catch {
+		return null;
+	}
+}
+
+async function persistMastodonApp(
+	event: Pick<RequestEvent, 'platform'>,
+	app: Omit<MastodonApp, 'id'>
+) {
+	const db = getDb(event);
+	if (!db) {
+		throw new Error('D1 database is not configured');
+	}
+
+	await db
+		.prepare(
+			`INSERT INTO mastodon_apps (
+				client_name, redirect_uris, scopes, website, client_id, client_secret
+			) VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(client_id) DO UPDATE SET
+				client_name = excluded.client_name,
+				redirect_uris = excluded.redirect_uris,
+				scopes = excluded.scopes,
+				website = excluded.website,
+				client_secret = excluded.client_secret`
+		)
+		.bind(
+			app.name,
+			app.redirectUris.join(' '),
+			app.scopes,
+			app.website,
+			app.clientId,
+			app.clientSecret
+		)
+		.run();
+
+	const row = await db
+		.prepare(
+			`SELECT id, client_name, website, redirect_uris, scopes, client_id, client_secret
+			 FROM mastodon_apps
+			 WHERE client_id = ?
+			 LIMIT 1`
+		)
+		.bind(app.clientId)
+		.first<MastodonAppRow>();
+
+	return mapApp(row);
 }
 
 function mapApp(row: MastodonAppRow | null | undefined): MastodonApp | null {
@@ -94,29 +230,19 @@ export async function createMastodonApp(
 		throw new Error('D1 database is not configured');
 	}
 
-	const clientId = `afterword-${randomToken(12)}`;
-	const clientSecret = randomToken(24);
-	const redirectUris = input.redirectUris.join(' ');
-
-	await db
-		.prepare(
-			`INSERT INTO mastodon_apps (
-				client_name, redirect_uris, scopes, website, client_id, client_secret
-			) VALUES (?, ?, ?, ?, ?, ?)`
-		)
-		.bind(
-			String(input.name || 'Afterword App').trim(),
-			redirectUris,
-			String(input.scopes || 'read write').trim() || 'read write',
-			input.website ? String(input.website).trim() : null,
-			clientId,
-			clientSecret
-		)
-		.run();
+	const credentials = await buildStatelessAppCredentials(input);
+	await persistMastodonApp(event, {
+		name: credentials.name,
+		redirectUris: credentials.redirectUris,
+		scopes: credentials.scopes,
+		website: credentials.website,
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret
+	});
 
 	return {
-		clientId,
-		clientSecret
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret
 	};
 }
 
@@ -137,7 +263,20 @@ export async function getMastodonAppByClientId(
 		.bind(clientId)
 		.first<MastodonAppRow>();
 
-	return mapApp(row);
+	const app = mapApp(row);
+	if (app) return app;
+
+	const stateless = await decodeStatelessApp(clientId);
+	if (!stateless) return null;
+
+	return persistMastodonApp(event, {
+		name: stateless.name,
+		redirectUris: stateless.redirectUris,
+		scopes: stateless.scopes,
+		website: stateless.website,
+		clientId: stateless.clientId,
+		clientSecret: stateless.clientSecret
+	});
 }
 
 export function redirectUriAllowed(app: MastodonApp, redirectUri: string) {
