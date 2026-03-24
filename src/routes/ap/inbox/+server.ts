@@ -11,7 +11,9 @@ import { resolveThreadRootObjectId, stripHtmlToText } from '$lib/server/activity
 import { storeRemoteReply } from '$lib/server/ap-notes';
 import { recordInteraction } from '$lib/server/interactions';
 import { verifyInboundActivitySignature } from '$lib/server/activitypub-signatures';
+import { getFollowingByActorId } from '$lib/server/activitypub-follows';
 import { hasFollowerDb, updateFollowerDeliveryStatus, upsertFollower } from '$lib/server/followers';
+import { cacheRemoteStatusObject } from '$lib/server/mastodon-remote-statuses';
 
 export function GET(event) {
 	const origin = getActivityPubOrigin(event);
@@ -194,6 +196,35 @@ export async function POST(event) {
 			const objectType = getString(object.type);
 			const noteId = getString(object.id);
 			const inReplyTo = getString(object.inReplyTo);
+			const following = await getFollowingByActorId(event, actorId);
+			const actorIcon =
+				remoteActor.icon && typeof remoteActor.icon === 'object'
+					? (remoteActor.icon as Record<string, unknown>)
+					: null;
+			const actorImage =
+				remoteActor.image && typeof remoteActor.image === 'object'
+					? (remoteActor.image as Record<string, unknown>)
+					: null;
+
+			if (following && noteId && ['Note', 'Article', 'Page'].includes(String(objectType || ''))) {
+				await cacheRemoteStatusObject(event, {
+					actorId,
+					object,
+					actorName: getString(remoteActor.name),
+					actorHandle: getString(remoteActor.preferredUsername),
+					actorSummary: getString(remoteActor.summary),
+					actorUrl: getString(remoteActor.url) || actorId,
+					actorAvatarUrl: getString(actorIcon?.url),
+					actorHeaderUrl: getString(actorImage?.url) || getString(actorIcon?.url),
+					fetchedAt: new Date().toISOString()
+				});
+
+				console.log('[ap/inbox] cached followed actor post', {
+					actorId,
+					noteId,
+					inReplyTo
+				});
+			}
 
 			if (objectType !== 'Note' || !noteId || !inReplyTo) {
 				return new Response(null, { status: 202 });

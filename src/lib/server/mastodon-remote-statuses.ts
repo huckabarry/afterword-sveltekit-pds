@@ -404,6 +404,89 @@ export async function syncRemoteStatusesForActor(
 	return listCachedRemoteStatusesForActor(event, actorId, { limit: 60 });
 }
 
+export async function cacheRemoteStatusObject(
+	event: Pick<RequestEvent, 'platform'>,
+	input: {
+		actorId: string;
+		object: Record<string, unknown>;
+		actorName?: string | null;
+		actorHandle?: string | null;
+		actorSummary?: string | null;
+		actorUrl?: string | null;
+		actorAvatarUrl?: string | null;
+		actorHeaderUrl?: string | null;
+		fetchedAt?: string;
+	}
+) {
+	const db = getDb(event);
+	if (!db) return null;
+
+	await ensureRemoteStatusStore(event);
+
+	const objectType = String(input.object.type || '');
+	if (!['Note', 'Article', 'Page'].includes(objectType)) return null;
+
+	const objectId = getString(input.object.id) || getString(input.object.url);
+	if (!objectId) return null;
+
+	const contentHtml =
+		getString(input.object.content) ||
+		textToParagraphHtml(
+			stripHtmlToText(getString(input.object.summary) || getString(input.object.name) || '')
+		);
+	const contentText = stripHtmlToText(contentHtml);
+	const fetchedAt = input.fetchedAt || new Date().toISOString();
+
+	await db
+		.prepare(
+			`INSERT INTO mastodon_remote_statuses (
+				object_id, actor_id, actor_name, actor_handle, actor_summary, actor_url,
+				actor_avatar_url, actor_header_url, content_html, content_text, published_at,
+				object_url, in_reply_to_object_id, attachments_json, mentions_json, raw_object_json, fetched_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(object_id) DO UPDATE SET
+				actor_id = excluded.actor_id,
+				actor_name = excluded.actor_name,
+				actor_handle = excluded.actor_handle,
+				actor_summary = excluded.actor_summary,
+				actor_url = excluded.actor_url,
+				actor_avatar_url = excluded.actor_avatar_url,
+				actor_header_url = excluded.actor_header_url,
+				content_html = excluded.content_html,
+				content_text = excluded.content_text,
+				published_at = excluded.published_at,
+				object_url = excluded.object_url,
+				in_reply_to_object_id = excluded.in_reply_to_object_id,
+				attachments_json = excluded.attachments_json,
+				mentions_json = excluded.mentions_json,
+				raw_object_json = excluded.raw_object_json,
+				fetched_at = excluded.fetched_at,
+				updated_at = CURRENT_TIMESTAMP`
+		)
+		.bind(
+			objectId,
+			input.actorId,
+			input.actorName ?? null,
+			normalizeActorHandle(input.actorId, input.actorHandle ?? null),
+			input.actorSummary ?? null,
+			input.actorUrl ?? input.actorId,
+			input.actorAvatarUrl ?? null,
+			input.actorHeaderUrl ?? input.actorAvatarUrl ?? null,
+			contentHtml,
+			contentText,
+			getString(input.object.published) || getString(input.object.updated) || fetchedAt,
+			getString(input.object.url) || objectId,
+			getString(input.object.inReplyTo),
+			JSON.stringify(serializeAttachmentJson(input.object.attachment)),
+			JSON.stringify(serializeMentionJson(input.object.tag)),
+			JSON.stringify(input.object),
+			fetchedAt
+		)
+		.run();
+
+	return getCachedRemoteStatus(event, objectId);
+}
+
 export async function listCachedRemoteStatusesForActor(
 	event: Pick<RequestEvent, 'platform'>,
 	actorId: string,
