@@ -297,15 +297,6 @@ function getMediaMetaCache() {
 	return scope.__afterwordMediaMetaCache;
 }
 
-let sharpLoader: Promise<any> | null = null;
-
-async function loadSharp() {
-	if (!sharpLoader) {
-		sharpLoader = import('sharp').catch(() => null);
-	}
-	return sharpLoader;
-}
-
 async function getImageMeta(url: string): Promise<MediaAttachmentMeta | null> {
 	if (!url) return null;
 	const mediaMetaCache = getMediaMetaCache();
@@ -313,56 +304,10 @@ async function getImageMeta(url: string): Promise<MediaAttachmentMeta | null> {
 		return mediaMetaCache.get(url) ?? null;
 	}
 
-	try {
-		const sharpModule = await loadSharp();
-		if (!sharpModule?.default) {
-			mediaMetaCache.set(url, null);
-			return null;
-		}
-
-		const response = await fetch(url, {
-			headers: { Accept: 'image/*,*/*;q=0.8' }
-		});
-		if (!response.ok) {
-			mediaMetaCache.set(url, null);
-			return null;
-		}
-
-		const bytes = new Uint8Array(await response.arrayBuffer());
-		const metadata = await sharpModule.default(bytes).metadata();
-		const width = Number(metadata.width || 0);
-		const height = Number(metadata.height || 0);
-		if (!width || !height) {
-			mediaMetaCache.set(url, null);
-			return null;
-		}
-
-		const aspect = width / height;
-		const meta = {
-			original: {
-				width,
-				height,
-				size: `${width}x${height}`,
-				aspect
-			},
-			small: {
-				width,
-				height,
-				size: `${width}x${height}`,
-				aspect
-			},
-			focus: {
-				x: 0,
-				y: 0
-			}
-		} satisfies MediaAttachmentMeta;
-
-		mediaMetaCache.set(url, meta);
-		return meta;
-	} catch {
-		mediaMetaCache.set(url, null);
-		return null;
-	}
+	// Cloudflare Workers have been too brittle around runtime image probing.
+	// Prefer stable Mastodon API responses over optional media dimensions.
+	mediaMetaCache.set(url, null);
+	return null;
 }
 
 async function serializeMediaAttachment(input: MediaAttachmentInput) {
