@@ -1,4 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import { followRemoteActor, listFollowing, unfollowRemoteActor } from '$lib/server/activitypub-follows';
 import { listFollowers } from '$lib/server/followers';
 import type { Actions, PageServerLoad } from './$types';
@@ -27,7 +27,7 @@ export const actions: Actions = {
 		}
 
 		await followRemoteActor(event, actorId);
-		throw redirect(303, '/admin/followers?followed=1');
+		return { followed: true, actorId };
 	},
 	unfollow: async (event) => {
 		const form = await event.request.formData();
@@ -38,6 +38,6 @@ export const actions: Actions = {
 		}
 
 		await unfollowRemoteActor(event, actorId);
-		throw redirect(303, '/admin/followers?unfollowed=1');
+		return { unfollowed: true, actorId };
 	}
 };

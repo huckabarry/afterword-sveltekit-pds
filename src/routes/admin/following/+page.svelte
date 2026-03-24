@@ -1,8 +1,55 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+
 	let { data, form } = $props();
+	const initialStatuses = data.statuses;
+	const initialFlash = {
+		liked: data.liked,
+		boosted: data.boosted,
+		replied: data.replied
+	};
+	let statuses = $state(initialStatuses);
+	let flash = $state({
+		liked: initialFlash.liked,
+		boosted: initialFlash.boosted,
+		replied: initialFlash.replied
+	});
 
 	function formatDate(value: string) {
 		return new Date(value).toLocaleString();
+	}
+
+	function enhanceStatusAction(kind: 'like' | 'boost') {
+		return ({ formData }: { formData: FormData }) => {
+			const objectId = String(formData.get('objectId') || '');
+
+			return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
+				if (result.type !== 'success' || !objectId) return;
+
+				statuses = statuses.map((status: (typeof initialStatuses)[number]) =>
+					status.objectId === objectId
+						? {
+								...status,
+								favourited: kind === 'like' ? true : status.favourited,
+								reblogged: kind === 'boost' ? true : status.reblogged
+							}
+						: status
+				);
+
+				if (kind === 'like') flash.liked = true;
+				if (kind === 'boost') flash.boosted = true;
+			};
+		};
+	}
+
+	function enhanceReply() {
+		return async ({ result, formElement }: { result: { type: string }; formElement: HTMLFormElement }) => {
+			if (result.type !== 'success') return;
+			flash.replied = true;
+			formElement.reset();
+			const details = formElement.closest('details');
+			if (details) details.open = false;
+		};
 	}
 </script>
 
@@ -16,21 +63,21 @@
 			<a href="/admin/following/accounts">Manage following</a>
 		</div>
 
-		{#if data.liked}
+		{#if flash.liked}
 			<p class="admin-form-success">Like sent.</p>
 		{/if}
 
-		{#if data.boosted}
+		{#if flash.boosted}
 			<p class="admin-form-success">Boost sent.</p>
 		{/if}
 
-		{#if data.replied}
+		{#if flash.replied}
 			<p class="admin-form-success">Reply published.</p>
 		{/if}
 
-		{#if data.statuses.length}
+		{#if statuses.length}
 			<ul class="admin-social-list">
-				{#each data.statuses as status}
+				{#each statuses as status}
 					<li class="admin-social-card">
 						<div class="admin-social-card__avatar-wrap">
 							{#if status.actorUrl}
@@ -75,13 +122,13 @@
 							{/if}
 
 							<div class="admin-thread__actions admin-thread__actions--social">
-								<form method="POST" action="?/like">
+								<form method="POST" action="?/like" use:enhance={enhanceStatusAction('like')}>
 									<input type="hidden" name="objectId" value={status.objectId} />
 									<button class="admin-pill-link" type="submit">
 										{status.favourited ? 'Liked' : 'Like'}
 									</button>
 								</form>
-								<form method="POST" action="?/boost">
+								<form method="POST" action="?/boost" use:enhance={enhanceStatusAction('boost')}>
 									<input type="hidden" name="objectId" value={status.objectId} />
 									<button class="admin-pill-link" type="submit">
 										{status.reblogged ? 'Boosted' : 'Boost'}
@@ -92,7 +139,7 @@
 
 							<details class="admin-inline-reply">
 								<summary class="admin-pill-link">Reply inline</summary>
-								<form method="POST" action="?/reply" class="admin-inline-reply__form">
+								<form method="POST" action="?/reply" class="admin-inline-reply__form" use:enhance={enhanceReply}>
 									<input type="hidden" name="replyTo" value={status.objectId} />
 									<label class="admin-field">
 										<span>Reply</span>

@@ -1,5 +1,32 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+
 	let { data } = $props();
+	const initialFollowers = data.followers;
+	const initialFlash = {
+		followed: data.followed,
+		unfollowed: data.unfollowed
+	};
+	let followers = $state(initialFollowers);
+	let flash = $state({
+		followed: initialFlash.followed,
+		unfollowed: initialFlash.unfollowed
+	});
+
+	function enhanceFollow(isFollowing: boolean) {
+		return ({ formData }: { formData: FormData }) => {
+			const actorId = String(formData.get('actorId') || '');
+
+			return async ({ result }: { result: { type: string } }) => {
+				if (result.type !== 'success' || !actorId) return;
+				followers = followers.map((follower) =>
+					follower.actorId === actorId ? { ...follower, isFollowing: !isFollowing } : follower
+				);
+				flash.followed = !isFollowing;
+				flash.unfollowed = isFollowing;
+			};
+		};
+	}
 </script>
 
 <section class="admin-panel">
@@ -11,24 +38,24 @@
 			</div>
 		</div>
 
-		{#if data.followed}
+		{#if flash.followed}
 			<p class="admin-form-success">Follow request sent.</p>
 		{/if}
 
-		{#if data.unfollowed}
+		{#if flash.unfollowed}
 			<p class="admin-form-success">Unfollowed.</p>
 		{/if}
 
-		{#if data.followers.length}
+		{#if followers.length}
 			<ul class="admin-thread-list">
-				{#each data.followers as follower}
+				{#each followers as follower}
 					<li class="admin-thread">
 						<div class="admin-thread__meta">
 							<strong>{follower.displayName || follower.handle || follower.actorId}</strong>
 							{#if follower.handle}
 								<span>{follower.handle}</span>
 							{/if}
-							<form method="POST" action={follower.isFollowing ? '?/unfollow' : '?/follow'}>
+							<form method="POST" action={follower.isFollowing ? '?/unfollow' : '?/follow'} use:enhance={enhanceFollow(follower.isFollowing)}>
 								<input type="hidden" name="actorId" value={follower.actorId} />
 								<button class="admin-pill-link" type="submit">
 									{follower.isFollowing ? 'Following' : 'Follow'}

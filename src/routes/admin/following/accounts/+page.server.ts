@@ -1,4 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import { followRemoteActor, listFollowing, unfollowRemoteActor } from '$lib/server/activitypub-follows';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -26,7 +26,7 @@ export const actions: Actions = {
 			return fail(400, { error: message || 'Unable to follow account right now.' });
 		}
 
-		throw redirect(303, '/admin/following/accounts?followed=1');
+		return { followed: true, actor };
 	},
 	unfollow: async (event) => {
 		const form = await event.request.formData();
@@ -37,6 +37,6 @@ export const actions: Actions = {
 		}
 
 		await unfollowRemoteActor(event, actorId);
-		throw redirect(303, '/admin/following/accounts?unfollowed=1');
+		return { unfollowed: true, actorId };
 	}
 };

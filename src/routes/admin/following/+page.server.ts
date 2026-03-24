@@ -1,4 +1,4 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { getActivityPubOrigin, getActorId } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { createLocalReply, updateLocalReplyDeliveryStatus } from '$lib/server/ap-notes';
@@ -88,7 +88,7 @@ export const actions: Actions = {
 		}
 
 		await deliverLikeToRemoteObject(getActivityPubOrigin(event), objectId);
-		throw redirect(303, '/admin/following?liked=1');
+		return { liked: true, objectId };
 	},
 	boost: async (event) => {
 		const form = await event.request.formData();
@@ -101,7 +101,7 @@ export const actions: Actions = {
 		const origin = getActivityPubOrigin(event);
 		const activityId = await sendBoost(origin, objectId);
 		await reblogObject(event, { objectId, activityId });
-		throw redirect(303, '/admin/following?boosted=1');
+		return { boosted: true, objectId };
 	},
 	reply: async (event) => {
 		const form = await event.request.formData();
@@ -148,6 +148,6 @@ export const actions: Actions = {
 			return fail(500, { error: message || 'Unable to send reply right now.' });
 		}
 
-		throw redirect(303, '/admin/following?replied=1');
+		return { replied: true, replyTo };
 	}
 };

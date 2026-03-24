@@ -1,4 +1,4 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { getActivityPubOrigin } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import {
@@ -123,7 +123,7 @@ export const actions: Actions = {
 			throw deliveryError;
 		}
 
-		throw redirect(303, '/admin/replies?sent=1');
+		return { sent: true, replyTo };
 	},
 	like: async (event) => {
 		const form = await event.request.formData();
@@ -134,7 +134,7 @@ export const actions: Actions = {
 		}
 
 		await deliverLikeToRemoteObject(getActivityPubOrigin(event), objectId);
-		throw redirect(303, '/admin/replies?liked=1');
+		return { liked: true, objectId };
 	},
 	follow: async (event) => {
 		const form = await event.request.formData();
@@ -145,7 +145,7 @@ export const actions: Actions = {
 		}
 
 		await followRemoteActor(event, actorId);
-		throw redirect(303, '/admin/replies?followed=1');
+		return { followed: true, actorId };
 	},
 	unfollow: async (event) => {
 		const form = await event.request.formData();
@@ -156,6 +156,6 @@ export const actions: Actions = {
 		}
 
 		await unfollowRemoteActor(event, actorId);
-		throw redirect(303, '/admin/replies?unfollowed=1');
+		return { unfollowed: true, actorId };
 	}
 };

@@ -1,8 +1,60 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+
 	let { data } = $props();
+	const initialReplies = data.replies;
+	const initialFlash = {
+		sent: data.sent,
+		liked: data.liked,
+		followed: data.followed,
+		unfollowed: data.unfollowed
+	};
+	let replies = $state(initialReplies);
+	let flash = $state({
+		sent: initialFlash.sent,
+		liked: initialFlash.liked,
+		followed: initialFlash.followed,
+		unfollowed: initialFlash.unfollowed
+	});
 
 	function formatDate(value: string) {
 		return new Date(value).toLocaleString();
+	}
+
+	function updateFollowState(actorId: string, isFollowing: boolean) {
+		replies = replies.map((reply) =>
+			reply.actorId === actorId ? { ...reply, isFollowing } : reply
+		);
+	}
+
+	function enhanceFollow(isFollowing: boolean) {
+		return ({ formData }: { formData: FormData }) => {
+			const actorId = String(formData.get('actorId') || '');
+
+			return async ({ result }: { result: { type: string } }) => {
+				if (result.type !== 'success' || !actorId) return;
+				updateFollowState(actorId, !isFollowing);
+				flash.followed = !isFollowing;
+				flash.unfollowed = isFollowing;
+			};
+		};
+	}
+
+	function enhanceLike() {
+		return async ({ result }: { result: { type: string } }) => {
+			if (result.type !== 'success') return;
+			flash.liked = true;
+		};
+	}
+
+	function enhanceReply() {
+		return async ({ result, formElement }: { result: { type: string }; formElement: HTMLFormElement }) => {
+			if (result.type !== 'success') return;
+			flash.sent = true;
+			formElement.reset();
+			const details = formElement.closest('details');
+			if (details) details.open = false;
+		};
 	}
 </script>
 
@@ -16,25 +68,25 @@
 			<a href="/admin/compose">New note</a>
 		</div>
 
-		{#if data.sent}
+		{#if flash.sent}
 			<p class="admin-form-success">Reply published.</p>
 		{/if}
 
-		{#if data.liked}
+		{#if flash.liked}
 			<p class="admin-form-success">Like sent.</p>
 		{/if}
 
-		{#if data.followed}
+		{#if flash.followed}
 			<p class="admin-form-success">Follow request sent.</p>
 		{/if}
 
-		{#if data.unfollowed}
+		{#if flash.unfollowed}
 			<p class="admin-form-success">Unfollowed.</p>
 		{/if}
 
-		{#if data.replies.length}
+		{#if replies.length}
 			<ul class="admin-social-list">
-				{#each data.replies as reply}
+				{#each replies as reply}
 					<li class="admin-social-card">
 						<div class="admin-social-card__avatar-wrap">
 							{#if reply.actorProfileUrl}
@@ -60,7 +112,7 @@
 									<span>{reply.actorHandle}</span>
 								{/if}
 								{#if reply.origin !== 'local'}
-									<form method="POST" action={reply.isFollowing ? '?/unfollow' : '?/follow'}>
+									<form method="POST" action={reply.isFollowing ? '?/unfollow' : '?/follow'} use:enhance={enhanceFollow(reply.isFollowing)}>
 										<input type="hidden" name="actorId" value={reply.actorId} />
 										<button class="admin-pill-link" type="submit">
 											{reply.isFollowing ? 'Following' : 'Follow'}
@@ -128,7 +180,7 @@
 							{/if}
 
 							<div class="admin-thread__actions admin-thread__actions--social">
-								<form method="POST" action="?/like">
+								<form method="POST" action="?/like" use:enhance={enhanceLike}>
 									<input type="hidden" name="objectId" value={reply.noteId} />
 									<button class="admin-pill-link" type="submit">Like</button>
 								</form>
@@ -138,7 +190,7 @@
 							<details class="admin-inline-reply">
 								<summary class="admin-pill-link">Reply inline</summary>
 
-								<form method="POST" action="?/reply" class="admin-inline-reply__form">
+								<form method="POST" action="?/reply" class="admin-inline-reply__form" use:enhance={enhanceReply}>
 									<input type="hidden" name="replyTo" value={reply.noteId} />
 									<label class="admin-field">
 										<span>Reply</span>

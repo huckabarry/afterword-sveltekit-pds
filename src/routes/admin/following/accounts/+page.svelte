@@ -1,5 +1,29 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+
 	let { data, form } = $props();
+	const initialFollowing = data.following;
+	const initialFlash = {
+		followed: data.followed,
+		unfollowed: data.unfollowed
+	};
+	let following = $state(initialFollowing);
+	let flash = $state({
+		followed: initialFlash.followed,
+		unfollowed: initialFlash.unfollowed
+	});
+
+	function enhanceUnfollow() {
+		return ({ formData }: { formData: FormData }) => {
+			const actorId = String(formData.get('actorId') || '');
+
+			return async ({ result }: { result: { type: string } }) => {
+				if (result.type !== 'success' || !actorId) return;
+				following = following.filter((account) => account.actorId !== actorId);
+				flash.unfollowed = true;
+			};
+		};
+	}
 </script>
 
 <section class="admin-panel">
@@ -31,17 +55,17 @@
 			<p class="form-error">{form.error}</p>
 		{/if}
 
-		{#if data.followed}
+		{#if flash.followed}
 			<p class="admin-form-success">Follow request sent.</p>
 		{/if}
 
-		{#if data.unfollowed}
+		{#if flash.unfollowed}
 			<p class="admin-form-success">Unfollowed.</p>
 		{/if}
 
-		{#if data.following.length}
+		{#if following.length}
 			<ul class="admin-social-list">
-				{#each data.following as account}
+				{#each following as account}
 					<li class="admin-social-card">
 						<div class="admin-social-card__body">
 							<div class="admin-social-card__meta">
@@ -55,7 +79,7 @@
 								{#if account.profileUrl}
 									<a class="admin-pill-link" href={account.profileUrl} target="_blank" rel="noreferrer">Open profile</a>
 								{/if}
-								<form method="POST" action="?/unfollow">
+								<form method="POST" action="?/unfollow" use:enhance={enhanceUnfollow()}>
 									<input type="hidden" name="actorId" value={account.actorId} />
 									<button class="admin-pill-link" type="submit">Following</button>
 								</form>
