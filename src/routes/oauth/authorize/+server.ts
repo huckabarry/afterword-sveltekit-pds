@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import {
 	authorizeAdminPassword,
 	createAuthorizationCode,
-	getMastodonAppByClientId,
+	getOrProvisionMastodonApp,
 	isAuthorizedAdmin,
 	redirectUriAllowed
 } from '$lib/server/mastodon-auth';
@@ -64,7 +64,7 @@ export async function GET(event) {
 	const scope = String(event.url.searchParams.get('scope') || 'read write').trim() || 'read write';
 	const state = String(event.url.searchParams.get('state') || '').trim();
 
-	const app = clientId ? await getMastodonAppByClientId(event, clientId) : null;
+	const app = clientId ? await getOrProvisionMastodonApp(event, { clientId, redirectUri, scope }) : null;
 	const errorMessage =
 		!app
 			? 'Unknown client'
@@ -93,7 +93,7 @@ export async function POST(event) {
 	const scope = String(form.get('scope') || 'read write').trim() || 'read write';
 	const state = String(form.get('state') || '').trim();
 	const submittedPassword = String(form.get('password') || '').trim();
-	const app = clientId ? await getMastodonAppByClientId(event, clientId) : null;
+	const app = clientId ? await getOrProvisionMastodonApp(event, { clientId, redirectUri, scope }) : null;
 
 	if (!app || !redirectUri || !redirectUriAllowed(app, redirectUri)) {
 		return new Response(

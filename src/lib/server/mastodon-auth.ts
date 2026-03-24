@@ -21,6 +21,8 @@ export type MastodonAccessToken = {
 	createdAt: string;
 };
 
+const MICROBLOG_CALLBACK = 'https://micro.blog/mastodon/callback';
+
 function getDb(event: Pick<RequestEvent, 'platform'>) {
 	return (
 		event.platform?.env?.D1_DATABASE ??
@@ -145,6 +147,36 @@ async function decodeStatelessApp(clientId: string) {
 	} catch {
 		return null;
 	}
+}
+
+function isMicroBlogRedirectUri(redirectUri: string) {
+	return normalizeRedirectUri(redirectUri) === MICROBLOG_CALLBACK;
+}
+
+async function provisionKnownClient(
+	event: Pick<RequestEvent, 'platform'>,
+	input: {
+		clientId: string;
+		redirectUri: string;
+		scope?: string | null;
+	}
+) {
+	const clientId = String(input.clientId || '').trim();
+	if (!clientId) return null;
+	if (!isMicroBlogRedirectUri(input.redirectUri)) return null;
+
+	// Micro.blog appears to keep its own long-lived Mastodon client IDs.
+	// Accept that client identity and persist a local app row for it.
+	const secret = await sha256Hex(`${getMastodonClientSecretSeed()}:microblog:${clientId}`);
+
+	return persistMastodonApp(event, {
+		name: 'Micro.blog',
+		redirectUris: [MICROBLOG_CALLBACK],
+		scopes: String(input.scope || 'read write follow').trim() || 'read write follow',
+		website: 'https://micro.blog/',
+		clientId,
+		clientSecret: secret
+	});
 }
 
 async function persistMastodonApp(
@@ -279,11 +311,36 @@ export async function getMastodonAppByClientId(
 	});
 }
 
+export async function getOrProvisionMastodonApp(
+	event: Pick<RequestEvent, 'platform'>,
+	input: {
+		clientId: string;
+		redirectUri?: string | null;
+		scope?: string | null;
+	}
+) {
+	const clientId = String(input.clientId || '').trim();
+	if (!clientId) return null;
+
+	const existing = await getMastodonAppByClientId(event, clientId);
+	if (existing) return existing;
+
+	return provisionKnownClient(event, {
+		clientId,
+		redirectUri: String(input.redirectUri || ''),
+		scope: input.scope || null
+	});
+}
+
 export function redirectUriAllowed(app: MastodonApp, redirectUri: string) {
 	const requested = normalizeRedirectUri(redirectUri);
 	if (!requested) return false;
 
 	return app.redirectUris.some((allowed) => normalizeRedirectUri(allowed) === requested);
+}
+
+export function isPublicMastodonApp(app: MastodonApp, redirectUri?: string | null) {
+	return app.name === 'Micro.blog' && isMicroBlogRedirectUri(String(redirectUri || ''));
 }
 
 export async function createAuthorizationCode(

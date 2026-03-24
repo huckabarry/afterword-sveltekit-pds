@@ -2,7 +2,8 @@ import { json } from '@sveltejs/kit';
 import {
 	consumeAuthorizationCode,
 	createAccessToken,
-	getMastodonAppByClientId
+	getOrProvisionMastodonApp,
+	isPublicMastodonApp
 } from '$lib/server/mastodon-auth';
 
 function corsHeaders() {
@@ -50,8 +51,9 @@ export async function POST(event) {
 		return json({ error: 'unsupported_grant_type' }, { status: 400, headers: corsHeaders() });
 	}
 
-	const app = clientId ? await getMastodonAppByClientId(event, clientId) : null;
-	if (!app || app.clientSecret !== clientSecret) {
+	const app = clientId ? await getOrProvisionMastodonApp(event, { clientId, redirectUri }) : null;
+	const allowPublicClient = app ? isPublicMastodonApp(app, redirectUri) : false;
+	if (!app || (!allowPublicClient && app.clientSecret !== clientSecret)) {
 		return json({ error: 'invalid_client' }, { status: 401, headers: corsHeaders() });
 	}
 
