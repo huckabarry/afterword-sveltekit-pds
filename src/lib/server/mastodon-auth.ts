@@ -42,6 +42,19 @@ function parseRedirectUris(value: string) {
 		.filter(Boolean);
 }
 
+function normalizeRedirectUri(value: string) {
+	const trimmed = String(value || '').trim();
+	if (!trimmed) return '';
+
+	try {
+		const url = new URL(trimmed);
+		const pathname = url.pathname !== '/' ? url.pathname.replace(/\/+$/, '') || '/' : '/';
+		return `${url.protocol}//${url.host}${pathname}${url.search}`;
+	} catch {
+		return trimmed.replace(/\/+$/, '');
+	}
+}
+
 function mapApp(row: MastodonAppRow | null | undefined): MastodonApp | null {
 	if (!row) return null;
 
@@ -128,7 +141,10 @@ export async function getMastodonAppByClientId(
 }
 
 export function redirectUriAllowed(app: MastodonApp, redirectUri: string) {
-	return app.redirectUris.includes(redirectUri);
+	const requested = normalizeRedirectUri(redirectUri);
+	if (!requested) return false;
+
+	return app.redirectUris.some((allowed) => normalizeRedirectUri(allowed) === requested);
 }
 
 export async function createAuthorizationCode(
@@ -312,6 +328,13 @@ export async function isAuthorizedAdmin(event: Pick<RequestEvent, 'cookies' | 'r
 	}
 
 	const submittedPassword = String((await event.request.formData().catch(() => null))?.get('password') || '').trim();
+	return authorizeAdminPassword(event, submittedPassword);
+}
+
+export async function authorizeAdminPassword(
+	event: Pick<RequestEvent, 'cookies'>,
+	submittedPassword: string
+) {
 	const password = getAdminPassword();
 	if (!password || submittedPassword !== password) {
 		return false;

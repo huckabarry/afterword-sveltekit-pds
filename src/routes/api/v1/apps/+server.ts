@@ -17,6 +17,7 @@ export async function POST(event) {
 			? {
 					client_name: toString(form.get('client_name')),
 					clientName: toString(form.get('clientName')),
+					redirect_uri: toString(form.get('redirect_uri')),
 					redirect_uris: toString(form.get('redirect_uris')),
 					redirectUris: toString(form.get('redirectUris')),
 					scopes: toString(form.get('scopes')),
@@ -26,7 +27,7 @@ export async function POST(event) {
 	}
 
 	const clientName = String(body.client_name || body.clientName || 'Afterword App').trim();
-	const redirectUris = String(body.redirect_uris || body.redirectUris || '').trim();
+	const redirectUris = String(body.redirect_uris || body.redirectUris || body.redirect_uri || '').trim();
 	const scopes = String(body.scopes || 'read write').trim() || 'read write';
 	const website = String(body.website || '').trim() || null;
 

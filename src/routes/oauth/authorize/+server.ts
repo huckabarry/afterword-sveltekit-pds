@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import {
+	authorizeAdminPassword,
 	createAuthorizationCode,
 	getMastodonAppByClientId,
 	isAuthorizedAdmin,
@@ -91,6 +92,7 @@ export async function POST(event) {
 	const redirectUri = String(form.get('redirect_uri') || '').trim();
 	const scope = String(form.get('scope') || 'read write').trim() || 'read write';
 	const state = String(form.get('state') || '').trim();
+	const submittedPassword = String(form.get('password') || '').trim();
 	const app = clientId ? await getMastodonAppByClientId(event, clientId) : null;
 
 	if (!app || !redirectUri || !redirectUriAllowed(app, redirectUri)) {
@@ -108,7 +110,8 @@ export async function POST(event) {
 		);
 	}
 
-	const authorized = await isAuthorizedAdmin(event);
+	const authorized = (await isAuthorizedAdmin({ cookies: event.cookies, request: new Request('http://local') }))
+		|| (submittedPassword ? await authorizeAdminPassword({ cookies: event.cookies }, submittedPassword) : false);
 
 	if (!authorized) {
 		return new Response(
