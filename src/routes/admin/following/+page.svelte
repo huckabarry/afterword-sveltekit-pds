@@ -130,6 +130,26 @@
 								</div>
 							{/if}
 
+							{#if status.replyContext}
+								<div class="admin-thread__context">
+									<p class="admin-thread__context-label">Replying to</p>
+									<a
+										class="admin-thread__context-card"
+										href={status.replyContext.url}
+										target="_blank"
+										rel="noreferrer"
+									>
+										{#if status.replyContext.title}
+											<strong>{status.replyContext.title}</strong>
+										{/if}
+										{#if status.replyContext.author}
+											<span>{status.replyContext.author}</span>
+										{/if}
+										<p>{status.replyContext.excerpt}</p>
+									</a>
+								</div>
+							{/if}
+
 							<div class="admin-thread__actions admin-thread__actions--social">
 								<form method="POST" action="?/like" use:enhance={enhanceStatusAction('like')}>
 									<input type="hidden" name="objectId" value={status.objectId} />
@@ -144,6 +164,9 @@
 									</button>
 								</form>
 								<a class="admin-pill-link" href={status.objectUrl || status.objectId} target="_blank" rel="noreferrer">Open post</a>
+								{#if status.replyContext}
+									<a class="admin-pill-link" href={status.replyContext.url} target="_blank" rel="noreferrer">Open thread</a>
+								{/if}
 							</div>
 
 							<details class="admin-inline-reply">

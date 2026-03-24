@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import { getActivityPubOrigin, getActorId } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
+import { resolveReplyContext } from '$lib/server/admin-reply-context';
 import { createLocalReply, updateLocalReplyDeliveryStatus } from '$lib/server/ap-notes';
 import { deliverLikeToRemoteObject } from '$lib/server/activitypub-likes';
 import { fetchActivityJson, fetchRemoteActor, localReplyToRemoteCreateActivity, normalizeMentionText, resolveThreadRootObjectId, textToParagraphHtml } from '$lib/server/activitypub-replies';
@@ -39,6 +40,7 @@ async function sendBoost(origin: string, objectId: string) {
 }
 
 export const load: PageServerLoad = async (event) => {
+	const origin = getActivityPubOrigin(event);
 	const following = await listFollowing(event);
 
 	const statuses = following.length
@@ -53,7 +55,10 @@ export const load: PageServerLoad = async (event) => {
 		statuses.map(async (status: CachedRemoteStatus) => ({
 			...status,
 			favourited: await isObjectFavourited(event, status.objectId),
-			reblogged: await isObjectReblogged(event, status.objectId)
+			reblogged: await isObjectReblogged(event, status.objectId),
+			replyContext: status.inReplyToObjectId
+				? await resolveReplyContext(event, origin, status.inReplyToObjectId)
+				: null
 		}))
 	);
 
