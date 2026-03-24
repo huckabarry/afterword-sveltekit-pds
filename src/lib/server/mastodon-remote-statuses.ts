@@ -45,6 +45,12 @@ function getString(value: unknown) {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function isoDaysAgo(days: number) {
+	const date = new Date();
+	date.setUTCDate(date.getUTCDate() - days);
+	return date.toISOString();
+}
+
 function normalizeActorHandle(actorId: string, handle: string | null) {
 	if (!handle) return null;
 	if (handle.includes('@')) return handle.replace(/^@+/, '');
@@ -164,6 +170,29 @@ async function ensureRemoteStatusStore(event: Pick<RequestEvent, 'platform'>) {
 			`CREATE INDEX IF NOT EXISTS idx_mastodon_remote_statuses_reply_target
 			 ON mastodon_remote_statuses(in_reply_to_object_id)`
 		)
+		.run();
+}
+
+export async function pruneRemoteStatusCache(
+	event: Pick<RequestEvent, 'platform'>,
+	options?: {
+		retentionDays?: number;
+	}
+) {
+	const db = getDb(event);
+	if (!db) return;
+
+	await ensureRemoteStatusStore(event);
+
+	const retentionDays = Math.max(1, Math.min(options?.retentionDays || 14, 90));
+	const cutoff = isoDaysAgo(retentionDays);
+
+	await db
+		.prepare(
+			`DELETE FROM mastodon_remote_statuses
+			 WHERE COALESCE(published_at, fetched_at, created_at) < ?`
+		)
+		.bind(cutoff)
 		.run();
 }
 
@@ -296,6 +325,7 @@ export async function syncRemoteStatusesForActor(
 	if (!db) return [];
 
 	await ensureRemoteStatusStore(event);
+	await pruneRemoteStatusCache(event);
 
 	const freshnessMs = Math.max(15_000, options?.freshnessMs || 120_000);
 	if (!options?.force) {
@@ -422,6 +452,7 @@ export async function cacheRemoteStatusObject(
 	if (!db) return null;
 
 	await ensureRemoteStatusStore(event);
+	await pruneRemoteStatusCache(event);
 
 	const objectType = String(input.object.type || '');
 	if (!['Note', 'Article', 'Page'].includes(objectType)) return null;
@@ -498,6 +529,7 @@ export async function listCachedRemoteStatusesForActor(
 	if (!db) return [];
 
 	await ensureRemoteStatusStore(event);
+	await pruneRemoteStatusCache(event);
 
 	const limit = Math.max(1, Math.min(options?.limit || 20, 200));
 	const result = await db
@@ -528,6 +560,7 @@ export async function listCachedRemoteStatusesForActors(
 	if (!db || !actorIds.length) return [];
 
 	await ensureRemoteStatusStore(event);
+	await pruneRemoteStatusCache(event);
 
 	const limit = Math.max(1, Math.min(options?.limit || 80, 300));
 	const placeholders = actorIds.map(() => '?').join(', ');
@@ -556,6 +589,7 @@ export async function getCachedRemoteStatus(
 	if (!db) return null;
 
 	await ensureRemoteStatusStore(event);
+	await pruneRemoteStatusCache(event);
 
 	const row = await db
 		.prepare(
