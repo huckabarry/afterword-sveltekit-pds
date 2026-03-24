@@ -91,6 +91,16 @@ function getString(value: unknown) {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function getActorIdFromObject(object: Record<string, unknown>) {
+	const attributedTo = object.attributedTo;
+	if (typeof attributedTo === 'string' && attributedTo.trim()) return attributedTo.trim();
+	if (Array.isArray(attributedTo)) {
+		const first = attributedTo.find((item) => typeof item === 'string' && item.trim());
+		if (typeof first === 'string') return first.trim();
+	}
+	return null;
+}
+
 export async function buildLocalAccount(event: Pick<RequestEvent, 'platform' | 'url'>) {
 	const origin = getActivityPubOrigin(event);
 	const profile = await getSiteProfile(event);
@@ -532,19 +542,22 @@ export async function buildHomeTimeline(event: Pick<RequestEvent, 'platform' | '
 		(a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)
 	);
 	const followedStatuses = [...remote].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+	const followedOriginals = followedStatuses.filter((item) => !item.in_reply_to_id);
+	const followedReplies = followedStatuses.filter((item) => item.in_reply_to_id);
+	const preferredFollowedStatuses = [...followedOriginals, ...followedReplies];
 
-	if (!following.length || !followedStatuses.length) {
-		return [...ownStatuses, ...followedStatuses]
+	if (!following.length || !preferredFollowedStatuses.length) {
+		return [...ownStatuses, ...preferredFollowedStatuses]
 			.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
 			.slice(0, limit);
 	}
 
 	const reservedRemote = Math.min(
-		followedStatuses.length,
+		preferredFollowedStatuses.length,
 		Math.max(5, Math.floor(limit / 3))
 	);
 	const ownSlice = ownStatuses.slice(0, Math.max(0, limit - reservedRemote));
-	const remoteSlice = followedStatuses.slice(0, reservedRemote);
+	const remoteSlice = preferredFollowedStatuses.slice(0, reservedRemote);
 
 	return [...ownSlice, ...remoteSlice]
 		.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
@@ -581,8 +594,28 @@ export async function buildPublicTimeline(
 	const remote = (Array.isArray(remoteStatuses) ? remoteStatuses : [])
 		.flat()
 		.filter((item): item is NonNullable<(typeof remoteStatuses extends Array<infer U> ? U : never)[number]> => Boolean(item));
+	const ownStatuses = [...localStatuses, ...mirrored].sort(
+		(a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)
+	);
+	const followedStatuses = [...remote].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+	const followedOriginals = followedStatuses.filter((item) => !item.in_reply_to_id);
+	const followedReplies = followedStatuses.filter((item) => item.in_reply_to_id);
+	const preferredFollowedStatuses = [...followedOriginals, ...followedReplies];
 
-	return [...localStatuses, ...mirrored, ...remote]
+	if (options?.local || !preferredFollowedStatuses.length) {
+		return [...ownStatuses, ...preferredFollowedStatuses]
+			.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+			.slice(0, limit);
+	}
+
+	const reservedRemote = Math.min(
+		preferredFollowedStatuses.length,
+		Math.max(8, Math.floor((limit * 2) / 3))
+	);
+	const remoteSlice = preferredFollowedStatuses.slice(0, reservedRemote);
+	const ownSlice = ownStatuses.slice(0, Math.max(0, limit - reservedRemote));
+
+	return [...remoteSlice, ...ownSlice]
 		.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
 		.slice(0, limit);
 }
@@ -709,6 +742,28 @@ export async function resolveStatusByObjectId(
 		const listItem =
 			localNotes.find((item) => item.noteId === note.noteId) || ({ ...note, incomingReplyCount: 0 } as LocalApNoteListItem);
 		return await serializeLocalNoteStatus(event, listItem);
+	}
+
+	if (objectId.startsWith('http')) {
+		try {
+			const object = await fetchActivityJson(objectId);
+			const type = String(object.type || '');
+			let resolvedObject = object;
+
+			if (type === 'Create') {
+				const nestedObject = object.object;
+				if (typeof nestedObject === 'string') {
+					resolvedObject = (await fetchActivityJson(nestedObject).catch(() => null)) || {};
+				} else if (nestedObject && typeof nestedObject === 'object') {
+					resolvedObject = nestedObject as Record<string, unknown>;
+				}
+			}
+
+			const actorId = getActorIdFromObject(resolvedObject);
+			if (actorId) {
+				return await serializeRemoteObjectStatus(event, actorId, resolvedObject);
+			}
+		} catch {}
 	}
 
 	return null;
