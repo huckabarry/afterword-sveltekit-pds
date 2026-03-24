@@ -6,7 +6,7 @@ import { createLocalReply, updateLocalReplyDeliveryStatus } from '$lib/server/ap
 import { deliverLikeToRemoteObject } from '$lib/server/activitypub-likes';
 import { fetchActivityJson, fetchRemoteActor, localReplyToRemoteCreateActivity, normalizeMentionText, resolveThreadRootObjectId, textToParagraphHtml } from '$lib/server/activitypub-replies';
 import { listFollowing } from '$lib/server/activitypub-follows';
-import { isObjectFavourited, isObjectReblogged, reblogObject } from '$lib/server/mastodon-state';
+import { favouriteObject, isObjectFavourited, isObjectReblogged, reblogObject } from '$lib/server/mastodon-state';
 import { listCachedRemoteStatusesForActors, syncRemoteStatusesForActor, type CachedRemoteStatus } from '$lib/server/mastodon-remote-statuses';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -83,7 +83,8 @@ export const actions: Actions = {
 			return fail(400, { error: 'Missing post to like.' });
 		}
 
-		await deliverLikeToRemoteObject(getActivityPubOrigin(event), objectId);
+		const delivery = await deliverLikeToRemoteObject(getActivityPubOrigin(event), objectId);
+		await favouriteObject(event, { objectId, activityId: delivery.activityId });
 		return { liked: true, objectId };
 	},
 	boost: async (event) => {

@@ -13,6 +13,7 @@ import { listFollowers } from '$lib/server/followers';
 import { getSiteProfile } from '$lib/server/profile';
 import { resolveReplyContext } from '$lib/server/admin-reply-context';
 import { followRemoteActor, listFollowing, unfollowRemoteActor } from '$lib/server/activitypub-follows';
+import { favouriteObject } from '$lib/server/mastodon-state';
 import {
 	deliverReplyToRemoteActor,
 	localReplyToCreateActivity,
@@ -133,7 +134,8 @@ export const actions: Actions = {
 			return fail(400, { error: 'Missing object to like.' });
 		}
 
-		await deliverLikeToRemoteObject(getActivityPubOrigin(event), objectId);
+		const delivery = await deliverLikeToRemoteObject(getActivityPubOrigin(event), objectId);
+		await favouriteObject(event, { objectId, activityId: delivery.activityId });
 		return { liked: true, objectId };
 	},
 	follow: async (event) => {

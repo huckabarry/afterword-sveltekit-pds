@@ -36,6 +36,7 @@ export async function deliverLikeToRemoteObject(origin: string, objectId: string
 	await sendSignedActivity(origin, targetInbox, activity);
 
 	return {
+		activityId: String(activity.id || ''),
 		targetActorId: remoteActor.id,
 		targetInbox
 	};

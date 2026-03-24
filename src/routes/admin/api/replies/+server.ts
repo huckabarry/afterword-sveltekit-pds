@@ -9,6 +9,7 @@ import {
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { requireAdminAccess } from '$lib/server/admin';
 import { listFollowers } from '$lib/server/followers';
+import { favouriteObject } from '$lib/server/mastodon-state';
 import { enrichReplies } from '$lib/server/activitypub-reply-previews';
 import {
 	deliverReplyToRemoteActor,
@@ -76,7 +77,8 @@ export async function POST(event) {
 			return json({ error: 'Missing objectId' }, { status: 400 });
 		}
 
-		await deliverLikeToRemoteObject(getActivityPubOrigin(event), objectId);
+		const delivery = await deliverLikeToRemoteObject(getActivityPubOrigin(event), objectId);
+		await favouriteObject(event, { objectId, activityId: delivery.activityId });
 		return json({ ok: true });
 	}
 
