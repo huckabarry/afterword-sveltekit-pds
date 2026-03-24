@@ -81,8 +81,9 @@ export async function POST(event) {
 	const content = normalizeMentionText(getValue('status'));
 	const inReplyToId = getValue('in_reply_to_id');
 	const mediaIds = [...readEntries(parsed, 'media_ids[]'), ...readEntries(parsed, 'media_ids')];
+	const hasMedia = mediaIds.length > 0;
 
-	if (!content) {
+	if (!content && !hasMedia) {
 		return json({ error: 'status is required' }, { status: 422 });
 	}
 
@@ -96,7 +97,7 @@ export async function POST(event) {
 		}));
 
 	const origin = getActivityPubOrigin(event);
-	const contentHtml = textToParagraphHtml(content);
+	const contentHtml = content ? textToParagraphHtml(content) : '<p></p>';
 
 	if (inReplyToId) {
 		const replyTo = decodeMastodonStatusId(inReplyToId);

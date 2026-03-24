@@ -15,8 +15,8 @@ function isFileLike(value: unknown): value is FileLike {
 	const record = value as Record<string, unknown>;
 	return (
 		typeof record.arrayBuffer === 'function' &&
-		typeof record.size === 'number' &&
-		typeof record.type === 'string'
+		('size' in record ? typeof record.size === 'number' || typeof record.size === 'string' : true) &&
+		('type' in record ? typeof record.type === 'string' : true)
 	);
 }
 
@@ -26,7 +26,7 @@ function collectFiles(formData: FormData) {
 
 	for (const key of keys) {
 		for (const item of formData.getAll(key)) {
-			if (isFileLike(item) && Number(item.size || 0) > 0) {
+			if (isFileLike(item) && Number(item.size || 1) > 0) {
 				entries.push(item);
 			}
 		}
@@ -35,7 +35,7 @@ function collectFiles(formData: FormData) {
 	// Some clients send a single unnamed/blob part under an unexpected field name.
 	if (!entries.length) {
 		for (const [, value] of formData.entries()) {
-			if (isFileLike(value) && Number(value.size || 0) > 0) {
+			if (isFileLike(value) && Number(value.size || 1) > 0) {
 				entries.push(value);
 			}
 		}

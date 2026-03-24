@@ -31,8 +31,8 @@ function isFileLike(value: unknown): value is FileLike {
 	const record = value as Record<string, unknown>;
 	return (
 		typeof record.arrayBuffer === 'function' &&
-		typeof record.size === 'number' &&
-		typeof record.type === 'string'
+		('size' in record ? typeof record.size === 'number' || typeof record.size === 'string' : true) &&
+		('type' in record ? typeof record.type === 'string' : true)
 	);
 }
 
@@ -53,6 +53,10 @@ function fileExtension(file: FileLike) {
 		case 'image/gif':
 			return 'gif';
 		default:
+			if (/\.(jpe?g)$/i.test(name)) return 'jpg';
+			if (/\.png$/i.test(name)) return 'png';
+			if (/\.webp$/i.test(name)) return 'webp';
+			if (/\.gif$/i.test(name)) return 'gif';
 			return 'bin';
 	}
 }
@@ -72,23 +76,28 @@ export async function uploadImageFiles(
 	const prefix = sanitizeSegment(options.prefix || 'item') || 'item';
 
 	for (const file of files) {
-		if (!isFileLike(file) || Number(file.size || 0) === 0) continue;
-		if (!String(file.type || '').startsWith('image/')) continue;
+		if (!isFileLike(file) || Number(file.size || 1) === 0) continue;
 
+		const contentType = String(file.type || '').trim();
 		const extension = fileExtension(file);
+		const looksLikeImage =
+			contentType.startsWith('image/') || ['jpg', 'png', 'webp', 'gif'].includes(extension);
+
+		if (!looksLikeImage) continue;
+
 		const key = `${options.scope}/${prefix}/${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}.${extension}`;
 		const bytes = await file.arrayBuffer();
 
 		await bucket.put(key, bytes, {
 			httpMetadata: {
-				contentType: String(file.type || 'application/octet-stream')
+				contentType: contentType || `image/${extension === 'jpg' ? 'jpeg' : extension}`
 			}
 		});
 
 		uploads.push({
 			key,
 			url: `${event.url.origin}/media/${key}`,
-			mediaType: String(file.type || 'application/octet-stream'),
+			mediaType: contentType || `image/${extension === 'jpg' ? 'jpeg' : extension}`,
 			alt: String(file.name || '')
 		});
 	}
