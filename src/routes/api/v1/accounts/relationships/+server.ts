@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { getActorId, getActivityPubOrigin } from '$lib/server/activitypub';
 import { requireMastodonAccessToken } from '$lib/server/mastodon-auth';
+import { isActorBlocked, isActorMuted } from '$lib/server/mastodon-state';
 import {
 	buildRelationship,
 	decodeMastodonAccountId,
@@ -30,7 +31,9 @@ export async function GET(event) {
 
 			return buildRelationship(String((account as { id?: string })?.id || rawId), {
 				following: Boolean(meta?.following),
-				followedBy: Boolean(meta?.followedBy)
+				followedBy: Boolean(meta?.followedBy),
+				muting: await isActorMuted(event, decoded),
+				blocking: await isActorBlocked(event, decoded)
 			});
 		})
 	);

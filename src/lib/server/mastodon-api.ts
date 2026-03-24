@@ -13,7 +13,13 @@ import { getSiteProfile } from '$lib/server/profile';
 import { fetchActivityJson, fetchRemoteActor, stripHtmlToText } from '$lib/server/activitypub-replies';
 import { getStatusBySlug, getStatuses, type StatusPost } from '$lib/server/atproto';
 import { getFollowingByActorId, listFollowing } from '$lib/server/activitypub-follows';
-import { isObjectFavourited } from '$lib/server/mastodon-state';
+import {
+	isActorBlocked,
+	isActorMuted,
+	isObjectBookmarked,
+	isObjectFavourited,
+	isObjectReblogged
+} from '$lib/server/mastodon-state';
 import {
 	getCachedRemoteStatus,
 	listCachedRemoteStatusesForActor,
@@ -375,6 +381,8 @@ export async function serializeLocalNoteStatus(
 ) {
 	const account = await buildLocalAccount(event);
 	const favourited = await isObjectFavourited(event, note.noteId);
+	const bookmarked = await isObjectBookmarked(event, note.noteId);
+	const reblogged = await isObjectReblogged(event, note.noteId);
 
 	return {
 		id: encodeMastodonStatusId(note.noteId, note.publishedAt),
@@ -388,11 +396,11 @@ export async function serializeLocalNoteStatus(
 		uri: note.noteId,
 		url: note.objectUrl || note.noteId,
 		replies_count: note.incomingReplyCount,
-		reblogs_count: 0,
+		reblogs_count: reblogged ? 1 : 0,
 		favourites_count: favourited ? 1 : 0,
 		favourited,
-		reblogged: false,
-		bookmarked: false,
+		reblogged,
+		bookmarked,
 		content: note.contentHtml,
 		reblog: null,
 		application: {
@@ -417,6 +425,8 @@ export async function serializeMirroredStatus(
 	const origin = getActivityPubOrigin(event);
 	const objectId = `${origin}/ap/status/${status.slug}`;
 	const favourited = await isObjectFavourited(event, objectId);
+	const bookmarked = await isObjectBookmarked(event, objectId);
+	const reblogged = await isObjectReblogged(event, objectId);
 	const mediaAttachments = status.images.map((image) => ({
 		url: image.fullsize,
 		mediaType: 'image/jpeg',
@@ -437,11 +447,11 @@ export async function serializeMirroredStatus(
 		uri: objectId,
 		url: `${origin}/status/${status.slug}`,
 		replies_count: status.replyCount,
-		reblogs_count: status.repostCount,
+		reblogs_count: status.repostCount + (reblogged ? 1 : 0),
 		favourites_count: status.likeCount + (favourited ? 1 : 0),
 		favourited,
-		reblogged: false,
-		bookmarked: false,
+		reblogged,
+		bookmarked,
 		content: status.html,
 		reblog: null,
 		application: {
@@ -490,6 +500,8 @@ async function serializeRemoteObjectStatus(
 
 	const account = await buildRemoteAccount(event, actorId);
 	const favourited = await isObjectFavourited(event, objectId);
+	const bookmarked = await isObjectBookmarked(event, objectId);
+	const reblogged = await isObjectReblogged(event, objectId);
 	const tags = Array.isArray(object.tag) ? object.tag : [];
 	const mentions = tags
 		.map((item) => {
@@ -524,11 +536,11 @@ async function serializeRemoteObjectStatus(
 		uri: objectId,
 		url: getString(object.url) || objectId,
 		replies_count: 0,
-		reblogs_count: 0,
+		reblogs_count: reblogged ? 1 : 0,
 		favourites_count: favourited ? 1 : 0,
 		favourited,
-		reblogged: false,
-		bookmarked: false,
+		reblogged,
+		bookmarked,
 		content: getString(object.content) || `<p>${toExcerpt(getString(object.summary) || '')}</p>`,
 		reblog: null,
 		application: {
@@ -596,6 +608,8 @@ async function serializeCachedRemoteStatus(
 	status: CachedRemoteStatus
 ) {
 	const favourited = await isObjectFavourited(event, status.objectId);
+	const bookmarked = await isObjectBookmarked(event, status.objectId);
+	const reblogged = await isObjectReblogged(event, status.objectId);
 
 	return {
 		id: encodeMastodonStatusId(status.objectId, status.publishedAt),
@@ -609,11 +623,11 @@ async function serializeCachedRemoteStatus(
 		uri: status.objectId,
 		url: status.objectUrl || status.objectId,
 		replies_count: 0,
-		reblogs_count: 0,
+		reblogs_count: reblogged ? 1 : 0,
 		favourites_count: favourited ? 1 : 0,
 		favourited,
-		reblogged: false,
-		bookmarked: false,
+		reblogged,
+		bookmarked,
 		content: status.contentHtml || textToHtmlFallback(status.contentText),
 		reblog: null,
 		application: {
@@ -990,6 +1004,8 @@ async function serializeReplyNote(event: Pick<RequestEvent, 'platform' | 'url'>,
 	const origin = getActivityPubOrigin(event);
 	const profile = await buildRemoteAccount(event, note.actorId);
 	const favourited = await isObjectFavourited(event, note.noteId);
+	const bookmarked = await isObjectBookmarked(event, note.noteId);
+	const reblogged = await isObjectReblogged(event, note.noteId);
 
 	return {
 		id: encodeMastodonStatusId(note.noteId, note.publishedAt),
@@ -1003,11 +1019,11 @@ async function serializeReplyNote(event: Pick<RequestEvent, 'platform' | 'url'>,
 		uri: note.noteId,
 		url: note.objectUrl || note.noteId,
 		replies_count: 0,
-		reblogs_count: 0,
+		reblogs_count: reblogged ? 1 : 0,
 		favourites_count: favourited ? 1 : 0,
 		favourited,
-		reblogged: false,
-		bookmarked: false,
+		reblogged,
+		bookmarked,
 		content: note.contentHtml || textToHtmlFallback(note.contentText),
 		reblog: null,
 		application: {
@@ -1082,15 +1098,18 @@ export async function resolveAccountByIdOrAcct(
 	return buildRemoteAccount(event, actorId);
 }
 
-export function buildRelationship(accountId: string, input: { following: boolean; followedBy: boolean }) {
+export function buildRelationship(
+	accountId: string,
+	input: { following: boolean; followedBy: boolean; muting?: boolean; blocking?: boolean }
+) {
 	return {
 		id: accountId,
 		following: input.following,
 		showing_reblogs: true,
 		followed_by: input.followedBy,
-		blocking: false,
+		blocking: Boolean(input.blocking),
 		blocked_by: false,
-		muting: false,
+		muting: Boolean(input.muting),
 		muting_notifications: false,
 		requested: false,
 		domain_blocking: false,
