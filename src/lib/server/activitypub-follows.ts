@@ -60,6 +60,50 @@ function mapFollowing(row: FollowingRow | null | undefined): FollowingRecord | n
 	};
 }
 
+async function hydrateFollowingMetadata(
+	event: Pick<RequestEvent, 'platform'>,
+	record: FollowingRecord
+): Promise<FollowingRecord> {
+	const db = getDb(event);
+	if (!db) return record;
+
+	if (record.profileUrl && record.summary && record.avatarUrl) {
+		return record;
+	}
+
+	try {
+		const actorDoc = await fetchActivityJson(record.actorId);
+		const icon =
+			actorDoc.icon && typeof actorDoc.icon === 'object'
+				? (actorDoc.icon as Record<string, unknown>)
+				: null;
+		const profileUrl = record.profileUrl || getString(actorDoc.url);
+		const summary = record.summary || getString(stripHtmlToText(String(actorDoc.summary || '')));
+		const avatarUrl = record.avatarUrl || getString(icon?.url);
+
+		await db
+			.prepare(
+				`UPDATE ap_following
+				 SET profile_url = COALESCE(?, profile_url),
+				     summary = COALESCE(?, summary),
+				     avatar_url = COALESCE(?, avatar_url),
+				     updated_at = CURRENT_TIMESTAMP
+				 WHERE actor_id = ?`
+			)
+			.bind(profileUrl, summary, avatarUrl, record.actorId)
+			.run();
+
+		return {
+			...record,
+			profileUrl,
+			summary,
+			avatarUrl
+		};
+	} catch {
+		return record;
+	}
+}
+
 export function createFollowActivity(origin: string, targetActorId: string) {
 	const actorId = getActorId(origin);
 	return {
@@ -95,9 +139,11 @@ export async function listFollowing(event: Pick<RequestEvent, 'platform'>): Prom
 		)
 		.all<FollowingRow>();
 
-	return (result.results || [])
+	const records = (result.results || [])
 		.map((row: FollowingRow) => mapFollowing(row))
 		.filter((row: FollowingRecord | null): row is FollowingRecord => Boolean(row));
+
+	return Promise.all(records.map((record: FollowingRecord) => hydrateFollowingMetadata(event, record)));
 }
 
 export async function getFollowingByActorId(

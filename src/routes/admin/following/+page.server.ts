@@ -42,6 +42,7 @@ async function sendBoost(origin: string, objectId: string) {
 export const load: PageServerLoad = async (event) => {
 	const origin = getActivityPubOrigin(event);
 	const following = await listFollowing(event);
+	const followingByActorId = new Map(following.map((account) => [account.actorId, account]));
 
 	const statuses = following.length
 		? await listCachedRemoteStatusesForActors(
@@ -54,6 +55,9 @@ export const load: PageServerLoad = async (event) => {
 	const statusesWithState = await Promise.all(
 		statuses.map(async (status: CachedRemoteStatus) => ({
 			...status,
+			actorAvatarUrl: status.actorAvatarUrl || followingByActorId.get(status.actorId)?.avatarUrl || null,
+			actorSummary: status.actorSummary || followingByActorId.get(status.actorId)?.summary || null,
+			actorUrl: status.actorUrl || followingByActorId.get(status.actorId)?.profileUrl || null,
 			favourited: await isObjectFavourited(event, status.objectId),
 			reblogged: await isObjectReblogged(event, status.objectId),
 			replyContext: status.inReplyToObjectId
