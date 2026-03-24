@@ -3,6 +3,30 @@ import { requireMastodonAccessToken } from '$lib/server/mastodon-auth';
 import { encodeMastodonMediaId } from '$lib/server/mastodon-api';
 import { uploadImageFiles } from '$lib/server/media';
 
+function collectFiles(formData: FormData) {
+	const keys = ['file', 'file[]', 'files', 'files[]', 'media', 'media[]'];
+	const entries: File[] = [];
+
+	for (const key of keys) {
+		for (const item of formData.getAll(key)) {
+			if (item instanceof File && item.size > 0) {
+				entries.push(item);
+			}
+		}
+	}
+
+	// Some clients send a single unnamed/blob part under an unexpected field name.
+	if (!entries.length) {
+		for (const [, value] of formData.entries()) {
+			if (value instanceof File && value.size > 0) {
+				entries.push(value);
+			}
+		}
+	}
+
+	return entries;
+}
+
 async function handleUpload(event: Pick<RequestEvent, 'platform' | 'request' | 'url'>) {
 	await requireMastodonAccessToken(event);
 	const formData = await event.request.formData().catch(() => null);
@@ -11,12 +35,18 @@ async function handleUpload(event: Pick<RequestEvent, 'platform' | 'request' | '
 		return json({ error: 'Multipart form data is required.' }, { status: 400 });
 	}
 
-	const files = formData
-		.getAll('file')
-		.filter((item: FormDataEntryValue): item is File => item instanceof File && item.size > 0);
+	const files = collectFiles(formData);
 
 	if (!files.length) {
-		return json({ error: 'A file is required.' }, { status: 422 });
+		return json(
+			{
+				error: 'A file is required.',
+				debug: {
+					keys: Array.from(new Set(Array.from(formData.keys())))
+				}
+			},
+			{ status: 422 }
+		);
 	}
 
 	const uploads = await uploadImageFiles(event, [files[0]], {
