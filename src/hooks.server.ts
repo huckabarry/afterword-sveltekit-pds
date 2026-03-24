@@ -30,6 +30,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 		console.warn('[mastodon-api-404]', event.request.method, event.url.pathname, event.url.search);
 	}
 
+	if (response.status >= 500 && isCorsPath(event.url.pathname)) {
+		console.error('[mastodon-api-500]', event.request.method, event.url.pathname, event.url.search);
+	}
+
 	if (isCorsPath(event.url.pathname)) {
 		applyCorsHeaders(response, event.request.headers.get('origin'));
 	}
