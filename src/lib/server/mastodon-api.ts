@@ -837,22 +837,44 @@ export async function buildPublicTimeline(
 
 export async function listMastodonNotifications(
 	event: Pick<RequestEvent, 'platform' | 'url'>,
-	limit = 20
+	limit = 20,
+	options?: {
+		types?: string[];
+		excludeTypes?: string[];
+	}
 ) {
 	const origin = getActivityPubOrigin(event);
 	const replies = await listRecentInboxReplies(event, origin, limit);
+	const includedTypes = new Set((options?.types || []).map((type) => String(type || '').trim()).filter(Boolean));
+	const excludedTypes = new Set(
+		(options?.excludeTypes || []).map((type) => String(type || '').trim()).filter(Boolean)
+	);
 
-	return (
+	const notifications = (
 		await Promise.all(
-			replies.map(async (reply) => ({
-				id: encodeMastodonStatusId(`notification:${reply.noteId}`),
-				type: 'mention',
-				created_at: isoDate(reply.publishedAt),
-				account: await buildRemoteAccount(event, reply.actorId),
-				status: await serializeReplyNote(event, reply)
-			}))
+			replies.map(async (reply) => {
+				const type = 'mention';
+				if (includedTypes.size && !includedTypes.has(type)) return null;
+				if (excludedTypes.has(type)) return null;
+
+				try {
+					return {
+						id: encodeMastodonStatusId(`notification:${reply.noteId}`),
+						type,
+						created_at: isoDate(reply.publishedAt),
+						account: await buildRemoteAccount(event, reply.actorId),
+						status: await serializeReplyNote(event, reply)
+					};
+				} catch {
+					return null;
+				}
+			})
+		)
 	)
-	).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+		.filter((notification) => notification !== null)
+		.sort((a, b) => Date.parse(String(b?.created_at || 0)) - Date.parse(String(a?.created_at || 0)));
+
+	return notifications;
 }
 
 export function filterMastodonStatuses(
@@ -907,9 +929,13 @@ export function filterMastodonStatuses(
 
 export async function listGroupedMastodonNotifications(
 	event: Pick<RequestEvent, 'platform' | 'url'>,
-	limit = 20
+	limit = 20,
+	options?: {
+		types?: string[];
+		excludeTypes?: string[];
+	}
 ) {
-	const notifications = await listMastodonNotifications(event, limit);
+	const notifications = await listMastodonNotifications(event, limit, options);
 	const groups = notifications.map((notification, index) => ({
 		group_key: `mention:${notification.id}`,
 		notifications_count: 1,
@@ -926,6 +952,59 @@ export async function listGroupedMastodonNotifications(
 		accounts: notifications.map((notification) => notification.account),
 		statuses: notifications.map((notification) => notification.status).filter(Boolean),
 		notification_groups: groups
+	};
+}
+
+export async function buildMastodonStatusSource(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	objectId: string
+) {
+	const origin = getActivityPubOrigin(event);
+
+	if (objectId.startsWith(`${origin}/ap/status/`)) {
+		const slug = objectId.slice(`${origin}/ap/status/`.length);
+		const status = await getStatusBySlug(slug);
+		if (!status) return null;
+
+		return {
+			id: encodeMastodonStatusId(objectId, status.date),
+			text: status.text,
+			spoiler_text: ''
+		};
+	}
+
+	const note = await getNoteById(event, objectId);
+	if (note) {
+		return {
+			id: encodeMastodonStatusId(objectId, note.publishedAt),
+			text: note.contentText || stripHtmlToText(note.contentHtml || ''),
+			spoiler_text: ''
+		};
+	}
+
+	const cachedRemoteStatus = await getCachedRemoteStatus(event, objectId);
+	if (cachedRemoteStatus) {
+		return {
+			id: encodeMastodonStatusId(objectId, cachedRemoteStatus.publishedAt),
+			text: cachedRemoteStatus.contentText || stripHtmlToText(cachedRemoteStatus.contentHtml || ''),
+			spoiler_text: ''
+		};
+	}
+
+	return null;
+}
+
+export function getMastodonNotificationsPolicy() {
+	return {
+		filter_not_following: false,
+		filter_not_followers: false,
+		filter_new_accounts: false,
+		filter_private_mentions: false,
+		filter_limited_accounts: false,
+		summary: {
+			pending_notifications_count: 0,
+			pending_requests_count: 0
+		}
 	};
 }
 
