@@ -13,6 +13,7 @@
 	);
 
 	const previewLinksInput = $derived(form?.verificationLinksInput || data.verificationLinksInput);
+	const previewMigrationAliasesInput = $derived(form?.migrationAliasesInput || data.migrationAliasesInput);
 </script>
 
 <section class="admin-panel">
@@ -80,6 +81,17 @@
 
 			<p class="admin-field-note">One link per line, formatted as <code>Label | URL</code>. These are published as <code>rel="me"</code> links.</p>
 
+			<label class="admin-field">
+				<span>Migration aliases</span>
+				<textarea
+					name="migrationAliases"
+					rows="3"
+					placeholder="https://old.instance/@you"
+				>{form?.migrationAliasesInput || data.migrationAliasesInput}</textarea>
+			</label>
+
+			<p class="admin-field-note">One ActivityPub account URL per line. These are published on your actor as <code>alsoKnownAs</code> so this account can be recognized as the move target.</p>
+
 			{#if form?.error}
 				<p class="admin-form-error">{form.error}</p>
 			{/if}
@@ -121,6 +133,17 @@
 						{/if}
 					{/each}
 				</ul>
+			{/if}
+
+			{#if previewMigrationAliasesInput.trim()}
+				<div class="admin-field-note">
+					<strong>Migration aliases:</strong>
+					<ul class="admin-link-list">
+						{#each previewMigrationAliasesInput.split(/\r?\n/).filter(Boolean) as alias}
+							<li>{alias}</li>
+						{/each}
+					</ul>
+				</div>
 			{/if}
 		</div>
 	</div>

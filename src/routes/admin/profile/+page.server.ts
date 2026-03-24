@@ -1,7 +1,9 @@
 import { fail } from '@sveltejs/kit';
 import {
+	formatMigrationAliasesInput,
 	formatVerificationLinksInput,
 	getSiteProfile,
+	parseMigrationAliasesInput,
 	parseVerificationLinksInput,
 	updateSiteProfile
 } from '$lib/server/profile';
@@ -14,6 +16,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		profile,
 		verificationLinksInput: formatVerificationLinksInput(profile.verificationLinks),
+		migrationAliasesInput: formatMigrationAliasesInput(profile.migrationAliases),
 		saved: event.url.searchParams.get('saved') === '1'
 	};
 };
@@ -26,6 +29,7 @@ export const actions: Actions = {
 		const headerImageUrl = String(form.get('headerImageUrl') || '').trim();
 		const bio = String(form.get('bio') || '').trim();
 		const verificationLinksInput = String(form.get('verificationLinks') || '');
+		const migrationAliasesInput = String(form.get('migrationAliases') || '');
 		const avatarFile = form.get('avatarFile');
 		const headerFile = form.get('headerFile');
 
@@ -36,7 +40,8 @@ export const actions: Actions = {
 				avatarUrl,
 				headerImageUrl,
 				bio,
-				verificationLinksInput
+				verificationLinksInput,
+				migrationAliasesInput
 			});
 		}
 
@@ -60,7 +65,8 @@ export const actions: Actions = {
 			avatarUrl: uploadedAvatar?.url || avatarUrl,
 			headerImageUrl: uploadedHeader?.url || headerImageUrl || null,
 			bio,
-			verificationLinks: parseVerificationLinksInput(verificationLinksInput)
+			verificationLinks: parseVerificationLinksInput(verificationLinksInput),
+			migrationAliases: parseMigrationAliasesInput(migrationAliasesInput)
 		});
 
 		return {
@@ -69,7 +75,8 @@ export const actions: Actions = {
 			avatarUrl: uploadedAvatar?.url || avatarUrl,
 			headerImageUrl: uploadedHeader?.url || headerImageUrl,
 			bio,
-			verificationLinksInput
+			verificationLinksInput,
+			migrationAliasesInput
 		};
 	}
 };

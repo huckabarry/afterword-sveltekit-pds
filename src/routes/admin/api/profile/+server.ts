@@ -41,7 +41,10 @@ export async function POST(event) {
 		avatarUrl,
 		headerImageUrl: headerImageUrl || null,
 		bio,
-		verificationLinks
+		verificationLinks,
+		migrationAliases: Array.isArray(body?.migrationAliases)
+			? body.migrationAliases.map((item: unknown) => String(item || '').trim()).filter(Boolean)
+			: []
 	});
 
 	return json({ ok: true, profile });

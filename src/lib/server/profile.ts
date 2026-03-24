@@ -13,6 +13,7 @@ export type SiteProfile = {
 	headerImageUrl: string | null;
 	bio: string;
 	verificationLinks: VerificationLink[];
+	migrationAliases: string[];
 };
 
 const DEFAULT_PROFILE: SiteProfile = {
@@ -20,7 +21,8 @@ const DEFAULT_PROFILE: SiteProfile = {
 	avatarUrl: '/assets/images/status-avatar.jpg',
 	headerImageUrl: null,
 	bio: 'Writer, photographer, and urban planner publishing from Afterword.',
-	verificationLinks: [{ label: 'Bluesky', url: 'https://bsky.app/profile/afterword.blog' }]
+	verificationLinks: [{ label: 'Bluesky', url: 'https://bsky.app/profile/afterword.blog' }],
+	migrationAliases: []
 };
 
 function getDb(event: Pick<RequestEvent, 'platform'>) {
@@ -77,6 +79,29 @@ function serializeVerificationLinks(links: VerificationLink[]) {
 	);
 }
 
+function parseMigrationAliases(value: unknown): string[] {
+	if (typeof value !== 'string' || !value.trim()) return [];
+
+	try {
+		const parsed = JSON.parse(value);
+		if (!Array.isArray(parsed)) return [];
+
+		return parsed
+			.map((item) => String(item || '').trim())
+			.filter(Boolean);
+	} catch {
+		return [];
+	}
+}
+
+function serializeMigrationAliases(aliases: string[]) {
+	return JSON.stringify(
+		aliases
+			.map((alias) => String(alias || '').trim())
+			.filter(Boolean)
+	);
+}
+
 function mapProfile(row: ProfileRow | null | undefined): SiteProfile {
 	if (!row) return DEFAULT_PROFILE;
 
@@ -85,7 +110,8 @@ function mapProfile(row: ProfileRow | null | undefined): SiteProfile {
 		avatarUrl: normalizeUrl(String(row.avatar_url || ''), DEFAULT_PROFILE.avatarUrl) || DEFAULT_PROFILE.avatarUrl,
 		headerImageUrl: normalizeUrl(String(row.header_image_url || ''), null),
 		bio: String(row.bio || DEFAULT_PROFILE.bio),
-		verificationLinks: parseVerificationLinks(row.verification_links_json)
+		verificationLinks: parseVerificationLinks(row.verification_links_json),
+		migrationAliases: parseMigrationAliases(row.migration_aliases_json)
 	};
 }
 
@@ -93,9 +119,11 @@ export async function getSiteProfile(event: Pick<RequestEvent, 'platform'>): Pro
 	const db = getDb(event);
 	if (!db) return DEFAULT_PROFILE;
 
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN migration_aliases_json TEXT`).run().catch(() => {});
+
 	const row = await db
 		.prepare(
-			`SELECT display_name, avatar_url, header_image_url, bio, verification_links_json
+			`SELECT display_name, avatar_url, header_image_url, bio, verification_links_json, migration_aliases_json
 			 FROM site_profile
 			 WHERE id = 1
 			 LIMIT 1`
@@ -117,14 +145,15 @@ export async function updateSiteProfile(
 	await db
 		.prepare(
 			`INSERT INTO site_profile (
-				id, display_name, avatar_url, header_image_url, bio, verification_links_json
-			) VALUES (1, ?, ?, ?, ?, ?)
+				id, display_name, avatar_url, header_image_url, bio, verification_links_json, migration_aliases_json
+			) VALUES (1, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET
 				display_name = excluded.display_name,
 				avatar_url = excluded.avatar_url,
 				header_image_url = excluded.header_image_url,
 				bio = excluded.bio,
 				verification_links_json = excluded.verification_links_json,
+				migration_aliases_json = excluded.migration_aliases_json,
 				updated_at = CURRENT_TIMESTAMP`
 		)
 		.bind(
@@ -132,7 +161,8 @@ export async function updateSiteProfile(
 			normalizeUrl(input.avatarUrl, DEFAULT_PROFILE.avatarUrl),
 			normalizeUrl(input.headerImageUrl || '', null),
 			String(input.bio || DEFAULT_PROFILE.bio).trim(),
-			serializeVerificationLinks(input.verificationLinks)
+			serializeVerificationLinks(input.verificationLinks),
+			serializeMigrationAliases(input.migrationAliases)
 		)
 		.run();
 
@@ -156,4 +186,15 @@ export function parseVerificationLinksInput(value: string): VerificationLink[] {
 
 export function formatVerificationLinksInput(links: VerificationLink[]) {
 	return links.map((link) => `${link.label} | ${link.url}`).join('\n');
+}
+
+export function parseMigrationAliasesInput(value: string) {
+	return String(value || '')
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+}
+
+export function formatMigrationAliasesInput(aliases: string[]) {
+	return aliases.join('\n');
 }

@@ -94,14 +94,15 @@ export function jrdJson(body: unknown, init?: ResponseInit) {
 export function createActor(origin: string, profile?: SiteProfile) {
 	const actorId = getActorId(origin);
 	const publicKeyPem = getActivityPubPublicKeyPem();
-	const alsoKnownAs = getAlsoKnownAs();
 	const actorProfile = profile ?? {
 		displayName: 'Bryan Robb',
 		avatarUrl: '/assets/images/status-avatar.jpg',
 		headerImageUrl: null,
 		bio: 'Writer, photographer, and urban planner publishing from Afterword.',
-		verificationLinks: []
+		verificationLinks: [],
+		migrationAliases: []
 	};
+	const alsoKnownAs = [...getAlsoKnownAs(), ...(actorProfile.migrationAliases || [])].filter(Boolean);
 
 	return {
 		'@context': [ACTIVITY_STREAMS_CONTEXT, 'https://w3id.org/security/v1'],
