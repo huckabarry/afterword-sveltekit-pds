@@ -2070,6 +2070,10 @@ p:last-child {
 	gap: 0.45rem;
 }
 
+.admin-thread__context--embedded {
+	margin-bottom: 0.75rem;
+}
+
 .admin-thread__context-label {
 	margin: 0;
 	font-size: 0.78rem;
@@ -2101,6 +2105,13 @@ p:last-child {
 .admin-thread__context-card p {
 	margin: 0.1rem 0 0;
 	color: #2a2d2a;
+}
+
+.admin-thread__context-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	margin-top: 0.55rem;
 }
 
 .admin-thread__actions,

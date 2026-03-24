@@ -130,6 +130,45 @@
 								{/if}
 								<span>{formatDate(reply.publishedAt)}</span>
 							</div>
+
+							{#if reply.replyContext}
+								<div class="admin-thread__context admin-thread__context--embedded">
+									<p class="admin-thread__context-label">In reply to</p>
+									<div class="admin-thread__context-card">
+										{#if reply.replyContext.title}
+											<strong>{reply.replyContext.title}</strong>
+										{/if}
+										{#if reply.replyContext.author}
+											<span>{reply.replyContext.author}</span>
+										{/if}
+										<p>{reply.replyContext.excerpt}</p>
+										<div class="admin-thread__context-actions">
+											<a class="admin-pill-link" href={reply.replyContext.url} target="_blank" rel="noreferrer">Open thread</a>
+										</div>
+									</div>
+								</div>
+							{:else}
+								<p class="admin-thread__target">In reply to: {reply.inReplyToObjectId}</p>
+							{/if}
+
+							{#if reply.threadRootContext}
+								<div class="admin-thread__context admin-thread__context--embedded">
+									<p class="admin-thread__context-label">On post</p>
+									<div class="admin-thread__context-card">
+										{#if reply.threadRootContext.title}
+											<strong>{reply.threadRootContext.title}</strong>
+										{/if}
+										{#if reply.threadRootContext.author}
+											<span>{reply.threadRootContext.author}</span>
+										{/if}
+										<p>{reply.threadRootContext.excerpt}</p>
+										<div class="admin-thread__context-actions">
+											<a class="admin-pill-link" href={reply.threadRootContext.url} target="_blank" rel="noreferrer">Open post</a>
+										</div>
+									</div>
+								</div>
+							{/if}
+
 							{#if reply.contentText}
 								<p class="admin-social-card__content">{reply.contentText}</p>
 							{:else if reply.contentHtml}
@@ -143,48 +182,6 @@
 									{#each reply.attachments as attachment}
 										<img src={attachment.url} alt={attachment.alt || 'Reply image'} loading="lazy" />
 									{/each}
-								</div>
-							{/if}
-
-							{#if reply.replyContext}
-								<div class="admin-thread__context">
-									<p class="admin-thread__context-label">In reply to</p>
-									<a
-										class="admin-thread__context-card"
-										href={reply.replyContext.url}
-										target="_blank"
-										rel="noreferrer"
-									>
-										{#if reply.replyContext.title}
-											<strong>{reply.replyContext.title}</strong>
-										{/if}
-										{#if reply.replyContext.author}
-											<span>{reply.replyContext.author}</span>
-										{/if}
-										<p>{reply.replyContext.excerpt}</p>
-									</a>
-								</div>
-							{:else}
-								<p class="admin-thread__target">In reply to: {reply.inReplyToObjectId}</p>
-							{/if}
-
-							{#if reply.threadRootContext}
-								<div class="admin-thread__context">
-									<p class="admin-thread__context-label">On post</p>
-									<a
-										class="admin-thread__context-card"
-										href={reply.threadRootContext.url}
-										target="_blank"
-										rel="noreferrer"
-									>
-										{#if reply.threadRootContext.title}
-											<strong>{reply.threadRootContext.title}</strong>
-										{/if}
-										{#if reply.threadRootContext.author}
-											<span>{reply.threadRootContext.author}</span>
-										{/if}
-										<p>{reply.threadRootContext.excerpt}</p>
-									</a>
 								</div>
 							{/if}
 

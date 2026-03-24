@@ -114,6 +114,24 @@
 								<span>{formatDate(status.publishedAt)}</span>
 							</div>
 
+							{#if status.replyContext}
+								<div class="admin-thread__context admin-thread__context--embedded">
+									<p class="admin-thread__context-label">Replying to</p>
+									<div class="admin-thread__context-card">
+										{#if status.replyContext.title}
+											<strong>{status.replyContext.title}</strong>
+										{/if}
+										{#if status.replyContext.author}
+											<span>{status.replyContext.author}</span>
+										{/if}
+										<p>{status.replyContext.excerpt}</p>
+										<div class="admin-thread__context-actions">
+											<a class="admin-pill-link" href={status.replyContext.url} target="_blank" rel="noreferrer">Open thread</a>
+										</div>
+									</div>
+								</div>
+							{/if}
+
 							{#if status.contentText}
 								<p class="admin-social-card__content">{status.contentText}</p>
 							{:else if status.contentHtml}
@@ -127,26 +145,6 @@
 									{#each status.attachments as attachment}
 										<img src={attachment.url} alt={attachment.alt || 'Post image'} loading="lazy" />
 									{/each}
-								</div>
-							{/if}
-
-							{#if status.replyContext}
-								<div class="admin-thread__context">
-									<p class="admin-thread__context-label">Replying to</p>
-									<a
-										class="admin-thread__context-card"
-										href={status.replyContext.url}
-										target="_blank"
-										rel="noreferrer"
-									>
-										{#if status.replyContext.title}
-											<strong>{status.replyContext.title}</strong>
-										{/if}
-										{#if status.replyContext.author}
-											<span>{status.replyContext.author}</span>
-										{/if}
-										<p>{status.replyContext.excerpt}</p>
-									</a>
 								</div>
 							{/if}
 
@@ -170,9 +168,6 @@
 									</button>
 								</form>
 								<a class="admin-pill-link" href={status.objectUrl || status.objectId} target="_blank" rel="noreferrer">Open post</a>
-								{#if status.replyContext}
-									<a class="admin-pill-link" href={status.replyContext.url} target="_blank" rel="noreferrer">Open thread</a>
-								{/if}
 							</div>
 
 							<details class="admin-inline-reply">
