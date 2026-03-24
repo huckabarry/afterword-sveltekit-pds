@@ -67,6 +67,23 @@
 			<ul class="admin-social-list">
 				{#each following as account}
 					<li class="admin-social-card">
+						<div class="admin-social-card__avatar-wrap">
+							{#if account.profileUrl}
+								<a href={account.profileUrl} target="_blank" rel="noreferrer">
+									<img
+										class="admin-social-card__avatar"
+										src={account.avatarUrl || '/assets/images/status-avatar.jpg'}
+										alt={account.displayName || account.handle || 'Avatar'}
+									/>
+								</a>
+							{:else}
+								<img
+									class="admin-social-card__avatar"
+									src={account.avatarUrl || '/assets/images/status-avatar.jpg'}
+									alt={account.displayName || account.handle || 'Avatar'}
+								/>
+							{/if}
+						</div>
 						<div class="admin-social-card__body">
 							<div class="admin-social-card__meta">
 								<strong>{account.displayName || account.handle || account.actorId}</strong>
@@ -74,6 +91,9 @@
 									<span>@{account.handle}</span>
 								{/if}
 							</div>
+							{#if account.summary}
+								<p class="admin-social-card__content">{account.summary}</p>
+							{/if}
 							<p class="admin-social-card__content">{account.actorId}</p>
 							<div class="admin-thread__actions admin-thread__actions--social">
 								{#if account.profileUrl}

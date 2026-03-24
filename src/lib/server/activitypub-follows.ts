@@ -1,6 +1,6 @@
 import { getActorId } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
-import { fetchActivityJson, fetchRemoteActor } from '$lib/server/activitypub-replies';
+import { fetchActivityJson, fetchRemoteActor, stripHtmlToText } from '$lib/server/activitypub-replies';
 import type { RequestEvent } from '@sveltejs/kit';
 
 type FollowingRow = Record<string, unknown>;
@@ -12,6 +12,8 @@ export type FollowingRecord = {
 	displayName: string | null;
 	handle: string | null;
 	profileUrl: string | null;
+	summary: string | null;
+	avatarUrl: string | null;
 	followActivityId: string | null;
 };
 
@@ -28,6 +30,21 @@ function getString(value: unknown) {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+async function ensureFollowingStore(event: Pick<RequestEvent, 'platform'>) {
+	const db = getDb(event);
+	if (!db) return;
+
+	await db
+		.prepare(`ALTER TABLE ap_following ADD COLUMN summary TEXT`)
+		.run()
+		.catch(() => {});
+
+	await db
+		.prepare(`ALTER TABLE ap_following ADD COLUMN avatar_url TEXT`)
+		.run()
+		.catch(() => {});
+}
+
 function mapFollowing(row: FollowingRow | null | undefined): FollowingRecord | null {
 	if (!row) return null;
 	return {
@@ -37,6 +54,8 @@ function mapFollowing(row: FollowingRow | null | undefined): FollowingRecord | n
 		displayName: getString(row.display_name),
 		handle: getString(row.handle),
 		profileUrl: getString(row.profile_url),
+		summary: getString(row.summary),
+		avatarUrl: getString(row.avatar_url),
 		followActivityId: getString(row.follow_activity_id)
 	};
 }
@@ -66,10 +85,11 @@ export function createUndoActivity(origin: string, object: Record<string, unknow
 export async function listFollowing(event: Pick<RequestEvent, 'platform'>): Promise<FollowingRecord[]> {
 	const db = getDb(event);
 	if (!db) return [];
+	await ensureFollowingStore(event);
 
 	const result = await db
 		.prepare(
-			`SELECT actor_id, inbox_url, shared_inbox_url, display_name, handle, profile_url, follow_activity_id
+			`SELECT actor_id, inbox_url, shared_inbox_url, display_name, handle, profile_url, summary, avatar_url, follow_activity_id
 			 FROM ap_following
 			 ORDER BY updated_at DESC`
 		)
@@ -86,10 +106,11 @@ export async function getFollowingByActorId(
 ): Promise<FollowingRecord | null> {
 	const db = getDb(event);
 	if (!db) return null;
+	await ensureFollowingStore(event);
 
 	const row = await db
 		.prepare(
-			`SELECT actor_id, inbox_url, shared_inbox_url, display_name, handle, profile_url, follow_activity_id
+			`SELECT actor_id, inbox_url, shared_inbox_url, display_name, handle, profile_url, summary, avatar_url, follow_activity_id
 			 FROM ap_following
 			 WHERE actor_id = ?
 			 LIMIT 1`
@@ -115,6 +136,7 @@ export async function followRemoteActor(
 	const actor = await fetchRemoteActor(actorId);
 	const activity = createFollowActivity(event.url.origin, actor.id);
 	const inboxUrl = actor.sharedInboxUrl || actor.inboxUrl;
+	await ensureFollowingStore(event);
 
 	if (!inboxUrl) {
 		throw new Error('Target actor does not expose an inbox');
@@ -123,24 +145,36 @@ export async function followRemoteActor(
 	await sendSignedActivity(event.url.origin, inboxUrl, activity);
 
 	let profileUrl: string | null = null;
+	let summary: string | null = null;
+	let avatarUrl: string | null = null;
 	try {
 		const actorDoc = await fetchActivityJson(actor.id);
 		profileUrl = getString(actorDoc.url);
+		summary = getString(stripHtmlToText(String(actorDoc.summary || '')));
+		const icon =
+			actorDoc.icon && typeof actorDoc.icon === 'object'
+				? (actorDoc.icon as Record<string, unknown>)
+				: null;
+		avatarUrl = getString(icon?.url);
 	} catch {
 		profileUrl = null;
+		summary = null;
+		avatarUrl = null;
 	}
 
 	await db
 		.prepare(
 			`INSERT INTO ap_following (
-				actor_id, inbox_url, shared_inbox_url, display_name, handle, profile_url, follow_activity_id
-			) VALUES (?, ?, ?, ?, ?, ?, ?)
+				actor_id, inbox_url, shared_inbox_url, display_name, handle, profile_url, summary, avatar_url, follow_activity_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(actor_id) DO UPDATE SET
 				inbox_url = excluded.inbox_url,
 				shared_inbox_url = excluded.shared_inbox_url,
 				display_name = excluded.display_name,
 				handle = excluded.handle,
 				profile_url = excluded.profile_url,
+				summary = excluded.summary,
+				avatar_url = excluded.avatar_url,
 				follow_activity_id = excluded.follow_activity_id,
 				updated_at = CURRENT_TIMESTAMP`
 		)
@@ -151,6 +185,8 @@ export async function followRemoteActor(
 			actor.name,
 			actor.handle,
 			profileUrl,
+			summary,
+			avatarUrl,
 			String(activity.id || '')
 		)
 		.run();
