@@ -71,20 +71,25 @@
 					</p>
 				</div>
 
-				<a class="admin-topbar__quick" href="/admin/compose">New note</a>
+				<div class="admin-topbar__actions">
+					<details class="admin-mobile-drawer">
+						<summary class="admin-mobile-drawer__toggle">Menu</summary>
+						<nav class="admin-mobile-nav" aria-label="Admin">
+							{#each navItems as item}
+								<a class:admin-mobile-nav__link--active={isActive(item.href)} class="admin-mobile-nav__link" href={item.href}>
+									<span>{item.label}</span>
+								</a>
+							{/each}
+						</nav>
+					</details>
+
+					<a class="admin-topbar__quick" href="/admin/compose">New note</a>
+				</div>
 			</header>
 
 			<div class="admin-content">
 				{@render children()}
 			</div>
-
-			<nav class="admin-mobile-nav" aria-label="Admin">
-				{#each navItems as item}
-					<a class:admin-mobile-nav__link--active={isActive(item.href)} class="admin-mobile-nav__link" href={item.href}>
-						<span>{item.shortLabel}</span>
-					</a>
-				{/each}
-			</nav>
 		</div>
 	</div>
 {:else}
