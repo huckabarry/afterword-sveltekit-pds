@@ -13,6 +13,7 @@
 				headerImageUrl: string | null;
 				bio: string;
 				verificationLinks: { label: string; url: string }[];
+				migrationAliases: string[];
 			};
 		};
 	} = $props();
@@ -58,6 +59,16 @@
 					<ul>
 						{#each data.profile.verificationLinks as link}
 							<li><a href={link.url} target="_blank" rel="noreferrer me">{link.label}</a></li>
+						{/each}
+					</ul>
+				{/if}
+
+				{#if data.profile.migrationAliases?.length}
+					<h2>Moved from</h2>
+					<p>This account also replaces older ActivityPub identities I previously used.</p>
+					<ul>
+						{#each data.profile.migrationAliases as alias}
+							<li><a href={alias} target="_blank" rel="noreferrer">{alias}</a></li>
 						{/each}
 					</ul>
 				{/if}
