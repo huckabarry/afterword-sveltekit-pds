@@ -2385,7 +2385,7 @@ p:last-child {
 	}
 
 	.admin-shell {
-		padding-bottom: 5.8rem;
+		padding-bottom: 1.5rem;
 	}
 
 	.admin-topbar {
@@ -2422,28 +2422,38 @@ p:last-child {
 	}
 
 	.admin-mobile-nav {
-		position: fixed;
-		left: 50%;
-		bottom: 0.8rem;
-		transform: translateX(-50%);
+		position: sticky;
+		left: auto;
+		bottom: 0;
+		transform: none;
 		z-index: 10;
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 0.45rem;
-		width: min(100%, calc(100vw - 1.25rem));
-		padding: 0.45rem;
-		background: rgba(255, 255, 255, 0.9);
-		backdrop-filter: blur(18px);
-		-webkit-backdrop-filter: blur(18px);
+		width: 100%;
+		margin-top: 1rem;
+		padding: 0.55rem;
+		background: #f7f7f5;
 		border: 1px solid rgba(0, 0, 0, 0.08);
-		border-radius: 22px;
-		box-shadow: 0 14px 34px rgba(0, 0, 0, 0.12);
+		border-radius: 18px;
+		box-shadow: none;
 	}
 
 	.admin-mobile-nav__link {
 		justify-content: center;
 		padding: 0.72rem 0.5rem;
 		font-size: 0.82rem;
-		background: transparent;
+		color: #111111;
+		background: rgba(17, 17, 17, 0.04);
+	}
+
+	.admin-mobile-nav__link--active,
+	.admin-mobile-nav__link--active * {
+		color: #ffffff !important;
+	}
+
+	.admin-mobile-nav__link--active {
+		background: #111111;
+		box-shadow: none;
 	}
 }
