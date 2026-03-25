@@ -82,17 +82,17 @@
 							{/each}
 						</nav>
 					</details>
-
-					<a class="admin-topbar__quick" href="/admin/compose" aria-label="New note">
-						<span class="admin-topbar__quick-icon" aria-hidden="true">+</span>
-						<span class="admin-topbar__quick-label">New note</span>
-					</a>
 				</div>
 			</header>
 
 			<div class="admin-content">
 				{@render children()}
 			</div>
+
+			<a class="admin-topbar__quick admin-topbar__quick--floating" href="/admin/compose" aria-label="New note">
+				<span class="admin-topbar__quick-icon" aria-hidden="true">+</span>
+				<span class="admin-topbar__quick-label">New note</span>
+			</a>
 		</div>
 	</div>
 {:else}

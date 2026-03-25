@@ -2437,6 +2437,11 @@ p:last-child {
 	}
 
 	.admin-topbar__quick {
+		display: none;
+	}
+
+	.admin-topbar__quick--floating {
+		display: inline-flex;
 		position: fixed;
 		right: 1rem;
 		bottom: 1rem;
@@ -2451,8 +2456,6 @@ p:last-child {
 
 	.admin-topbar__actions {
 		margin-left: auto;
-		flex-direction: column;
-		align-items: flex-end;
 	}
 
 	.admin-topbar__quick-label {
