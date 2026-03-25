@@ -2488,6 +2488,27 @@ p:last-child {
 		max-width: none;
 	}
 
+	.admin-summary-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.7rem;
+	}
+
+	.admin-stat {
+		min-height: 0;
+		padding: 0.8rem 0.85rem;
+		border-radius: 16px;
+	}
+
+	.admin-stat__value {
+		font-size: 1.25rem;
+		line-height: 1.1;
+	}
+
+	.admin-stat__label {
+		font-size: 0.76rem;
+		line-height: 1.2;
+	}
+
 	.admin-mobile-drawer {
 		display: block;
 	}
