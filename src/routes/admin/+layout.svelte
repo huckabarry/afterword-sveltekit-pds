@@ -83,7 +83,10 @@
 						</nav>
 					</details>
 
-					<a class="admin-topbar__quick" href="/admin/compose">New note</a>
+					<a class="admin-topbar__quick" href="/admin/compose" aria-label="New note">
+						<span class="admin-topbar__quick-icon" aria-hidden="true">+</span>
+						<span class="admin-topbar__quick-label">New note</span>
+					</a>
 				</div>
 			</header>
 
