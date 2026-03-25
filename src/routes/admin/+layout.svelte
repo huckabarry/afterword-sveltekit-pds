@@ -1,5 +1,6 @@
 <script lang="ts">
 	let { children, data } = $props();
+	let menuOpen = $state(false);
 
 	const navItems = [
 		{ href: '/admin', label: 'Home', shortLabel: 'Home' },
@@ -16,7 +17,25 @@
 	function isActive(href: string) {
 		return href === '/admin' ? data.pathname === href : data.pathname === href || data.pathname.startsWith(`${href}/`);
 	}
+
+	function toggleMenu() {
+		menuOpen = !menuOpen;
+	}
+
+	function closeMenu() {
+		menuOpen = false;
+	}
+
+	function handleDocumentClick(event: MouseEvent) {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		if (!target.closest('.admin-mobile-drawer')) {
+			menuOpen = false;
+		}
+	}
 </script>
+
+<svelte:document onclick={handleDocumentClick} />
 
 {#if data.authenticated}
 	<div class="admin-app">
@@ -72,16 +91,31 @@
 				</div>
 
 				<div class="admin-topbar__actions">
-					<details class="admin-mobile-drawer">
-						<summary class="admin-mobile-drawer__toggle">Menu</summary>
-						<nav class="admin-mobile-nav" aria-label="Admin">
+					<div class="admin-mobile-drawer">
+						<button
+							class="admin-mobile-drawer__toggle"
+							type="button"
+							aria-expanded={menuOpen}
+							aria-controls="admin-mobile-nav"
+							onclick={toggleMenu}
+						>
+							Menu
+						</button>
+						{#if menuOpen}
+							<nav class="admin-mobile-nav" id="admin-mobile-nav" aria-label="Admin">
 							{#each navItems as item}
-								<a class:admin-mobile-nav__link--active={isActive(item.href)} class="admin-mobile-nav__link" href={item.href}>
+								<a
+									class:admin-mobile-nav__link--active={isActive(item.href)}
+									class="admin-mobile-nav__link"
+									href={item.href}
+									onclick={closeMenu}
+								>
 									<span>{item.label}</span>
 								</a>
 							{/each}
-						</nav>
-					</details>
+							</nav>
+						{/if}
+					</div>
 				</div>
 			</header>
 
@@ -89,9 +123,13 @@
 				{@render children()}
 			</div>
 
-			<a class="admin-topbar__quick admin-topbar__quick--floating" href="/admin/compose" aria-label="New note">
-				<span class="admin-topbar__quick-icon" aria-hidden="true">+</span>
-				<span class="admin-topbar__quick-label">New note</span>
+			<a
+				class="admin-topbar__quick admin-topbar__quick--floating"
+				href={data.pathname === '/admin/compose' ? '/admin' : '/admin/compose'}
+				aria-label={data.pathname === '/admin/compose' ? 'Close compose' : 'New note'}
+			>
+				<span class="admin-topbar__quick-icon" aria-hidden="true">{data.pathname === '/admin/compose' ? '×' : '+'}</span>
+				<span class="admin-topbar__quick-label">{data.pathname === '/admin/compose' ? 'Close' : 'New note'}</span>
 			</a>
 		</div>
 	</div>
