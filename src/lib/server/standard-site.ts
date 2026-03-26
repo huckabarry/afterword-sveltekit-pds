@@ -385,11 +385,14 @@ export function createDocumentRecord(
 ) {
 	const origin = getOrigin(event);
 	const text = stripHtml(stripImagesFromHtml(post.html));
+	const publicationCollection = String(publicationAtUri || '').split('/').slice(-2, -1)[0] || '';
+	const documentPath =
+		publicationCollection === LEGACY_LEAFLET_PUBLICATION_COLLECTION ? `/${post.slug}` : post.path;
 
 	return {
 		$type: STANDARD_SITE_DOCUMENT_COLLECTION,
 		site: publicationAtUri,
-		path: post.path,
+		path: documentPath,
 		url: `${origin}${post.path}`,
 		title: post.title,
 		description: post.excerpt || toExcerpt(text),
