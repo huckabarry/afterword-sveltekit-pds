@@ -1,6 +1,10 @@
 import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
-import { stripImagesFromHtml, type BlogPost } from '$lib/server/ghost';
+import {
+	stripImagesFromHtml,
+	type BlogPost,
+	writeStandardSiteMetadataToGhost
+} from '$lib/server/ghost';
 import type { SiteProfile } from '$lib/server/profile';
 
 const RESOLVE_HANDLE_URL = 'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle';
@@ -576,6 +580,10 @@ function isLeafletPublicationAtUri(publicationAtUri: string) {
 	return String(publicationAtUri || '').includes(`/${LEGACY_LEAFLET_PUBLICATION_COLLECTION}/`);
 }
 
+function getLeafletPublicUrl(rkey: string) {
+	return rkey ? `https://${LEGACY_LEAFLET_BASE_PATH}/${rkey}` : null;
+}
+
 function createLeafletTextBlocks(text: string) {
 	return text
 		.split(/\n\s*\n/)
@@ -989,6 +997,19 @@ export async function syncGhostPostToStandardSite(
 					oldRkey,
 					updatedRecord
 				);
+				if (result.uri || existingLeafletRecord.uri) {
+					await writeStandardSiteMetadataToGhost(post, {
+						documentAtUri: result.uri || existingLeafletRecord.uri || '',
+						publicationAtUri,
+						publicUrl: getLeafletPublicUrl(oldRkey),
+						syncedAt: new Date().toISOString()
+					}).catch((error) => {
+						console.warn(
+							'[standard-site] Unable to write sync metadata back to Ghost:',
+							error instanceof Error ? error.message : error
+						);
+					});
+				}
 				return {
 					...result,
 					uri: result.uri || existingLeafletRecord.uri,
@@ -1029,6 +1050,19 @@ export async function syncGhostPostToStandardSite(
 			createdRkey,
 			finalizedRecord
 		);
+		if (result.uri || created.uri) {
+			await writeStandardSiteMetadataToGhost(post, {
+				documentAtUri: result.uri || created.uri || '',
+				publicationAtUri,
+				publicUrl: getLeafletPublicUrl(createdRkey),
+				syncedAt: new Date().toISOString()
+			}).catch((error) => {
+				console.warn(
+					'[standard-site] Unable to write sync metadata back to Ghost:',
+					error instanceof Error ? error.message : error
+				);
+			});
+		}
 		return {
 			...result,
 			uri: result.uri || created.uri,
@@ -1038,6 +1072,19 @@ export async function syncGhostPostToStandardSite(
 
 	const record = createDocumentRecord(event, post, publicationAtUri, coverImageBlob);
 	const result = await putRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, post.slug, record);
+	if (result.uri) {
+		await writeStandardSiteMetadataToGhost(post, {
+			documentAtUri: result.uri,
+			publicationAtUri,
+			publicUrl: `${getOrigin(event)}${post.path}`,
+			syncedAt: new Date().toISOString()
+		}).catch((error) => {
+			console.warn(
+				'[standard-site] Unable to write sync metadata back to Ghost:',
+				error instanceof Error ? error.message : error
+			);
+		});
+	}
 
 	return {
 		...result,

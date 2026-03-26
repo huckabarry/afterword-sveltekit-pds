@@ -65,6 +65,13 @@ export type PhotoItem = {
 	index: number;
 };
 
+export type GhostStandardSiteWriteback = {
+	documentAtUri: string;
+	publicationAtUri: string;
+	publicUrl?: string | null;
+	syncedAt?: string;
+};
+
 export function stripImagesFromHtml(html: string) {
 	return String(html || '')
 		.replace(/<figure\b[^>]*>[\s\S]*?<img[\s\S]*?<\/figure>/gi, '')
@@ -406,6 +413,127 @@ async function fetchPostsFromAdminApi(siteUrl: string, filter: string) {
 	}
 
 	return posts;
+}
+
+async function fetchPostFromAdminApi(siteUrl: string, postId: string) {
+	const key = getGhostAdminKey();
+
+	if (!key || !siteUrl || !postId) {
+		return null;
+	}
+
+	const token = await createGhostAdminToken(key);
+	const params = new URLSearchParams({
+		formats: 'html',
+		include: 'tags,authors'
+	});
+	const response = await fetch(`${siteUrl}/ghost/api/admin/posts/${postId}/?${params.toString()}`, {
+		headers: {
+			Accept: 'application/json',
+			Authorization: `Ghost ${token}`
+		}
+	});
+
+	if (!response.ok) {
+		throw new Error(`Ghost Admin API post lookup failed with ${response.status}`);
+	}
+
+	const payload = (await response.json()) as { posts?: Record<string, unknown>[] };
+	return Array.isArray(payload.posts) && payload.posts.length ? payload.posts[0] : null;
+}
+
+function escapeHtmlAttribute(value: string) {
+	return String(value || '')
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
+function buildStandardSiteMetaTag(name: string, value: string) {
+	return `<meta name="${name}" content="${escapeHtmlAttribute(value)}">`;
+}
+
+function mergeAfterwordStandardSiteHead(existingHead: string, metadata: GhostStandardSiteWriteback) {
+	const markers = [
+		'afterword:standard-site-document',
+		'afterword:standard-site-publication',
+		'afterword:leaflet-url',
+		'afterword:last-synced-at'
+	];
+	const lines = String(existingHead || '')
+		.split('\n')
+		.map((line) => line.trimEnd())
+		.filter((line) => {
+			const normalized = line.toLowerCase();
+			return !markers.some((marker) => normalized.includes(`name="${marker}"`));
+		});
+
+	lines.push(buildStandardSiteMetaTag('afterword:standard-site-document', metadata.documentAtUri));
+	lines.push(buildStandardSiteMetaTag('afterword:standard-site-publication', metadata.publicationAtUri));
+	if (metadata.publicUrl) {
+		lines.push(buildStandardSiteMetaTag('afterword:leaflet-url', metadata.publicUrl));
+	}
+	lines.push(
+		buildStandardSiteMetaTag(
+			'afterword:last-synced-at',
+			String(metadata.syncedAt || new Date().toISOString())
+		)
+	);
+
+	return lines.filter(Boolean).join('\n').trim();
+}
+
+export async function writeStandardSiteMetadataToGhost(
+	post: Pick<BlogPost, 'id'>,
+	metadata: GhostStandardSiteWriteback
+) {
+	const siteUrl = getGhostUrl();
+	const key = getGhostAdminKey();
+
+	if (!siteUrl || !key || !post.id) {
+		return { updated: false, reason: 'ghost-admin-unavailable' as const };
+	}
+
+	const current = await fetchPostFromAdminApi(siteUrl, post.id);
+	if (!current) {
+		throw new Error('Ghost post not found for write-back.');
+	}
+
+	const currentUpdatedAt = String(current.updated_at || '').trim();
+	if (!currentUpdatedAt) {
+		throw new Error('Ghost post update requires updated_at.');
+	}
+
+	const nextHead = mergeAfterwordStandardSiteHead(String(current.codeinjection_head || ''), metadata);
+	if (nextHead === String(current.codeinjection_head || '').trim()) {
+		return { updated: false, reason: 'unchanged' as const };
+	}
+
+	const token = await createGhostAdminToken(key);
+	const response = await fetch(`${siteUrl}/ghost/api/admin/posts/${post.id}/`, {
+		method: 'PUT',
+		headers: {
+			Accept: 'application/json',
+			Authorization: `Ghost ${token}`,
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			posts: [
+				{
+					id: post.id,
+					updated_at: currentUpdatedAt,
+					codeinjection_head: nextHead
+				}
+			]
+		})
+	});
+
+	if (!response.ok) {
+		throw new Error(`Ghost Admin API post update failed with ${response.status}`);
+	}
+
+	return { updated: true as const };
 }
 
 async function fetchPostsFromContentApi(siteUrl: string, filter: string) {
