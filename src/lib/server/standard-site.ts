@@ -9,6 +9,8 @@ const PUT_RECORD_NSID = 'com.atproto.repo.putRecord';
 const GET_RECORD_NSID = 'com.atproto.repo.getRecord';
 const LIST_RECORDS_NSID = 'com.atproto.repo.listRecords';
 const UPLOAD_BLOB_NSID = 'com.atproto.repo.uploadBlob';
+const LEGACY_LEAFLET_PUBLICATION_COLLECTION = 'pub.leaflet.publication';
+const LEGACY_LEAFLET_BASE_PATH = 'afterword.leaflet.pub';
 
 export const STANDARD_SITE_PUBLICATION_COLLECTION = 'site.standard.publication';
 export const STANDARD_SITE_DOCUMENT_COLLECTION = 'site.standard.document';
@@ -268,6 +270,31 @@ async function findPreferredPublicationRecord(event: Pick<RequestEvent, 'url'>) 
 	};
 }
 
+async function findPreferredLeafletPublicationRecord(session: AtprotoSession) {
+	const payload = await listRecords(session, LEGACY_LEAFLET_PUBLICATION_COLLECTION);
+	const records = payload.records || [];
+
+	return (
+		records.find(
+			(record) => String(record.value?.base_path || '').trim().toLowerCase() === LEGACY_LEAFLET_BASE_PATH
+		) || null
+	);
+}
+
+async function getPreferredDocumentPublicationAtUri(event: Pick<RequestEvent, 'url'>) {
+	const session = await createSession();
+	const leafletRecord = await findPreferredLeafletPublicationRecord(session);
+
+	if (leafletRecord?.uri) {
+		return leafletRecord.uri;
+	}
+
+	return (
+		(await getStandardSitePublicationAtUri(event)) ||
+		`at://${session.did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`
+	);
+}
+
 export async function getStandardSiteDid() {
 	const identifier = getStandardSiteIdentifier();
 	if (!identifier) return null;
@@ -419,9 +446,7 @@ export async function syncGhostPostToStandardSite(
 	profile: SiteProfile
 ) {
 	const session = await createSession();
-	const publicationAtUri =
-		(await getStandardSitePublicationAtUri(event)) ||
-		`at://${session.did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`;
+	const publicationAtUri = await getPreferredDocumentPublicationAtUri(event);
 
 	const publicationResult = await ensurePublicationRecord(event, profile);
 	let coverImageBlob: AtprotoBlob | null = null;
