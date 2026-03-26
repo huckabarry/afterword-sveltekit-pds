@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { getBlogPostBySlug, getBlogPosts } from '$lib/server/ghost';
+import { getBlogPostBySlug, getRecentBlogPosts } from '$lib/server/ghost';
 import { getSiteProfile } from '$lib/server/profile';
 import {
 	ensurePublicationRecord,
@@ -15,7 +15,7 @@ export const load: PageServerLoad = async (event) => {
 		getSiteProfile(event),
 		getStandardSitePublicationAtUri(event),
 		getPublicationRecordStatus(event),
-		getBlogPosts()
+		getRecentBlogPosts(8)
 	]);
 
 	const recentPosts = posts.slice(0, 8);

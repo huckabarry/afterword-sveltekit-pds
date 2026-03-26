@@ -369,7 +369,7 @@ async function createGhostAdminToken(key: string) {
 	return `${signingInput}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
 }
 
-async function fetchPostsFromAdminApi(siteUrl: string, filter: string) {
+async function fetchPostsFromAdminApi(siteUrl: string, filter: string, maxPages = 100, limit = 100) {
 	const key = getGhostAdminKey();
 
 	if (!key || !siteUrl) {
@@ -379,11 +379,11 @@ async function fetchPostsFromAdminApi(siteUrl: string, filter: string) {
 	const token = await createGhostAdminToken(key);
 	const posts: Record<string, unknown>[] = [];
 
-	for (let page = 1; page <= 100; page += 1) {
+	for (let page = 1; page <= maxPages; page += 1) {
 		const params = new URLSearchParams({
 			formats: 'html',
 			include: 'tags,authors',
-			limit: '100',
+			limit: String(limit),
 			page: String(page),
 			filter
 		});
@@ -407,7 +407,7 @@ async function fetchPostsFromAdminApi(siteUrl: string, filter: string) {
 
 		posts.push(...batch);
 
-		if (batch.length < 100) {
+		if (batch.length < limit) {
 			break;
 		}
 	}
@@ -536,7 +536,7 @@ export async function writeStandardSiteMetadataToGhost(
 	return { updated: true as const };
 }
 
-async function fetchPostsFromContentApi(siteUrl: string, filter: string) {
+async function fetchPostsFromContentApi(siteUrl: string, filter: string, limit: number | 'all' = 'all') {
 	const key = getGhostContentKey();
 
 	if (!key || !siteUrl) {
@@ -548,7 +548,7 @@ async function fetchPostsFromContentApi(siteUrl: string, filter: string) {
 		filter,
 		include: 'tags,authors',
 		formats: 'html',
-		limit: 'all'
+		limit: String(limit)
 	});
 	const response = await fetch(`${siteUrl}/ghost/api/content/posts/?${params.toString()}`, {
 		headers: {
@@ -589,6 +589,20 @@ async function loadLivePosts(siteUrl: string, filter: string) {
 	return [];
 }
 
+async function loadRecentLivePosts(siteUrl: string, filter: string, limit: number) {
+	try {
+		const posts =
+			(await fetchPostsFromAdminApi(siteUrl, filter, 1, limit)) ||
+			(await fetchPostsFromContentApi(siteUrl, filter, limit));
+		return posts || [];
+	} catch (error) {
+		console.warn(
+			`[ghost] Recent Ghost API fetch failed: ${error instanceof Error ? error.message : String(error)}`
+		);
+		return [];
+	}
+}
+
 export async function getBlogPosts(): Promise<BlogPost[]> {
 	const siteUrl = getGhostUrl();
 	const livePosts = await loadLivePosts(siteUrl, GHOST_FILTER);
@@ -599,6 +613,31 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
 		.filter((post: BlogPost) => post.title && post.excerpt && post.html)
 		.filter(shouldIncludePost)
 		.sort((a: BlogPost, b: BlogPost) => b.publishedAt.getTime() - a.publishedAt.getTime());
+
+	const sourceMap = new Map<string, string>(
+		posts.map((post: BlogPost) => [normalizeSourceUrl(post.sourceUrl), post.path])
+	);
+
+	return posts.map((post: BlogPost) => ({
+		...post,
+		html: rewriteInternalLinks(post.html, sourceMap, siteUrl),
+		publicTags: post.tags
+			.map((tag: string) => toPublicTag(tag))
+			.filter((tag: GhostTag | null): tag is GhostTag => Boolean(tag))
+	}));
+}
+
+export async function getRecentBlogPosts(limit = 8): Promise<BlogPost[]> {
+	const siteUrl = getGhostUrl();
+	const livePosts = await loadRecentLivePosts(siteUrl, GHOST_FILTER, limit);
+	const rawPosts = livePosts.length ? livePosts : loadFallbackPosts().slice(0, limit);
+
+	const posts = rawPosts
+		.map((post: Record<string, unknown>) => normalizePost(post, siteUrl))
+		.filter((post: BlogPost) => post.title && post.excerpt && post.html)
+		.filter(shouldIncludePost)
+		.sort((a: BlogPost, b: BlogPost) => b.publishedAt.getTime() - a.publishedAt.getTime())
+		.slice(0, limit);
 
 	const sourceMap = new Map<string, string>(
 		posts.map((post: BlogPost) => [normalizeSourceUrl(post.sourceUrl), post.path])
