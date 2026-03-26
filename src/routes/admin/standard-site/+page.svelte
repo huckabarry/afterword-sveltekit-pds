@@ -36,7 +36,7 @@
 		</div>
 
 		<div class="admin-form-actions">
-			<form method="POST" action="?/syncPublication">
+			<form method="POST" action="/admin/standard-site?/syncPublication">
 				<button class="admin-button" type="submit">Sync publication record</button>
 			</form>
 		</div>
@@ -62,7 +62,7 @@
 						<p class="admin-field-note">Latest synced document record for this Ghost post.</p>
 					</div>
 
-					<form method="POST" action="?/syncPost">
+					<form method="POST" action="/admin/standard-site?/syncPost">
 						<input type="hidden" name="slug" value={post.slug} />
 						<button class="admin-pill-link" type="submit">Sync post</button>
 					</form>
