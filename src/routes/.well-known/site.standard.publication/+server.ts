@@ -1,8 +1,8 @@
 import { error } from '@sveltejs/kit';
 import { getStandardSitePublicationAtUri } from '$lib/server/standard-site';
 
-export async function GET() {
-	const publicationAtUri = await getStandardSitePublicationAtUri();
+export async function GET(event) {
+	const publicationAtUri = await getStandardSitePublicationAtUri(event);
 
 	if (!publicationAtUri) {
 		throw error(404, 'Standard Site publication is not configured');

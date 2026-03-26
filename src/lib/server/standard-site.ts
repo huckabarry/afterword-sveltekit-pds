@@ -7,6 +7,7 @@ const RESOLVE_HANDLE_URL = 'https://public.api.bsky.app/xrpc/com.atproto.identit
 const CREATE_SESSION_NSID = 'com.atproto.server.createSession';
 const PUT_RECORD_NSID = 'com.atproto.repo.putRecord';
 const GET_RECORD_NSID = 'com.atproto.repo.getRecord';
+const LIST_RECORDS_NSID = 'com.atproto.repo.listRecords';
 
 export const STANDARD_SITE_PUBLICATION_COLLECTION = 'site.standard.publication';
 export const STANDARD_SITE_DOCUMENT_COLLECTION = 'site.standard.document';
@@ -41,6 +42,12 @@ function getStandardSiteAppPassword() {
 
 function getOrigin(event: Pick<RequestEvent, 'url'>) {
 	return event.url.origin.replace(/\/+$/, '');
+}
+
+function normalizeUrl(value: string) {
+	return String(value || '')
+		.trim()
+		.replace(/\/+$/, '');
 }
 
 function stripHtml(value: string) {
@@ -176,6 +183,47 @@ async function getRecord(session: AtprotoSession, collection: string, rkey: stri
 	return (await response.json()) as { uri?: string; cid?: string; value?: Record<string, unknown> };
 }
 
+async function listRecords(session: AtprotoSession, collection: string, limit = 100) {
+	const params = new URLSearchParams({
+		repo: session.did,
+		collection,
+		limit: String(limit)
+	});
+	const response = await fetch(`${session.serviceUrl}/xrpc/${LIST_RECORDS_NSID}?${params.toString()}`, {
+		headers: {
+			authorization: `Bearer ${session.accessJwt}`
+		}
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`ATProto listRecords failed for ${collection}: ${response.status} ${text}`);
+	}
+
+	return (await response.json()) as {
+		records?: Array<{ uri?: string; cid?: string; value?: Record<string, unknown> }>;
+	};
+}
+
+function getRecordKey(uri: string) {
+	return String(uri || '').split('/').pop() || '';
+}
+
+async function findPreferredPublicationRecord(event: Pick<RequestEvent, 'url'>) {
+	const session = await createSession();
+	const origin = getOrigin(event);
+	const payload = await listRecords(session, STANDARD_SITE_PUBLICATION_COLLECTION);
+	const records = payload.records || [];
+
+	const preferred =
+		records.find((record) => normalizeUrl(String(record.value?.url || '')) === origin) || null;
+
+	return {
+		session,
+		record: preferred
+	};
+}
+
 export async function getStandardSiteDid() {
 	const identifier = getStandardSiteIdentifier();
 	if (!identifier) return null;
@@ -187,7 +235,17 @@ export async function getStandardSiteDid() {
 	}
 }
 
-export async function getStandardSitePublicationAtUri() {
+export async function getStandardSitePublicationAtUri(event?: Pick<RequestEvent, 'url'>) {
+	if (event) {
+		try {
+			const { session, record } = await findPreferredPublicationRecord(event);
+			if (record?.uri) return record.uri;
+			return `at://${session.did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`;
+		} catch {
+			// Fall back to deterministic URI below.
+		}
+	}
+
 	const did = await getStandardSiteDid();
 	if (!did) return null;
 	return `at://${did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`;
@@ -213,30 +271,36 @@ export function createPublicationRecord(event: Pick<RequestEvent, 'url'>, profil
 }
 
 export async function ensurePublicationRecord(event: Pick<RequestEvent, 'url'>, profile: SiteProfile) {
-	const session = await createSession();
+	const { session, record } = await findPreferredPublicationRecord(event);
 	const publicationRecord = createPublicationRecord(event, profile);
+	const rkey = record?.uri ? getRecordKey(record.uri) : STANDARD_SITE_PUBLICATION_RKEY;
 	const result = await putRecord(
 		session,
 		STANDARD_SITE_PUBLICATION_COLLECTION,
-		STANDARD_SITE_PUBLICATION_RKEY,
+		rkey,
 		publicationRecord
 	);
 
 	return {
 		...result,
-		uri:
-			result.uri ||
-			`at://${session.did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`
+		uri: result.uri || `at://${session.did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${rkey}`
 	};
 }
 
-export async function getPublicationRecordStatus() {
-	const did = await getStandardSiteDid();
-	if (!did) return null;
-
+export async function getPublicationRecordStatus(event?: Pick<RequestEvent, 'url'>) {
 	try {
 		const session = await createSession();
-		return await getRecord(session, STANDARD_SITE_PUBLICATION_COLLECTION, STANDARD_SITE_PUBLICATION_RKEY);
+		const payload = await listRecords(session, STANDARD_SITE_PUBLICATION_COLLECTION);
+		const records = payload.records || [];
+		if (event) {
+			const origin = getOrigin(event);
+			return (
+				records.find((record) => normalizeUrl(String(record.value?.url || '')) === origin) ||
+				records[0] ||
+				null
+			);
+		}
+		return records[0] || null;
 	} catch {
 		return null;
 	}
@@ -257,6 +321,7 @@ export function createDocumentRecord(
 		url: `${origin}${post.path}`,
 		title: post.title,
 		description: post.excerpt || toExcerpt(text),
+		textContent: text,
 		text,
 		publishedAt: post.publishedAt.toISOString(),
 		updatedAt: post.updatedAt.toISOString(),
@@ -271,22 +336,18 @@ export async function syncGhostPostToStandardSite(
 ) {
 	const session = await createSession();
 	const publicationAtUri =
-		(await getStandardSitePublicationAtUri()) ||
+		(await getStandardSitePublicationAtUri(event)) ||
 		`at://${session.did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`;
 
-	await putRecord(
-		session,
-		STANDARD_SITE_PUBLICATION_COLLECTION,
-		STANDARD_SITE_PUBLICATION_RKEY,
-		createPublicationRecord(event, profile)
-	);
+	const publicationResult = await ensurePublicationRecord(event, profile);
 
 	const record = createDocumentRecord(event, post, publicationAtUri);
 	const result = await putRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, post.slug, record);
 
 	return {
 		...result,
-		uri: result.uri || `at://${session.did}/${STANDARD_SITE_DOCUMENT_COLLECTION}/${post.slug}`
+		uri: result.uri || `at://${session.did}/${STANDARD_SITE_DOCUMENT_COLLECTION}/${post.slug}`,
+		publicationUri: publicationResult.uri
 	};
 }
 

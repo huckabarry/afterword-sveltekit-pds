@@ -13,8 +13,8 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async (event) => {
 	const [profile, publicationAtUri, publicationRecord, posts] = await Promise.all([
 		getSiteProfile(event),
-		getStandardSitePublicationAtUri(),
-		getPublicationRecordStatus(),
+		getStandardSitePublicationAtUri(event),
+		getPublicationRecordStatus(event),
 		getBlogPosts()
 	]);
 
