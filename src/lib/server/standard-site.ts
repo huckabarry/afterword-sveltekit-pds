@@ -8,6 +8,7 @@ const CREATE_SESSION_NSID = 'com.atproto.server.createSession';
 const PUT_RECORD_NSID = 'com.atproto.repo.putRecord';
 const GET_RECORD_NSID = 'com.atproto.repo.getRecord';
 const LIST_RECORDS_NSID = 'com.atproto.repo.listRecords';
+const UPLOAD_BLOB_NSID = 'com.atproto.repo.uploadBlob';
 
 export const STANDARD_SITE_PUBLICATION_COLLECTION = 'site.standard.publication';
 export const STANDARD_SITE_DOCUMENT_COLLECTION = 'site.standard.document';
@@ -18,6 +19,13 @@ type AtprotoSession = {
 	did: string;
 	accessJwt: string;
 	identifier: string;
+};
+
+type AtprotoBlob = {
+	ref: { $link: string };
+	mimeType: string;
+	size: number;
+	$type?: string;
 };
 
 function getStandardSiteServiceUrl() {
@@ -48,6 +56,15 @@ function normalizeUrl(value: string) {
 	return String(value || '')
 		.trim()
 		.replace(/\/+$/, '');
+}
+
+function inferImageMimeType(url: string) {
+	const normalized = String(url || '').toLowerCase();
+	if (normalized.endsWith('.png')) return 'image/png';
+	if (normalized.endsWith('.webp')) return 'image/webp';
+	if (normalized.endsWith('.gif')) return 'image/gif';
+	if (normalized.endsWith('.avif')) return 'image/avif';
+	return 'image/jpeg';
 }
 
 function stripHtml(value: string) {
@@ -160,6 +177,33 @@ async function putRecord<T>(session: AtprotoSession, collection: string, rkey: s
 	}
 
 	return (await response.json()) as { uri?: string; cid?: string };
+}
+
+async function uploadBlob(
+	session: AtprotoSession,
+	buffer: ArrayBuffer,
+	mimeType: string
+): Promise<AtprotoBlob> {
+	const response = await fetch(`${session.serviceUrl}/xrpc/${UPLOAD_BLOB_NSID}`, {
+		method: 'POST',
+		headers: {
+			authorization: `Bearer ${session.accessJwt}`,
+			'content-type': mimeType
+		},
+		body: buffer
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`ATProto uploadBlob failed: ${response.status} ${text}`);
+	}
+
+	const payload = (await response.json()) as { blob?: AtprotoBlob };
+	if (!payload?.blob?.ref?.$link) {
+		throw new Error('ATProto uploadBlob did not return a blob ref');
+	}
+
+	return payload.blob;
 }
 
 async function getRecord(session: AtprotoSession, collection: string, rkey: string) {
@@ -309,7 +353,8 @@ export async function getPublicationRecordStatus(event?: Pick<RequestEvent, 'url
 export function createDocumentRecord(
 	event: Pick<RequestEvent, 'url'>,
 	post: BlogPost,
-	publicationAtUri: string
+	publicationAtUri: string,
+	coverImageBlob?: AtprotoBlob | null
 ) {
 	const origin = getOrigin(event);
 	const text = stripHtml(stripImagesFromHtml(post.html));
@@ -323,10 +368,49 @@ export function createDocumentRecord(
 		description: post.excerpt || toExcerpt(text),
 		textContent: text,
 		text,
+		...(coverImageBlob
+			? {
+					coverImage: {
+						...coverImageBlob,
+						$type: coverImageBlob.$type || 'blob'
+					}
+				}
+			: {}),
 		publishedAt: post.publishedAt.toISOString(),
 		updatedAt: post.updatedAt.toISOString(),
 		tags: post.publicTags.map((tag) => tag.slug)
 	};
+}
+
+async function uploadCoverImageBlob(session: AtprotoSession, post: BlogPost) {
+	const coverImageUrl = String(post.coverImage || '').trim();
+	if (!coverImageUrl) return null;
+
+	const response = await fetch(coverImageUrl, {
+		headers: {
+			accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+		}
+	});
+
+	if (!response.ok) {
+		throw new Error(`Unable to fetch cover image: ${response.status} ${coverImageUrl}`);
+	}
+
+	const headerMimeType = String(response.headers.get('content-type') || '')
+		.split(';')[0]
+		.trim()
+		.toLowerCase();
+	const mimeType =
+		headerMimeType && headerMimeType.startsWith('image/')
+			? headerMimeType
+			: inferImageMimeType(coverImageUrl);
+	const buffer = await response.arrayBuffer();
+
+	if (!buffer.byteLength) {
+		throw new Error(`Cover image download was empty: ${coverImageUrl}`);
+	}
+
+	return await uploadBlob(session, buffer, mimeType);
 }
 
 export async function syncGhostPostToStandardSite(
@@ -340,8 +424,19 @@ export async function syncGhostPostToStandardSite(
 		`at://${session.did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`;
 
 	const publicationResult = await ensurePublicationRecord(event, profile);
+	let coverImageBlob: AtprotoBlob | null = null;
+	if (post.coverImage) {
+		try {
+			coverImageBlob = await uploadCoverImageBlob(session, post);
+		} catch (error) {
+			console.warn(
+				'[standard-site] Unable to upload cover image blob:',
+				error instanceof Error ? error.message : error
+			);
+		}
+	}
 
-	const record = createDocumentRecord(event, post, publicationAtUri);
+	const record = createDocumentRecord(event, post, publicationAtUri, coverImageBlob);
 	const result = await putRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, post.slug, record);
 
 	return {
