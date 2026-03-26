@@ -8,6 +8,7 @@ import {
 import type { SiteProfile } from '$lib/server/profile';
 
 const RESOLVE_HANDLE_URL = 'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle';
+const PUBLIC_ATPROTO_XRPC_BASE = 'https://public.api.bsky.app/xrpc';
 const CREATE_SESSION_NSID = 'com.atproto.server.createSession';
 const CREATE_RECORD_NSID = 'com.atproto.repo.createRecord';
 const PUT_RECORD_NSID = 'com.atproto.repo.putRecord';
@@ -473,7 +474,7 @@ async function getRecord(session: AtprotoSession, collection: string, rkey: stri
 		collection,
 		rkey
 	});
-	const response = await fetch(`${session.serviceUrl}/xrpc/${GET_RECORD_NSID}?${params.toString()}`, {
+	const response = await fetch(`${PUBLIC_ATPROTO_XRPC_BASE}/${GET_RECORD_NSID}?${params.toString()}`, {
 		method: 'GET'
 	});
 
@@ -492,7 +493,7 @@ async function listRecords(session: AtprotoSession, collection: string, limit = 
 		collection,
 		limit: String(limit)
 	});
-	const response = await fetch(`${session.serviceUrl}/xrpc/${LIST_RECORDS_NSID}?${params.toString()}`, {
+	const response = await fetch(`${PUBLIC_ATPROTO_XRPC_BASE}/${LIST_RECORDS_NSID}?${params.toString()}`, {
 		method: 'GET'
 	});
 
