@@ -4,8 +4,8 @@ import { getSiteProfile } from '$lib/server/profile';
 import {
 	ensurePublicationRecord,
 	getPublicationRecordStatus,
-	getStandardSiteDocumentAtUri,
 	getStandardSitePublicationAtUri,
+	getStandardSiteDocumentStatus,
 	syncGhostPostToStandardSite
 } from '$lib/server/standard-site';
 import type { Actions, PageServerLoad } from './$types';
@@ -25,7 +25,7 @@ export const load: PageServerLoad = async (event) => {
 			title: post.title,
 			path: post.path,
 			publishedAt: post.publishedAt.toISOString(),
-			documentAtUri: await getStandardSiteDocumentAtUri(post.slug)
+			documentAtUri: (await getStandardSiteDocumentStatus(event, post))?.uri || null
 		}))
 	);
 

@@ -5,7 +5,9 @@ import type { SiteProfile } from '$lib/server/profile';
 
 const RESOLVE_HANDLE_URL = 'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle';
 const CREATE_SESSION_NSID = 'com.atproto.server.createSession';
+const CREATE_RECORD_NSID = 'com.atproto.repo.createRecord';
 const PUT_RECORD_NSID = 'com.atproto.repo.putRecord';
+const DELETE_RECORD_NSID = 'com.atproto.repo.deleteRecord';
 const GET_RECORD_NSID = 'com.atproto.repo.getRecord';
 const LIST_RECORDS_NSID = 'com.atproto.repo.listRecords';
 const UPLOAD_BLOB_NSID = 'com.atproto.repo.uploadBlob';
@@ -181,6 +183,49 @@ async function putRecord<T>(session: AtprotoSession, collection: string, rkey: s
 	return (await response.json()) as { uri?: string; cid?: string };
 }
 
+async function createRecord<T>(session: AtprotoSession, collection: string, record: T) {
+	const response = await fetch(`${session.serviceUrl}/xrpc/${CREATE_RECORD_NSID}`, {
+		method: 'POST',
+		headers: {
+			authorization: `Bearer ${session.accessJwt}`,
+			'content-type': 'application/json'
+		},
+		body: JSON.stringify({
+			repo: session.did,
+			collection,
+			record,
+			validate: false
+		})
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`ATProto createRecord failed for ${collection}: ${response.status} ${text}`);
+	}
+
+	return (await response.json()) as { uri?: string; cid?: string };
+}
+
+async function deleteRecord(session: AtprotoSession, collection: string, rkey: string) {
+	const response = await fetch(`${session.serviceUrl}/xrpc/${DELETE_RECORD_NSID}`, {
+		method: 'POST',
+		headers: {
+			authorization: `Bearer ${session.accessJwt}`,
+			'content-type': 'application/json'
+		},
+		body: JSON.stringify({
+			repo: session.did,
+			collection,
+			rkey
+		})
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`ATProto deleteRecord failed for ${collection}/${rkey}: ${response.status} ${text}`);
+	}
+}
+
 async function uploadBlob(
 	session: AtprotoSession,
 	buffer: ArrayBuffer,
@@ -328,6 +373,24 @@ export async function getStandardSiteDocumentAtUri(slug: string) {
 	return `at://${did}/${STANDARD_SITE_DOCUMENT_COLLECTION}/${slug}`;
 }
 
+function isLeafletPublicationAtUri(publicationAtUri: string) {
+	return String(publicationAtUri || '').includes(`/${LEGACY_LEAFLET_PUBLICATION_COLLECTION}/`);
+}
+
+function createLeafletTextBlocks(text: string) {
+	return text
+		.split(/\n\s*\n/)
+		.map((paragraph) => paragraph.trim())
+		.filter(Boolean)
+		.map((plaintext) => ({
+			$type: 'pub.leaflet.pages.linearDocument#block',
+			block: {
+				$type: 'pub.leaflet.blocks.text',
+				plaintext
+			}
+		}));
+}
+
 export function createPublicationRecord(event: Pick<RequestEvent, 'url'>, profile: SiteProfile) {
 	const origin = getOrigin(event);
 
@@ -381,21 +444,35 @@ export function createDocumentRecord(
 	event: Pick<RequestEvent, 'url'>,
 	post: BlogPost,
 	publicationAtUri: string,
-	coverImageBlob?: AtprotoBlob | null
+	coverImageBlob?: AtprotoBlob | null,
+	documentPathOverride?: string
 ) {
 	const origin = getOrigin(event);
 	const text = stripHtml(stripImagesFromHtml(post.html));
-	const publicationCollection = String(publicationAtUri || '').split('/').slice(-2, -1)[0] || '';
-	const documentPath =
-		publicationCollection === LEGACY_LEAFLET_PUBLICATION_COLLECTION ? `/${post.slug}` : post.path;
+	const isLeafletPublication = isLeafletPublicationAtUri(publicationAtUri);
+	const documentPath = documentPathOverride || (isLeafletPublication ? `/${post.slug}` : post.path);
 
 	return {
 		$type: STANDARD_SITE_DOCUMENT_COLLECTION,
 		site: publicationAtUri,
 		path: documentPath,
-		url: `${origin}${post.path}`,
+		...(isLeafletPublication ? {} : { url: `${origin}${post.path}` }),
 		title: post.title,
 		description: post.excerpt || toExcerpt(text),
+		...(isLeafletPublication
+			? {
+					content: {
+						$type: 'pub.leaflet.content',
+						pages: [
+							{
+								id: crypto.randomUUID(),
+								$type: 'pub.leaflet.pages.linearDocument',
+								blocks: createLeafletTextBlocks(text)
+							}
+						]
+					}
+				}
+			: {}),
 		textContent: text,
 		text,
 		...(coverImageBlob
@@ -450,6 +527,7 @@ export async function syncGhostPostToStandardSite(
 ) {
 	const session = await createSession();
 	const publicationAtUri = await getPreferredDocumentPublicationAtUri(event);
+	const isLeafletPublication = isLeafletPublicationAtUri(publicationAtUri);
 
 	const publicationResult = await ensurePublicationRecord(event, profile);
 	let coverImageBlob: AtprotoBlob | null = null;
@@ -464,6 +542,71 @@ export async function syncGhostPostToStandardSite(
 		}
 	}
 
+	if (isLeafletPublication) {
+		const payload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
+		const records = payload.records || [];
+		const canonicalUrl = `${getOrigin(event)}${post.path}`;
+		const existingLeafletRecord =
+			records.find(
+				(record) =>
+					String(record.value?.site || '') === publicationAtUri &&
+					(String(record.value?.url || '') === canonicalUrl ||
+						String(record.value?.path || '') === `/${post.slug}`)
+			) || null;
+
+		if (existingLeafletRecord?.uri) {
+			const oldRkey = getRecordKey(existingLeafletRecord.uri);
+			const looksLikeLegacySlugKey = oldRkey === post.slug;
+			if (looksLikeLegacySlugKey) {
+				await deleteRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, oldRkey);
+			} else {
+				const updatedRecord = createDocumentRecord(
+					event,
+					post,
+					publicationAtUri,
+					coverImageBlob,
+					String(existingLeafletRecord.value?.path || '') || `/${oldRkey}`
+				);
+				const result = await putRecord(
+					session,
+					STANDARD_SITE_DOCUMENT_COLLECTION,
+					oldRkey,
+					updatedRecord
+				);
+				return {
+					...result,
+					uri: result.uri || existingLeafletRecord.uri,
+					publicationUri: publicationResult.uri
+				};
+			}
+		}
+
+		const provisionalRecord = createDocumentRecord(event, post, publicationAtUri, coverImageBlob);
+		const created = await createRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, provisionalRecord);
+		const createdRkey = getRecordKey(created.uri || '');
+		if (!createdRkey) {
+			throw new Error('ATProto createRecord did not return a document URI');
+		}
+		const finalizedRecord = createDocumentRecord(
+			event,
+			post,
+			publicationAtUri,
+			coverImageBlob,
+			`/${createdRkey}`
+		);
+		const result = await putRecord(
+			session,
+			STANDARD_SITE_DOCUMENT_COLLECTION,
+			createdRkey,
+			finalizedRecord
+		);
+		return {
+			...result,
+			uri: result.uri || created.uri,
+			publicationUri: publicationResult.uri
+		};
+	}
+
 	const record = createDocumentRecord(event, post, publicationAtUri, coverImageBlob);
 	const result = await putRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, post.slug, record);
 
@@ -474,12 +617,25 @@ export async function syncGhostPostToStandardSite(
 	};
 }
 
-export async function getStandardSiteDocumentStatus(slug: string) {
-	if (!slug) return null;
+export async function getStandardSiteDocumentStatus(event: Pick<RequestEvent, 'url'>, post: BlogPost) {
+	if (!post?.slug) return null;
 
 	try {
 		const session = await createSession();
-		return await getRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, slug);
+		const canonicalUrl = `${getOrigin(event)}${post.path}`;
+		const payload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
+		const records = payload.records || [];
+		return (
+			records.find((record) => {
+				const value = record.value || {};
+				return (
+					String(value.url || '') === canonicalUrl ||
+					String(value.path || '') === post.path ||
+					String(value.path || '') === `/${post.slug}` ||
+					getRecordKey(String(record.uri || '')) === post.slug
+				);
+			}) || null
+		);
 	} catch {
 		return null;
 	}
