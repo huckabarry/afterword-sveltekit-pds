@@ -5,7 +5,7 @@ import {
 	ensurePublicationRecord,
 	getPublicationRecordStatus,
 	getStandardSitePublicationAtUri,
-	getStandardSiteDocumentStatus,
+	getStandardSiteDocumentStatuses,
 	syncGhostPostToStandardSite
 } from '$lib/server/standard-site';
 import type { Actions, PageServerLoad } from './$types';
@@ -19,15 +19,14 @@ export const load: PageServerLoad = async (event) => {
 	]);
 
 	const recentPosts = posts.slice(0, 8);
-	const postStatuses = await Promise.all(
-		recentPosts.map(async (post) => ({
-			slug: post.slug,
-			title: post.title,
-			path: post.path,
-			publishedAt: post.publishedAt.toISOString(),
-			documentAtUri: (await getStandardSiteDocumentStatus(event, post))?.uri || null
-		}))
-	);
+	const documentStatuses = await getStandardSiteDocumentStatuses(event, recentPosts);
+	const postStatuses = recentPosts.map((post) => ({
+		slug: post.slug,
+		title: post.title,
+		path: post.path,
+		publishedAt: post.publishedAt.toISOString(),
+		documentAtUri: documentStatuses.get(post.slug)?.uri || null
+	}));
 
 	return {
 		profile,

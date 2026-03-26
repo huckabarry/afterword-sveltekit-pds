@@ -1141,3 +1141,41 @@ export async function getStandardSiteDocumentStatus(event: Pick<RequestEvent, 'u
 		return null;
 	}
 }
+
+export async function getStandardSiteDocumentStatuses(
+	event: Pick<RequestEvent, 'url'>,
+	posts: BlogPost[]
+) {
+	const relevantPosts = posts.filter((post) => post?.slug);
+	if (!relevantPosts.length) return new Map<string, { uri?: string; cid?: string; value?: Record<string, unknown> } | null>();
+
+	try {
+		const session = await createSession();
+		const payload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
+		const records = payload.records || [];
+		const origin = getOrigin(event);
+		const results = new Map<
+			string,
+			{ uri?: string; cid?: string; value?: Record<string, unknown> } | null
+		>();
+
+		for (const post of relevantPosts) {
+			const matches = records.filter((record) => matchesGhostPostRecord(record, post, origin));
+			const best =
+				matches.sort((a, b) => {
+					const aLeaflet = isLeafletPublicationAtUri(String(a.value?.site || '')) ? 1 : 0;
+					const bLeaflet = isLeafletPublicationAtUri(String(b.value?.site || '')) ? 1 : 0;
+					if (aLeaflet !== bLeaflet) return bLeaflet - aLeaflet;
+					const aSlug = getRecordKey(String(a.uri || '')) === post.slug ? 1 : 0;
+					const bSlug = getRecordKey(String(b.uri || '')) === post.slug ? 1 : 0;
+					if (aSlug !== bSlug) return aSlug - bSlug;
+					return 0;
+				})[0] || null;
+			results.set(post.slug, best);
+		}
+
+		return results;
+	} catch {
+		return new Map<string, { uri?: string; cid?: string; value?: Record<string, unknown> } | null>();
+	}
+}
