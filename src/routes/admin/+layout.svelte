@@ -11,7 +11,8 @@
 		{ href: '/admin/posts', label: 'Posts', shortLabel: 'Posts' },
 		{ href: '/admin/compose', label: 'Compose', shortLabel: 'Write' },
 		{ href: '/admin/replies', label: 'Replies', shortLabel: 'Replies' },
-		{ href: '/admin/webmentions', label: 'Webmentions', shortLabel: 'Mentions' }
+		{ href: '/admin/webmentions', label: 'Webmentions', shortLabel: 'Mentions' },
+		{ href: '/admin/standard-site', label: 'Standard Site', shortLabel: 'Standard' }
 	];
 
 	function isActive(href: string) {
@@ -84,6 +85,8 @@
 							Replies
 						{:else if data.pathname === '/admin/webmentions'}
 							Webmentions
+						{:else if data.pathname === '/admin/standard-site'}
+							Standard Site
 						{:else}
 							Admin
 						{/if}

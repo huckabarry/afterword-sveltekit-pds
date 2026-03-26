@@ -5,6 +5,7 @@ import { listVerifiedWebmentionsForTarget } from '$lib/server/webmentions';
 import { getInteractionSummary } from '$lib/server/interactions';
 import { getNoteObjectId } from '$lib/server/activitypub';
 import { enrichReplies } from '$lib/server/activitypub-reply-previews';
+import { getStandardSiteDocumentAtUri } from '$lib/server/standard-site';
 
 export async function load(event) {
 	const { params } = event;
@@ -22,6 +23,7 @@ export async function load(event) {
 		listDirectRepliesToObject(event, objectId)
 	]);
 	const replies = await enrichReplies(event, apReplies);
+	const standardSiteDocumentAtUri = await getStandardSiteDocumentAtUri(post.slug);
 
 	return {
 		post,
@@ -29,6 +31,7 @@ export async function load(event) {
 		nextPost: currentIndex >= 0 ? posts[currentIndex - 1] || null : null,
 		webmentions,
 		fediverse,
-		replies
+		replies,
+		standardSiteDocumentAtUri
 	};
 }
