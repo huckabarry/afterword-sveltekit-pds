@@ -340,6 +340,23 @@ async function getPreferredDocumentPublicationAtUri(event: Pick<RequestEvent, 'u
 	);
 }
 
+function matchesGhostPostRecord(
+	record: { uri?: string; value?: Record<string, unknown> } | null | undefined,
+	post: BlogPost,
+	origin: string
+) {
+	if (!record) return false;
+	const value = record.value || {};
+	const canonicalUrl = `${origin}${post.path}`;
+	const rkey = getRecordKey(String(record.uri || ''));
+	return (
+		String(value.url || '') === canonicalUrl ||
+		String(value.path || '') === post.path ||
+		String(value.path || '') === `/${post.slug}` ||
+		rkey === post.slug
+	);
+}
+
 export async function getStandardSiteDid() {
 	const identifier = getStandardSiteIdentifier();
 	if (!identifier) return null;
@@ -526,7 +543,18 @@ export async function syncGhostPostToStandardSite(
 	profile: SiteProfile
 ) {
 	const session = await createSession();
-	const publicationAtUri = await getPreferredDocumentPublicationAtUri(event);
+	const origin = getOrigin(event);
+	const allDocumentsPayload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
+	const allDocuments = allDocumentsPayload.records || [];
+	const matchingExistingRecords = allDocuments.filter((record) => matchesGhostPostRecord(record, post, origin));
+	const matchingLeafletRecord =
+		matchingExistingRecords.find((record) =>
+			isLeafletPublicationAtUri(String(record.value?.site || ''))
+		) || null;
+	const preferredPublicationAtUri = await getPreferredDocumentPublicationAtUri(event);
+	const publicationAtUri = matchingLeafletRecord?.value?.site
+		? String(matchingLeafletRecord.value.site)
+		: preferredPublicationAtUri;
 	const isLeafletPublication = isLeafletPublicationAtUri(publicationAtUri);
 
 	const publicationResult = await ensurePublicationRecord(event, profile);
@@ -543,15 +571,9 @@ export async function syncGhostPostToStandardSite(
 	}
 
 	if (isLeafletPublication) {
-		const payload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
-		const records = payload.records || [];
-		const canonicalUrl = `${getOrigin(event)}${post.path}`;
 		const existingLeafletRecord =
-			records.find(
-				(record) =>
-					String(record.value?.site || '') === publicationAtUri &&
-					(String(record.value?.url || '') === canonicalUrl ||
-						String(record.value?.path || '') === `/${post.slug}`)
+			matchingExistingRecords.find(
+				(record) => String(record.value?.site || '') === publicationAtUri
 			) || null;
 
 		if (existingLeafletRecord?.uri) {
@@ -622,19 +644,20 @@ export async function getStandardSiteDocumentStatus(event: Pick<RequestEvent, 'u
 
 	try {
 		const session = await createSession();
-		const canonicalUrl = `${getOrigin(event)}${post.path}`;
 		const payload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
 		const records = payload.records || [];
+		const origin = getOrigin(event);
+		const matches = records.filter((record) => matchesGhostPostRecord(record, post, origin));
 		return (
-			records.find((record) => {
-				const value = record.value || {};
-				return (
-					String(value.url || '') === canonicalUrl ||
-					String(value.path || '') === post.path ||
-					String(value.path || '') === `/${post.slug}` ||
-					getRecordKey(String(record.uri || '')) === post.slug
-				);
-			}) || null
+			matches.sort((a, b) => {
+				const aLeaflet = isLeafletPublicationAtUri(String(a.value?.site || '')) ? 1 : 0;
+				const bLeaflet = isLeafletPublicationAtUri(String(b.value?.site || '')) ? 1 : 0;
+				if (aLeaflet !== bLeaflet) return bLeaflet - aLeaflet;
+				const aSlug = getRecordKey(String(a.uri || '')) === post.slug ? 1 : 0;
+				const bSlug = getRecordKey(String(b.uri || '')) === post.slug ? 1 : 0;
+				if (aSlug !== bSlug) return aSlug - bSlug;
+				return 0;
+			})[0] || null
 		);
 	} catch {
 		return null;

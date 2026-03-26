@@ -14,7 +14,7 @@
 		<p class="admin-field-note">
 			This experimental screen syncs Ghost posts into your PDS as
 			<code>site.standard.publication</code> and <code>site.standard.document</code> records.
-			It is text-first and does not attempt image blobs yet.
+			It syncs text first and can attach a cover image when one is available.
 		</p>
 
 		{#if form?.success}
@@ -59,7 +59,7 @@
 						{#if post.documentAtUri}
 							<p class="admin-field-note"><code>{post.documentAtUri}</code></p>
 						{/if}
-						<p class="admin-field-note">Deterministic document AT-URI for this Ghost post.</p>
+						<p class="admin-field-note">Latest synced document record for this Ghost post.</p>
 					</div>
 
 					<form method="POST" action="?/syncPost">
