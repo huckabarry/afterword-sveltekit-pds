@@ -391,6 +391,10 @@ function matchesGhostPostRecord(
 	const canonicalUrl = `${origin}${post.path}`;
 	const rkey = getRecordKey(String(record.uri || ''));
 	return (
+		String(value.sourceUrl || '') === post.sourceUrl ||
+		String(value.ghostPostId || '') === post.id ||
+		(String(value.title || '') === post.title &&
+			String(value.publishedAt || '') === post.publishedAt.toISOString()) ||
 		String(value.url || '') === canonicalUrl ||
 		String(value.path || '') === post.path ||
 		String(value.path || '') === `/${post.slug}` ||
@@ -455,6 +459,19 @@ function textBlock(plaintext: string): LeafletBlock {
 		block: {
 			$type: 'pub.leaflet.blocks.text',
 			plaintext
+		}
+	};
+}
+
+function imageBlock(image: AtprotoBlob): LeafletBlock {
+	return {
+		$type: 'pub.leaflet.pages.linearDocument#block',
+		block: {
+			$type: 'pub.leaflet.blocks.image',
+			image: {
+				...image,
+				$type: image.$type || 'blob'
+			}
 		}
 	};
 }
@@ -683,6 +700,8 @@ export function createDocumentRecord(
 		site: publicationAtUri,
 		path: documentPath,
 		...(isLeafletPublication ? {} : { url: `${origin}${post.path}` }),
+		sourceUrl: post.sourceUrl,
+		ghostPostId: post.id,
 		title: post.title,
 		description: post.excerpt || toExcerpt(text),
 		...(isLeafletPublication
@@ -791,13 +810,26 @@ export async function syncGhostPostToStandardSite(
 				error instanceof Error ? error.message : error
 			);
 		}
+		if (coverImageBlob) {
+			const hasImageBlocks = (leafletBlocks || []).some(
+				(block) => block.block.$type === 'pub.leaflet.blocks.image'
+			);
+			if (!hasImageBlocks) {
+				leafletBlocks = [imageBlock(coverImageBlob), ...(leafletBlocks || [])];
+			}
+		}
 	}
 
 	if (isLeafletPublication) {
-		const existingLeafletRecord =
-			matchingExistingRecords.find(
-				(record) => String(record.value?.site || '') === publicationAtUri
-			) || null;
+		const existingLeafletRecords = matchingExistingRecords
+			.filter((record) => String(record.value?.site || '') === publicationAtUri)
+			.sort((a, b) => {
+				const aSlug = getRecordKey(String(a.uri || '')) === post.slug ? 1 : 0;
+				const bSlug = getRecordKey(String(b.uri || '')) === post.slug ? 1 : 0;
+				return aSlug - bSlug;
+			});
+		const existingLeafletRecord = existingLeafletRecords[0] || null;
+		const duplicateLeafletRecords = existingLeafletRecords.slice(1);
 
 		if (existingLeafletRecord?.uri) {
 			const oldRkey = getRecordKey(existingLeafletRecord.uri);
@@ -805,6 +837,15 @@ export async function syncGhostPostToStandardSite(
 			if (looksLikeLegacySlugKey) {
 				await deleteRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, oldRkey);
 			} else {
+				for (const duplicate of duplicateLeafletRecords) {
+					if (duplicate.uri) {
+						await deleteRecord(
+							session,
+							STANDARD_SITE_DOCUMENT_COLLECTION,
+							getRecordKey(duplicate.uri)
+						);
+					}
+				}
 				const updatedRecord = createDocumentRecord(
 					event,
 					post,
@@ -839,6 +880,11 @@ export async function syncGhostPostToStandardSite(
 		const createdRkey = getRecordKey(created.uri || '');
 		if (!createdRkey) {
 			throw new Error('ATProto createRecord did not return a document URI');
+		}
+		for (const duplicate of duplicateLeafletRecords) {
+			if (duplicate.uri) {
+				await deleteRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, getRecordKey(duplicate.uri));
+			}
 		}
 		const finalizedRecord = createDocumentRecord(
 			event,
