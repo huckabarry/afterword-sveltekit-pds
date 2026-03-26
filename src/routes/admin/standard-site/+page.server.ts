@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { getBlogPostBySlug, getRecentBlogPosts } from '$lib/server/ghost';
+import { getBlogPostBySlug, getBlogPostsByAnyTag } from '$lib/server/ghost';
 import { getSiteProfile } from '$lib/server/profile';
 import {
 	ensurePublicationRecord,
@@ -11,16 +11,21 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async (event) => {
 	const [publicationAtUri, posts] = await Promise.all([
 		getStandardSitePublicationAtUri(),
-		getRecentBlogPosts(8)
+		getBlogPostsByAnyTag(['field-notes', 'urbanism'])
 	]);
 
-	const postStatuses = posts.slice(0, 8).map((post) => ({
+	const postStatuses = posts
+		.sort((a, b) => a.publishedAt.getTime() - b.publishedAt.getTime())
+		.map((post) => ({
 		slug: post.slug,
 		title: post.title,
 		path: post.path,
 		publishedAt: post.publishedAt.toISOString(),
-		documentAtUri: null
-	}));
+		documentAtUri: null,
+		matchingTags: post.publicTags
+			.filter((tag) => tag.slug === 'field-notes' || tag.slug === 'urbanism')
+			.map((tag) => tag.label)
+		}));
 
 	return {
 		publicationAtUri,

@@ -689,6 +689,16 @@ export async function getBlogPostsByTag(tagSlug: string) {
 	return posts.filter((post) => post.publicTags.some((tag) => tag.slug === normalized));
 }
 
+export async function getBlogPostsByAnyTag(tagSlugs: string[]) {
+	const normalized = new Set(
+		(tagSlugs || []).map((tag) => String(tag || '').trim().toLowerCase()).filter(Boolean)
+	);
+	const posts = await getBlogPosts();
+	if (!normalized.size) return [];
+
+	return posts.filter((post) => post.publicTags.some((tag) => normalized.has(tag.slug)));
+}
+
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
 	const posts = await getBlogPosts();
 	return posts.find((post: BlogPost) => post.slug === slug) || null;
