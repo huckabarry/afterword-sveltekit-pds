@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
 import { getBlogPostBySlug, getBlogPosts, type BlogPost } from '$lib/server/ghost';
 import { getStatusBySlug, type StatusPost } from '$lib/server/atproto';
-import type { SiteProfile } from '$lib/server/profile';
+import { dedupeMigrationAliases, type SiteProfile } from '$lib/server/profile';
 
 const ACTIVITY_STREAMS_CONTEXT = 'https://www.w3.org/ns/activitystreams';
 const PUBLIC_COLLECTION = 'https://www.w3.org/ns/activitystreams#Public';
@@ -102,7 +102,10 @@ export function createActor(origin: string, profile?: SiteProfile) {
 		verificationLinks: [],
 		migrationAliases: []
 	};
-	const alsoKnownAs = [...getAlsoKnownAs(), ...(actorProfile.migrationAliases || [])].filter(Boolean);
+	const alsoKnownAs = dedupeMigrationAliases([
+		...getAlsoKnownAs(),
+		...(actorProfile.migrationAliases || [])
+	]).filter(Boolean);
 
 	return {
 		'@context': [ACTIVITY_STREAMS_CONTEXT, 'https://w3id.org/security/v1'],

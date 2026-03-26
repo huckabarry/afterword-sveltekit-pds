@@ -43,6 +43,36 @@ function normalizeUrl(value: string, fallback: string | null = null) {
 	return trimmed || fallback;
 }
 
+function normalizeAliasUrl(value: string) {
+	const trimmed = String(value || '').trim();
+	if (!trimmed) return '';
+
+	try {
+		const url = new URL(trimmed);
+		url.hash = '';
+		if (url.pathname !== '/') {
+			url.pathname = url.pathname.replace(/\/+$/, '');
+		}
+		return url.toString();
+	} catch {
+		return trimmed.replace(/\/+$/, '');
+	}
+}
+
+export function dedupeMigrationAliases(aliases: string[]) {
+	const seen = new Set<string>();
+	const results: string[] = [];
+
+	for (const alias of aliases) {
+		const normalized = normalizeAliasUrl(alias);
+		if (!normalized || seen.has(normalized)) continue;
+		seen.add(normalized);
+		results.push(normalized);
+	}
+
+	return results;
+}
+
 function parseVerificationLinks(value: unknown): VerificationLink[] {
 	if (typeof value !== 'string' || !value.trim()) {
 		return DEFAULT_PROFILE.verificationLinks;
@@ -86,20 +116,18 @@ function parseMigrationAliases(value: unknown): string[] {
 		const parsed = JSON.parse(value);
 		if (!Array.isArray(parsed)) return [];
 
-		return parsed
+		return dedupeMigrationAliases(
+			parsed
 			.map((item) => String(item || '').trim())
-			.filter(Boolean);
+			.filter(Boolean)
+		);
 	} catch {
 		return [];
 	}
 }
 
 function serializeMigrationAliases(aliases: string[]) {
-	return JSON.stringify(
-		aliases
-			.map((alias) => String(alias || '').trim())
-			.filter(Boolean)
-	);
+	return JSON.stringify(dedupeMigrationAliases(aliases));
 }
 
 function mapProfile(row: ProfileRow | null | undefined): SiteProfile {
@@ -189,10 +217,12 @@ export function formatVerificationLinksInput(links: VerificationLink[]) {
 }
 
 export function parseMigrationAliasesInput(value: string) {
-	return String(value || '')
+	return dedupeMigrationAliases(
+		String(value || '')
 		.split(/\r?\n/)
 		.map((line) => line.trim())
-		.filter(Boolean);
+		.filter(Boolean)
+	);
 }
 
 export function formatMigrationAliasesInput(aliases: string[]) {
