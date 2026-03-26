@@ -474,9 +474,7 @@ async function getRecord(session: AtprotoSession, collection: string, rkey: stri
 		rkey
 	});
 	const response = await fetch(`${session.serviceUrl}/xrpc/${GET_RECORD_NSID}?${params.toString()}`, {
-		headers: {
-			authorization: `Bearer ${session.accessJwt}`
-		}
+		method: 'GET'
 	});
 
 	if (response.status === 404) return null;
@@ -495,9 +493,7 @@ async function listRecords(session: AtprotoSession, collection: string, limit = 
 		limit: String(limit)
 	});
 	const response = await fetch(`${session.serviceUrl}/xrpc/${LIST_RECORDS_NSID}?${params.toString()}`, {
-		headers: {
-			authorization: `Bearer ${session.accessJwt}`
-		}
+		method: 'GET'
 	});
 
 	if (!response.ok) {
