@@ -17,6 +17,7 @@ const UPLOAD_BLOB_NSID = 'com.atproto.repo.uploadBlob';
 const LEGACY_LEAFLET_PUBLICATION_COLLECTION = 'pub.leaflet.publication';
 const LEGACY_LEAFLET_BASE_PATH = 'afterword.leaflet.pub';
 const SESSION_CACHE_TTL_MS = 1000 * 60 * 20;
+const MAX_INLINE_IMAGE_UPLOADS_PER_SYNC = 3;
 
 export const STANDARD_SITE_PUBLICATION_COLLECTION = 'site.standard.publication';
 export const STANDARD_SITE_DOCUMENT_COLLECTION = 'site.standard.document';
@@ -706,8 +707,9 @@ async function buildLeafletBlocksFromHtml(
 	const source = String(html || '').trim();
 	if (!source) return [];
 
-		const imageCache = new Map<string, UploadedLeafletImage>();
+	const imageCache = new Map<string, UploadedLeafletImage>();
 	const blocks: LeafletBlock[] = [];
+	let uploadedImageCount = 0;
 	const chunkPattern =
 		/<figure\b[\s\S]*?<\/figure>|<h[1-6]\b[\s\S]*?<\/h[1-6]>|<blockquote\b[\s\S]*?<\/blockquote>|<hr\b[^>]*>|<p\b[\s\S]*?<\/p>|<ul\b[\s\S]*?<\/ul>|<ol\b[\s\S]*?<\/ol>/gi;
 	const chunks = source.match(chunkPattern) || [source];
@@ -760,9 +762,15 @@ async function buildLeafletBlocksFromHtml(
 			const imageUrls = allMatches(chunk, '<img[^>]+src="([^"]+)"');
 			if (imageUrls.length) {
 				for (const imageUrl of imageUrls) {
+					if (uploadedImageCount >= MAX_INLINE_IMAGE_UPLOADS_PER_SYNC) {
+						break;
+					}
 					try {
 						const uploaded = await uploadRemoteImageBlob(session, imageUrl, imageCache);
-						if (uploaded) blocks.push(imageBlock(uploaded));
+						if (uploaded) {
+							blocks.push(imageBlock(uploaded));
+							uploadedImageCount += 1;
+						}
 					} catch (error) {
 						console.warn(
 							'[standard-site] Unable to upload inline image blob:',

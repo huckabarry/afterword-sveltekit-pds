@@ -15,7 +15,8 @@
 		<p class="admin-field-note">
 			This experimental screen syncs Ghost posts into your PDS as
 			<code>site.standard.publication</code> and <code>site.standard.document</code> records.
-			It syncs text first and can attach a cover image when one is available.
+			It syncs text first, attaches a cover image when one is available, and limits inline image
+			imports to keep Worker requests under control.
 		</p>
 
 		{#if form?.success}
