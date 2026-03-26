@@ -17,6 +17,7 @@ const LIST_RECORDS_NSID = 'com.atproto.repo.listRecords';
 const UPLOAD_BLOB_NSID = 'com.atproto.repo.uploadBlob';
 const LEGACY_LEAFLET_PUBLICATION_COLLECTION = 'pub.leaflet.publication';
 const LEGACY_LEAFLET_BASE_PATH = 'afterword.leaflet.pub';
+const SESSION_CACHE_TTL_MS = 1000 * 60 * 20;
 
 export const STANDARD_SITE_PUBLICATION_COLLECTION = 'site.standard.publication';
 export const STANDARD_SITE_DOCUMENT_COLLECTION = 'site.standard.document';
@@ -27,6 +28,10 @@ type AtprotoSession = {
 	did: string;
 	accessJwt: string;
 	identifier: string;
+};
+
+type CachedAtprotoSession = AtprotoSession & {
+	expiresAt: number;
 };
 
 type AtprotoBlob = {
@@ -57,6 +62,9 @@ type LeafletBlock =
 						aspectRatio?: LeafletAspectRatio;
 				  };
 	  };
+
+let standardSiteSessionCache: CachedAtprotoSession | null = null;
+let standardSiteSessionPromise: Promise<AtprotoSession> | null = null;
 
 function getStandardSiteServiceUrl() {
 	return String(
@@ -298,35 +306,59 @@ async function createSession(): Promise<AtprotoSession> {
 		);
 	}
 
-	const response = await fetch(`${serviceUrl}/xrpc/${CREATE_SESSION_NSID}`, {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json'
-		},
-		body: JSON.stringify({
+	if (
+		standardSiteSessionCache &&
+		standardSiteSessionCache.expiresAt > Date.now() &&
+		standardSiteSessionCache.serviceUrl === serviceUrl &&
+		standardSiteSessionCache.identifier === identifier
+	) {
+		return standardSiteSessionCache;
+	}
+
+	if (standardSiteSessionPromise) {
+		return await standardSiteSessionPromise;
+	}
+
+	standardSiteSessionPromise = (async () => {
+		const response = await fetch(`${serviceUrl}/xrpc/${CREATE_SESSION_NSID}`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({
+				identifier,
+				password
+			})
+		});
+
+		if (!response.ok) {
+			throw new Error(`ATProto session creation failed with ${response.status}`);
+		}
+
+		const payload = (await response.json()) as { did?: string; accessJwt?: string };
+		const did = String(payload?.did || '').trim();
+		const accessJwt = String(payload?.accessJwt || '').trim();
+
+		if (!did || !accessJwt) {
+			throw new Error('ATProto session did not return a DID and access token');
+		}
+
+		const session: CachedAtprotoSession = {
+			serviceUrl,
+			did,
+			accessJwt,
 			identifier,
-			password
-		})
-	});
+			expiresAt: Date.now() + SESSION_CACHE_TTL_MS
+		};
+		standardSiteSessionCache = session;
+		return session;
+	})();
 
-	if (!response.ok) {
-		throw new Error(`ATProto session creation failed with ${response.status}`);
+	try {
+		return await standardSiteSessionPromise;
+	} finally {
+		standardSiteSessionPromise = null;
 	}
-
-	const payload = (await response.json()) as { did?: string; accessJwt?: string };
-	const did = String(payload?.did || '').trim();
-	const accessJwt = String(payload?.accessJwt || '').trim();
-
-	if (!did || !accessJwt) {
-		throw new Error('ATProto session did not return a DID and access token');
-	}
-
-	return {
-		serviceUrl,
-		did,
-		accessJwt,
-		identifier
-	};
 }
 
 async function putRecord<T>(session: AtprotoSession, collection: string, rkey: string, record: T) {
