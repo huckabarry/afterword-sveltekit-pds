@@ -32,6 +32,21 @@ type AtprotoBlob = {
 	$type?: string;
 };
 
+type LeafletBlock =
+	| {
+			$type: 'pub.leaflet.pages.linearDocument#block';
+			block:
+				| { $type: 'pub.leaflet.blocks.text'; plaintext: string }
+				| { $type: 'pub.leaflet.blocks.header'; level: number; plaintext: string }
+				| { $type: 'pub.leaflet.blocks.blockquote'; plaintext: string }
+				| { $type: 'pub.leaflet.blocks.horizontalRule' }
+				| {
+						$type: 'pub.leaflet.blocks.image';
+						image: AtprotoBlob;
+						aspectRatio?: { width: number; height: number };
+				  };
+	  };
+
 function getStandardSiteServiceUrl() {
 	return String(
 		env.STANDARD_SITE_PDS_URL || env.ATPROTO_PDS_URL || env.PDS_URL || env.ATP_BASE_URL || ''
@@ -84,6 +99,32 @@ function stripHtml(value: string) {
 		.replace(/&gt;/g, '>')
 		.replace(/\s+/g, ' ')
 		.trim();
+}
+
+function decodeHtml(value: string) {
+	return String(value || '')
+		.replace(/&nbsp;/g, ' ')
+		.replace(/&amp;/g, '&')
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'")
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>');
+}
+
+function firstMatch(
+	text: string,
+	pattern: string,
+	captureGroup = 1,
+	options: string = 'gis'
+) {
+	const regex = new RegExp(pattern, options);
+	const match = regex.exec(text);
+	return match?.[captureGroup] || null;
+}
+
+function allMatches(text: string, pattern: string, captureGroup = 1, options: string = 'gis') {
+	const regex = new RegExp(pattern, options);
+	return Array.from(text.matchAll(regex), (match) => match[captureGroup] || '').filter(Boolean);
 }
 
 function toExcerpt(value: string, maxLength = 280) {
@@ -408,6 +449,173 @@ function createLeafletTextBlocks(text: string) {
 		}));
 }
 
+function textBlock(plaintext: string): LeafletBlock {
+	return {
+		$type: 'pub.leaflet.pages.linearDocument#block',
+		block: {
+			$type: 'pub.leaflet.blocks.text',
+			plaintext
+		}
+	};
+}
+
+function normalizeLeafletText(value: string) {
+	return decodeHtml(
+		String(value || '')
+			.replace(/<br\s*\/?>/gi, '\n')
+			.replace(/<\/p>/gi, '\n\n')
+			.replace(/<\/div>/gi, '\n\n')
+			.replace(/<\/li>/gi, '\n')
+			.replace(/<[^>]+>/g, ' ')
+			.replace(/\r/g, '')
+	)
+		.replace(/[ \t]+\n/g, '\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.replace(/[ \t]{2,}/g, ' ')
+		.trim();
+}
+
+async function uploadRemoteImageBlob(
+	session: AtprotoSession,
+	rawUrl: string,
+	cache: Map<string, AtprotoBlob>
+) {
+	const normalized = String(rawUrl || '').trim();
+	if (!normalized) return null;
+	if (cache.has(normalized)) return cache.get(normalized) || null;
+
+	const response = await fetch(normalized, {
+		headers: {
+			accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+		}
+	});
+
+	if (!response.ok) {
+		throw new Error(`Unable to fetch inline image: ${response.status} ${normalized}`);
+	}
+
+	const headerMimeType = String(response.headers.get('content-type') || '')
+		.split(';')[0]
+		.trim()
+		.toLowerCase();
+	const mimeType =
+		headerMimeType && headerMimeType.startsWith('image/')
+			? headerMimeType
+			: inferImageMimeType(normalized);
+	const buffer = await response.arrayBuffer();
+
+	if (!buffer.byteLength) return null;
+
+	const blob = await uploadBlob(session, buffer, mimeType);
+	cache.set(normalized, blob);
+	return blob;
+}
+
+async function buildLeafletBlocksFromHtml(
+	session: AtprotoSession,
+	html: string
+): Promise<LeafletBlock[]> {
+	const source = String(html || '').trim();
+	if (!source) return [];
+
+	const imageCache = new Map<string, AtprotoBlob>();
+	const blocks: LeafletBlock[] = [];
+	const chunkPattern =
+		/<figure\b[\s\S]*?<\/figure>|<h[1-6]\b[\s\S]*?<\/h[1-6]>|<blockquote\b[\s\S]*?<\/blockquote>|<hr\b[^>]*>|<p\b[\s\S]*?<\/p>|<ul\b[\s\S]*?<\/ul>|<ol\b[\s\S]*?<\/ol>/gi;
+	const chunks = source.match(chunkPattern) || [source];
+
+	for (const rawChunk of chunks) {
+		const chunk = rawChunk.trim();
+		if (!chunk) continue;
+
+		if (/^<hr\b/i.test(chunk)) {
+			blocks.push({
+				$type: 'pub.leaflet.pages.linearDocument#block',
+				block: { $type: 'pub.leaflet.blocks.horizontalRule' }
+			});
+			continue;
+		}
+
+		const headingLevel = firstMatch(chunk, '<h([1-6])\\b[\\s\\S]*?>([\\s\\S]*?)<\\/h[1-6]>', 1);
+		const headingText = firstMatch(chunk, '<h([1-6])\\b[\\s\\S]*?>([\\s\\S]*?)<\\/h[1-6]>', 2);
+		if (headingLevel && headingText) {
+			const plaintext = normalizeLeafletText(headingText);
+			if (plaintext) {
+				blocks.push({
+					$type: 'pub.leaflet.pages.linearDocument#block',
+					block: {
+						$type: 'pub.leaflet.blocks.header',
+						level: Math.min(Math.max(Number(headingLevel), 1), 3),
+						plaintext
+					}
+				});
+			}
+			continue;
+		}
+
+		const quoteText = firstMatch(chunk, '<blockquote\\b[\\s\\S]*?>([\\s\\S]*?)<\\/blockquote>');
+		if (quoteText) {
+			const plaintext = normalizeLeafletText(quoteText);
+			if (plaintext) {
+				blocks.push({
+					$type: 'pub.leaflet.pages.linearDocument#block',
+					block: {
+						$type: 'pub.leaflet.blocks.blockquote',
+						plaintext
+					}
+				});
+			}
+			continue;
+		}
+
+		if (/^<figure\b/i.test(chunk)) {
+			const imageUrls = allMatches(chunk, '<img[^>]+src="([^"]+)"');
+			if (imageUrls.length) {
+				for (const imageUrl of imageUrls) {
+					try {
+						const blob = await uploadRemoteImageBlob(session, imageUrl, imageCache);
+						if (blob) {
+							blocks.push({
+								$type: 'pub.leaflet.pages.linearDocument#block',
+								block: {
+									$type: 'pub.leaflet.blocks.image',
+									image: {
+										...blob,
+										$type: blob.$type || 'blob'
+									}
+								}
+							});
+						}
+					} catch (error) {
+						console.warn(
+							'[standard-site] Unable to upload inline image blob:',
+							error instanceof Error ? error.message : error
+						);
+					}
+				}
+				const residualText = normalizeLeafletText(
+					chunk.replace(/<img[^>]*>/gi, ' ').replace(/<figure[^>]*>|<\/figure>/gi, ' ')
+				);
+				if (residualText) blocks.push(textBlock(residualText));
+				continue;
+			}
+		}
+
+		if (/^<(ul|ol)\b/i.test(chunk)) {
+			const items = allMatches(chunk, '<li[^>]*>([\\s\\S]*?)<\\/li>').map(normalizeLeafletText).filter(Boolean);
+			for (const item of items) blocks.push(textBlock(`• ${item}`));
+			continue;
+		}
+
+		const plaintext = normalizeLeafletText(chunk);
+		if (plaintext) {
+			blocks.push(textBlock(plaintext));
+		}
+	}
+
+	return blocks;
+}
+
 export function createPublicationRecord(event: Pick<RequestEvent, 'url'>, profile: SiteProfile) {
 	const origin = getOrigin(event);
 
@@ -462,7 +670,8 @@ export function createDocumentRecord(
 	post: BlogPost,
 	publicationAtUri: string,
 	coverImageBlob?: AtprotoBlob | null,
-	documentPathOverride?: string
+	documentPathOverride?: string,
+	leafletBlocksOverride?: LeafletBlock[]
 ) {
 	const origin = getOrigin(event);
 	const text = stripHtml(stripImagesFromHtml(post.html));
@@ -484,7 +693,10 @@ export function createDocumentRecord(
 							{
 								id: crypto.randomUUID(),
 								$type: 'pub.leaflet.pages.linearDocument',
-								blocks: createLeafletTextBlocks(text)
+								blocks:
+									leafletBlocksOverride && leafletBlocksOverride.length
+										? leafletBlocksOverride
+										: createLeafletTextBlocks(text)
 							}
 						]
 					}
@@ -559,12 +771,23 @@ export async function syncGhostPostToStandardSite(
 
 	const publicationResult = await ensurePublicationRecord(event, profile);
 	let coverImageBlob: AtprotoBlob | null = null;
+	let leafletBlocks: LeafletBlock[] | undefined;
 	if (post.coverImage) {
 		try {
 			coverImageBlob = await uploadCoverImageBlob(session, post);
 		} catch (error) {
 			console.warn(
 				'[standard-site] Unable to upload cover image blob:',
+				error instanceof Error ? error.message : error
+			);
+		}
+	}
+	if (isLeafletPublication) {
+		try {
+			leafletBlocks = await buildLeafletBlocksFromHtml(session, post.html);
+		} catch (error) {
+			console.warn(
+				'[standard-site] Unable to build rich Leaflet content:',
 				error instanceof Error ? error.message : error
 			);
 		}
@@ -587,7 +810,8 @@ export async function syncGhostPostToStandardSite(
 					post,
 					publicationAtUri,
 					coverImageBlob,
-					String(existingLeafletRecord.value?.path || '') || `/${oldRkey}`
+					String(existingLeafletRecord.value?.path || '') || `/${oldRkey}`,
+					leafletBlocks
 				);
 				const result = await putRecord(
 					session,
@@ -603,7 +827,14 @@ export async function syncGhostPostToStandardSite(
 			}
 		}
 
-		const provisionalRecord = createDocumentRecord(event, post, publicationAtUri, coverImageBlob);
+		const provisionalRecord = createDocumentRecord(
+			event,
+			post,
+			publicationAtUri,
+			coverImageBlob,
+			undefined,
+			leafletBlocks
+		);
 		const created = await createRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, provisionalRecord);
 		const createdRkey = getRecordKey(created.uri || '');
 		if (!createdRkey) {
@@ -614,7 +845,8 @@ export async function syncGhostPostToStandardSite(
 			post,
 			publicationAtUri,
 			coverImageBlob,
-			`/${createdRkey}`
+			`/${createdRkey}`,
+			leafletBlocks
 		);
 		const result = await putRecord(
 			session,
