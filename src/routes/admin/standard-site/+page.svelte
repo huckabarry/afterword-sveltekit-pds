@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	let { data, form } = $props();
 </script>
 
@@ -36,7 +37,7 @@
 		</div>
 
 		<div class="admin-form-actions">
-			<form method="POST" action="/admin/standard-site?/syncPublication">
+			<form method="POST" action="/admin/standard-site?/syncPublication" use:enhance>
 				<button class="admin-button" type="submit">Sync publication record</button>
 			</form>
 		</div>
@@ -62,7 +63,7 @@
 						<p class="admin-field-note">Latest synced document record for this Ghost post.</p>
 					</div>
 
-					<form method="POST" action="/admin/standard-site?/syncPost">
+					<form method="POST" action="/admin/standard-site?/syncPost" use:enhance>
 						<input type="hidden" name="slug" value={post.slug} />
 						<button class="admin-pill-link" type="submit">Sync post</button>
 					</form>
