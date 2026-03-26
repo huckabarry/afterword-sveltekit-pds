@@ -3,6 +3,10 @@
 	"name": "afterword-sveltekit-pds",
 	"compatibility_date": "2026-03-22",
 	"compatibility_flags": ["nodejs_compat", "nodejs_als"],
+	"vars": {
+		"STANDARD_SITE_IDENTIFIER": "afterword.blog",
+		"STANDARD_SITE_PDS_URL": "https://shiitake.us-east.host.bsky.network"
+	},
 	"d1_databases": [
 		{
 			"binding": "D1_DATABASE",
