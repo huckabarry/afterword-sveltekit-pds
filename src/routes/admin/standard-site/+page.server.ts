@@ -3,35 +3,27 @@ import { getBlogPostBySlug, getRecentBlogPosts } from '$lib/server/ghost';
 import { getSiteProfile } from '$lib/server/profile';
 import {
 	ensurePublicationRecord,
-	getPublicationRecordStatus,
 	getStandardSitePublicationAtUri,
-	getStandardSiteDocumentStatuses,
 	syncGhostPostToStandardSite
 } from '$lib/server/standard-site';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	const [profile, publicationAtUri, publicationRecord, posts] = await Promise.all([
-		getSiteProfile(event),
-		getStandardSitePublicationAtUri(event),
-		getPublicationRecordStatus(event),
+	const [publicationAtUri, posts] = await Promise.all([
+		getStandardSitePublicationAtUri(),
 		getRecentBlogPosts(8)
 	]);
 
-	const recentPosts = posts.slice(0, 8);
-	const documentStatuses = await getStandardSiteDocumentStatuses(event, recentPosts);
-	const postStatuses = recentPosts.map((post) => ({
+	const postStatuses = posts.slice(0, 8).map((post) => ({
 		slug: post.slug,
 		title: post.title,
 		path: post.path,
 		publishedAt: post.publishedAt.toISOString(),
-		documentAtUri: documentStatuses.get(post.slug)?.uri || null
+		documentAtUri: null
 	}));
 
 	return {
-		profile,
 		publicationAtUri,
-		publicationRecord,
 		posts: postStatuses
 	};
 };
