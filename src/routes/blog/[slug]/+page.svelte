@@ -15,6 +15,7 @@
 				announceCount: number;
 				totalCount: number;
 			};
+			standardSiteDocumentAtUri: string | null;
 			replies: Array<{
 				noteId: string;
 				actorId: string;
@@ -31,6 +32,9 @@
 
 <svelte:head>
 	<title>{data.post.title} | Blog</title>
+	{#if data.standardSiteDocumentAtUri}
+		<link rel="site.standard.document" href={data.standardSiteDocumentAtUri} />
+	{/if}
 </svelte:head>
 
 <article class="entry entry--blog h-entry">
