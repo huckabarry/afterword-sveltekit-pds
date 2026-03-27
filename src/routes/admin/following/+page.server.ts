@@ -1,14 +1,48 @@
 import { error, fail } from '@sveltejs/kit';
-import { getActivityPubOrigin, getActorId } from '$lib/server/activitypub';
+import { getActivityPubHandle, getActivityPubOrigin, getActorId } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { resolveReplyContext } from '$lib/server/admin-reply-context';
-import { createLocalReply, updateLocalReplyDeliveryStatus } from '$lib/server/ap-notes';
+import {
+	createLocalReply,
+	listLocalNotes,
+	type LocalApNoteListItem,
+	updateLocalReplyDeliveryStatus
+} from '$lib/server/ap-notes';
 import { deliverLikeToRemoteObject } from '$lib/server/activitypub-likes';
 import { fetchActivityJson, fetchRemoteActor, localReplyToRemoteCreateActivity, normalizeMentionText, resolveThreadRootObjectId, textToParagraphHtml } from '$lib/server/activitypub-replies';
-import { listFollowing } from '$lib/server/activitypub-follows';
-import { favouriteObject, isObjectFavourited, isObjectReblogged, reblogObject } from '$lib/server/mastodon-state';
+import { listFollowingActorIds } from '$lib/server/activitypub-follows';
+import { getStatusesLite, type StatusPost } from '$lib/server/atproto';
+import { getSiteProfile } from '$lib/server/profile';
+import { favouriteObject, findFavouritedObjectIds, findRebloggedObjectIds, reblogObject } from '$lib/server/mastodon-state';
 import { listCachedRemoteStatusesForActors, syncRemoteStatusesForActor, type CachedRemoteStatus } from '$lib/server/mastodon-remote-statuses';
 import type { Actions, PageServerLoad } from './$types';
+
+type AdminFollowingFeedStatus = {
+	objectId: string;
+	actorId: string;
+	actorName: string | null;
+	actorHandle: string | null;
+	actorSummary: string | null;
+	actorUrl: string | null;
+	actorAvatarUrl: string | null;
+	contentHtml: string;
+	contentText: string;
+	publishedAt: string;
+	objectUrl: string | null;
+	inReplyToObjectId: string | null;
+	attachments: Array<{
+		url: string;
+		mediaType: string;
+		alt: string;
+	}>;
+	favourited: boolean;
+	reblogged: boolean;
+	replyContext: Awaited<ReturnType<typeof resolveReplyContext>>;
+	source: 'remote' | 'local' | 'mirrored';
+	visibility: 'public' | 'followers' | 'direct';
+	openHref: string;
+	sourceHref: string | null;
+};
 
 async function sendBoost(origin: string, objectId: string) {
 	const targetObject = await fetchActivityJson(objectId);
@@ -41,33 +75,116 @@ async function sendBoost(origin: string, objectId: string) {
 
 export const load: PageServerLoad = async (event) => {
 	const origin = getActivityPubOrigin(event);
-	const following = await listFollowing(event);
-	const followingByActorId = new Map(following.map((account) => [account.actorId, account]));
-
-	const statuses = following.length
+	const followingActorIds = await listFollowingActorIds(event);
+	const statuses = followingActorIds.length
 		? await listCachedRemoteStatusesForActors(
 				event,
-				following.map((account) => account.actorId),
-				{ limit: 120 }
+				followingActorIds,
+				{ limit: 90 }
 			)
 		: [];
+	const [profile, localNotes, mirroredStatuses, favouritedObjectIds, rebloggedObjectIds, replyContexts] =
+		await Promise.all([
+			getSiteProfile(event),
+			listLocalNotes(event, 60),
+			getStatusesLite(),
+			findFavouritedObjectIds(
+				event,
+				statuses.map((status: CachedRemoteStatus) => status.objectId)
+			),
+			findRebloggedObjectIds(
+				event,
+				statuses.map((status: CachedRemoteStatus) => status.objectId)
+			),
+			Promise.all(
+				statuses.map(async (status: CachedRemoteStatus) => [
+					status.objectId,
+					status.inReplyToObjectId
+						? await resolveReplyContext(event, origin, status.inReplyToObjectId, {
+								allowRemoteFetch: false
+							})
+						: null
+				] as const)
+			)
+		]);
+	const replyContextByObjectId = new Map(replyContexts);
+	const localActorId = getActorId(origin);
+	const localActorHandle = getActivityPubHandle(origin);
+	const localActorAvatarUrl = String(profile.avatarUrl || '').startsWith('http')
+		? String(profile.avatarUrl || '')
+		: `${origin}${profile.avatarUrl || '/assets/images/status-avatar.jpg'}`;
 
-	const statusesWithState = await Promise.all(
-		statuses.map(async (status: CachedRemoteStatus) => ({
-			...status,
-			actorAvatarUrl: status.actorAvatarUrl || followingByActorId.get(status.actorId)?.avatarUrl || null,
-			actorSummary: status.actorSummary || followingByActorId.get(status.actorId)?.summary || null,
-			actorUrl: status.actorUrl || followingByActorId.get(status.actorId)?.profileUrl || null,
-			favourited: await isObjectFavourited(event, status.objectId),
-			reblogged: await isObjectReblogged(event, status.objectId),
-			replyContext: status.inReplyToObjectId
-				? await resolveReplyContext(event, origin, status.inReplyToObjectId)
-				: null
-		}))
-	);
+	const remoteStatuses: AdminFollowingFeedStatus[] = statuses.map((status: CachedRemoteStatus) => ({
+		...status,
+		favourited: favouritedObjectIds.has(status.objectId),
+		reblogged: rebloggedObjectIds.has(status.objectId),
+		replyContext: replyContextByObjectId.get(status.objectId) || null,
+		source: 'remote',
+		visibility: 'public',
+		openHref: status.objectUrl || status.objectId,
+		sourceHref: null
+	}));
+
+	const ownLocalStatuses: AdminFollowingFeedStatus[] = localNotes
+		.filter((note: LocalApNoteListItem) => !note.inReplyToObjectId && note.visibility !== 'direct')
+		.map((note: LocalApNoteListItem) => ({
+			objectId: note.noteId,
+			actorId: localActorId,
+			actorName: profile.displayName,
+			actorHandle: localActorHandle,
+			actorSummary: profile.bio,
+			actorUrl: `${origin}/about`,
+			actorAvatarUrl: localActorAvatarUrl,
+			contentHtml: note.contentHtml,
+			contentText: note.contentText,
+			publishedAt: note.publishedAt,
+			objectUrl: note.objectUrl || note.noteId,
+			inReplyToObjectId: null,
+			attachments: note.attachments,
+			favourited: false,
+			reblogged: false,
+			replyContext: null,
+			source: 'local',
+			visibility: note.visibility,
+			openHref: note.localSlug ? `/admin/posts/${note.localSlug}` : '/admin/posts',
+			sourceHref: null
+		}));
+
+	const ownMirroredStatuses: AdminFollowingFeedStatus[] = mirroredStatuses
+		.filter((status: StatusPost) => !status.isReply)
+		.slice(0, 60)
+		.map((status: StatusPost) => ({
+			objectId: `${origin}/ap/status/${status.slug}`,
+			actorId: localActorId,
+			actorName: status.displayName,
+			actorHandle: status.handle,
+			actorSummary: null,
+			actorUrl: status.blueskyUrl,
+			actorAvatarUrl: status.avatar || localActorAvatarUrl,
+			contentHtml: status.html,
+			contentText: status.text,
+			publishedAt: status.date.toISOString(),
+			objectUrl: `${origin}/status/${status.slug}`,
+			inReplyToObjectId: null,
+			attachments: status.images.map((image: StatusPost['images'][number]) => ({
+				url: image.fullsize || image.thumb,
+				mediaType: 'image/jpeg',
+				alt: image.alt || ''
+			})),
+			favourited: false,
+			reblogged: false,
+			replyContext: null,
+			source: 'mirrored',
+			visibility: 'public',
+			openHref: `/status/${status.slug}`,
+			sourceHref: status.blueskyUrl
+		}));
+
+	const statusesWithState = [...remoteStatuses, ...ownLocalStatuses, ...ownMirroredStatuses]
+		.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
+		.slice(0, 120);
 
 	return {
-		following,
 		statuses: statusesWithState,
 		followed: event.url.searchParams.get('followed') === '1',
 		unfollowed: event.url.searchParams.get('unfollowed') === '1',
@@ -152,10 +269,10 @@ export const actions: Actions = {
 		return { replied: true, replyTo };
 	},
 	refresh: async (event) => {
-		const following = await listFollowing(event);
+		const followingActorIds = await listFollowingActorIds(event);
 
-		for (const account of following) {
-			await syncRemoteStatusesForActor(event, account.actorId, {
+		for (const actorId of followingActorIds) {
+			await syncRemoteStatusesForActor(event, actorId, {
 				force: true,
 				freshnessMs: 0,
 				maxPages: 2,

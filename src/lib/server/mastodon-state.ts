@@ -194,6 +194,36 @@ async function listObjectIds(
 		.filter((row: string | null): row is string => Boolean(row));
 }
 
+async function findObjectIdsInTable(
+	event: Pick<RequestEvent, 'platform'>,
+	table:
+		| 'mastodon_favourites'
+		| 'mastodon_bookmarks'
+		| 'mastodon_reblogs'
+		| 'mastodon_status_mutes'
+		| 'mastodon_pins',
+	objectIds: string[]
+) {
+	const db = getDb(event);
+	if (!db) return new Set<string>();
+	await ensureTables(event);
+
+	const values = [...new Set(objectIds.map((objectId) => String(objectId || '').trim()).filter(Boolean))];
+	if (!values.length) return new Set<string>();
+
+	const placeholders = values.map(() => '?').join(', ');
+	const result = await db
+		.prepare(`SELECT object_id FROM ${table} WHERE object_id IN (${placeholders})`)
+		.bind(...values)
+		.all<StateRow>();
+
+	return new Set(
+		(result.results || [])
+			.map((row: StateRow) => (row.object_id ? String(row.object_id) : null))
+			.filter((row: string | null): row is string => Boolean(row))
+	);
+}
+
 async function upsertActorState(
 	event: Pick<RequestEvent, 'platform'>,
 	table: 'mastodon_mutes' | 'mastodon_blocks',
@@ -279,6 +309,13 @@ export async function listFavouritedObjectIds(event: Pick<RequestEvent, 'platfor
 	return listObjectIds(event, 'mastodon_favourites', limit);
 }
 
+export async function findFavouritedObjectIds(
+	event: Pick<RequestEvent, 'platform'>,
+	objectIds: string[]
+) {
+	return findObjectIdsInTable(event, 'mastodon_favourites', objectIds);
+}
+
 export async function isObjectBookmarked(event: Pick<RequestEvent, 'platform'>, objectId: string) {
 	return hasRow(event, 'mastodon_bookmarks', 'object_id', objectId);
 }
@@ -297,6 +334,13 @@ export async function listBookmarkedObjectIds(event: Pick<RequestEvent, 'platfor
 
 export async function isObjectReblogged(event: Pick<RequestEvent, 'platform'>, objectId: string) {
 	return hasRow(event, 'mastodon_reblogs', 'object_id', objectId);
+}
+
+export async function findRebloggedObjectIds(
+	event: Pick<RequestEvent, 'platform'>,
+	objectIds: string[]
+) {
+	return findObjectIdsInTable(event, 'mastodon_reblogs', objectIds);
 }
 
 export async function getReblogActivityId(event: Pick<RequestEvent, 'platform'>, objectId: string) {

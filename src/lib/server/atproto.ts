@@ -5,6 +5,7 @@ const AUTHOR_FEED_URL = 'https://public.api.bsky.app/xrpc/app.bsky.feed.getAutho
 const CHECKIN_COLLECTION = 'blog.afterword.checkin';
 const DEFAULT_REPO = 'afterword.blog';
 const FEED_LIMIT = 20;
+const STATUS_CACHE_TTL_MS = 60_000;
 
 export type Checkin = {
 	id: string;
@@ -70,11 +71,26 @@ export type StatusPost = {
 	replies?: StatusPost[];
 };
 
+type StatusCacheEntry = {
+	expiresAt: number;
+	statuses: StatusPost[];
+};
+
 function getRepos() {
 	return (process.env.ATPROTO_REPOS || process.env.ATPROTO_REPO || DEFAULT_REPO)
 		.split(',')
 		.map((value) => value.trim())
 		.filter(Boolean);
+}
+
+function getStatusCache() {
+	const scope = globalThis as typeof globalThis & {
+		__afterwordStatusCache?: Map<string, StatusCacheEntry>;
+	};
+	if (!scope.__afterwordStatusCache) {
+		scope.__afterwordStatusCache = new Map<string, StatusCacheEntry>();
+	}
+	return scope.__afterwordStatusCache;
 }
 
 function getRecordKey(uri: string | undefined | null) {
@@ -495,7 +511,7 @@ export async function getCheckins() {
 	}
 }
 
-export async function getStatuses(actor = DEFAULT_REPO) {
+async function fetchStatuses(actor = DEFAULT_REPO, includeThreadContext = true) {
 	try {
 		const response = await fetch(
 			`${AUTHOR_FEED_URL}?actor=${encodeURIComponent(actor)}&limit=${FEED_LIMIT}`,
@@ -514,11 +530,46 @@ export async function getStatuses(actor = DEFAULT_REPO) {
 			.map((item) => normalizeStatus(item, actor))
 			.filter((post): post is StatusPost => Boolean(post));
 
-		return Promise.all(posts.map((post) => fetchThreadContextForPost(post)));
+		return includeThreadContext
+			? Promise.all(posts.map((post) => fetchThreadContextForPost(post)))
+			: posts;
 	} catch (error) {
 		console.warn('[bluesky] Unable to fetch author feed:', error);
 		return [];
 	}
+}
+
+async function getCachedStatuses(
+	actor = DEFAULT_REPO,
+	options?: {
+		includeThreadContext?: boolean;
+		freshnessMs?: number;
+	}
+) {
+	const includeThreadContext = options?.includeThreadContext ?? true;
+	const freshnessMs = Math.max(0, options?.freshnessMs ?? STATUS_CACHE_TTL_MS);
+	const cacheKey = `${actor}:${includeThreadContext ? 'full' : 'lite'}`;
+	const cache = getStatusCache();
+	const cached = cache.get(cacheKey);
+
+	if (cached && cached.expiresAt > Date.now()) {
+		return cached.statuses;
+	}
+
+	const statuses = await fetchStatuses(actor, includeThreadContext);
+	cache.set(cacheKey, {
+		expiresAt: Date.now() + freshnessMs,
+		statuses
+	});
+	return statuses;
+}
+
+export async function getStatuses(actor = DEFAULT_REPO) {
+	return getCachedStatuses(actor, { includeThreadContext: true });
+}
+
+export async function getStatusesLite(actor = DEFAULT_REPO) {
+	return getCachedStatuses(actor, { includeThreadContext: false });
 }
 
 export async function getCheckinBySlug(slug: string) {

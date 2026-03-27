@@ -58,7 +58,7 @@
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Feed</p>
-				<h2>Followed posts</h2>
+				<h2>Timeline</h2>
 			</div>
 			<div class="admin-thread__actions admin-thread__actions--social">
 				<form method="POST" action="?/refresh">
@@ -89,7 +89,7 @@
 				{#each statuses as status}
 					<li class="admin-social-card">
 						<div class="admin-social-card__avatar-wrap">
-							{#if status.actorId}
+							{#if status.source === 'remote' && status.actorId}
 								<a href={`/admin/people?actor=${encodeURIComponent(status.actorId)}`}>
 									<img
 										class="admin-social-card__avatar"
@@ -107,13 +107,26 @@
 						</div>
 						<div class="admin-social-card__body">
 							<div class="admin-social-card__meta">
-								<strong>
-									<a href={`/admin/people?actor=${encodeURIComponent(status.actorId)}`}>
-										{status.actorName || status.actorHandle || status.actorId}
-									</a>
-								</strong>
+								{#if status.source === 'remote'}
+									<strong>
+										<a href={`/admin/people?actor=${encodeURIComponent(status.actorId)}`}>
+											{status.actorName || status.actorHandle || status.actorId}
+										</a>
+									</strong>
+								{:else}
+									<strong>{status.actorName || status.actorHandle || status.actorId}</strong>
+								{/if}
 								{#if status.actorHandle}
 									<span>@{status.actorHandle}</span>
+								{/if}
+								{#if status.source === 'local'}
+									<span class="admin-post-status">you</span>
+								{/if}
+								{#if status.source === 'mirrored'}
+									<span class="admin-post-status">bluesky</span>
+								{/if}
+								{#if status.source === 'local' && status.visibility !== 'public'}
+									<span class="admin-post-status">{status.visibility}</span>
 								{/if}
 								<span>{formatDate(status.publishedAt)}</span>
 							</div>
@@ -153,50 +166,59 @@
 							{/if}
 
 							<div class="admin-thread__actions admin-thread__actions--social">
-								<form method="POST" action="?/like" use:enhance={enhanceStatusAction('like')}>
-									<input type="hidden" name="objectId" value={status.objectId} />
-									<button class:admin-pill-link-liked={status.favourited} class="admin-pill-link" type="submit">
-										{#if status.favourited}
-											<span aria-hidden="true">♥</span>
-											<span>Liked</span>
-										{:else}
-											<span aria-hidden="true">♡</span>
-											<span>Like</span>
-										{/if}
-									</button>
-								</form>
-								<form method="POST" action="?/boost" use:enhance={enhanceStatusAction('boost')}>
-									<input type="hidden" name="objectId" value={status.objectId} />
-									<button class="admin-pill-link" type="submit">
-										{status.reblogged ? 'Boosted' : 'Boost'}
-									</button>
-								</form>
-								<a class="admin-pill-link" href={status.objectUrl || status.objectId} target="_blank" rel="noreferrer">Open post</a>
+								{#if status.source === 'remote'}
+									<form method="POST" action="?/like" use:enhance={enhanceStatusAction('like')}>
+										<input type="hidden" name="objectId" value={status.objectId} />
+										<button class:admin-pill-link-liked={status.favourited} class="admin-pill-link" type="submit">
+											{#if status.favourited}
+												<span aria-hidden="true">♥</span>
+												<span>Liked</span>
+											{:else}
+												<span aria-hidden="true">♡</span>
+												<span>Like</span>
+											{/if}
+										</button>
+									</form>
+									<form method="POST" action="?/boost" use:enhance={enhanceStatusAction('boost')}>
+										<input type="hidden" name="objectId" value={status.objectId} />
+										<button class="admin-pill-link" type="submit">
+											{status.reblogged ? 'Boosted' : 'Boost'}
+										</button>
+									</form>
+									<a class="admin-pill-link" href={status.openHref} target="_blank" rel="noreferrer">Open post</a>
+								{:else}
+									<a class="admin-pill-link" href={status.openHref}>Open</a>
+									{#if status.sourceHref}
+										<a class="admin-pill-link" href={status.sourceHref} target="_blank" rel="noreferrer">Source</a>
+									{/if}
+								{/if}
 							</div>
 
-							<details class="admin-inline-reply">
-								<summary class="admin-pill-link">Reply inline</summary>
-								<form method="POST" action="?/reply" class="admin-inline-reply__form" use:enhance={enhanceReply}>
-									<input type="hidden" name="replyTo" value={status.objectId} />
-									<label class="admin-field">
-										<span>Reply</span>
-										<textarea
-											name="content"
-											rows="4"
-											placeholder="Write a reply..."
-										></textarea>
-									</label>
-									<div class="admin-form-actions">
-										<button class="admin-button" type="submit">Send reply</button>
-									</div>
-								</form>
-							</details>
+							{#if status.source === 'remote'}
+								<details class="admin-inline-reply">
+									<summary class="admin-pill-link">Reply inline</summary>
+									<form method="POST" action="?/reply" class="admin-inline-reply__form" use:enhance={enhanceReply}>
+										<input type="hidden" name="replyTo" value={status.objectId} />
+										<label class="admin-field">
+											<span>Reply</span>
+											<textarea
+												name="content"
+												rows="4"
+												placeholder="Write a reply..."
+											></textarea>
+										</label>
+										<div class="admin-form-actions">
+											<button class="admin-button" type="submit">Send reply</button>
+										</div>
+									</form>
+								</details>
+							{/if}
 						</div>
 					</li>
 				{/each}
 			</ul>
 		{:else}
-			<p class="admin-empty">Follow some people and their new posts will show up here.</p>
+			<p class="admin-empty">Follow some people and your network posts will show up here alongside your own recent posts.</p>
 		{/if}
 	</div>
 </section>

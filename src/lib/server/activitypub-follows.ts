@@ -146,6 +146,26 @@ export async function listFollowing(event: Pick<RequestEvent, 'platform'>): Prom
 	return Promise.all(records.map((record: FollowingRecord) => hydrateFollowingMetadata(event, record)));
 }
 
+export async function listFollowingActorIds(
+	event: Pick<RequestEvent, 'platform'>
+): Promise<string[]> {
+	const db = getDb(event);
+	if (!db) return [];
+	await ensureFollowingStore(event);
+
+	const result = await db
+		.prepare(
+			`SELECT actor_id
+			 FROM ap_following
+			 ORDER BY updated_at DESC`
+		)
+		.all<FollowingRow>();
+
+	return (result.results || [])
+		.map((row: FollowingRow) => getString(row.actor_id))
+		.filter((actorId: string | null): actorId is string => Boolean(actorId));
+}
+
 export async function countFollowing(event: Pick<RequestEvent, 'platform'>) {
 	const db = getDb(event);
 	if (!db) return 0;

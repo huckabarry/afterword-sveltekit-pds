@@ -2,6 +2,7 @@ import { getBlogPostBySlug } from '$lib/server/ghost';
 import { getStatusBySlug } from '$lib/server/atproto';
 import { getLocalReplyBySlug } from '$lib/server/ap-notes';
 import { fetchActivityJson } from '$lib/server/activitypub-replies';
+import { getCachedRemoteStatus } from '$lib/server/mastodon-remote-statuses';
 
 export type ReplyContext = {
 	objectId: string;
@@ -34,10 +35,14 @@ function compactText(value: string, max = 220) {
 export async function resolveReplyContext(
 	event: { platform: App.Platform | undefined; url: URL },
 	origin: string,
-	objectId: string
+	objectId: string,
+	options?: {
+		allowRemoteFetch?: boolean;
+	}
 ): Promise<ReplyContext | null> {
 	const url = String(objectId || '').trim();
 	if (!url) return null;
+	const allowRemoteFetch = options?.allowRemoteFetch ?? true;
 
 	const statusPrefix = `${origin}/ap/status/`;
 	if (url.startsWith(statusPrefix)) {
@@ -96,6 +101,27 @@ export async function resolveReplyContext(
 			title: post.title,
 			author: 'Bryan Robb',
 			excerpt: compactText(post.excerpt || post.html)
+		};
+	}
+
+	const cachedRemote = await getCachedRemoteStatus(event, url).catch(() => null);
+	if (cachedRemote) {
+		return {
+			objectId: url,
+			url: cachedRemote.objectUrl || url,
+			title: 'Remote ActivityPub post',
+			author: cachedRemote.actorName || cachedRemote.actorHandle || null,
+			excerpt: compactText(cachedRemote.contentText || cachedRemote.contentHtml || url)
+		};
+	}
+
+	if (!allowRemoteFetch) {
+		return {
+			objectId: url,
+			url,
+			title: 'Reply target',
+			author: null,
+			excerpt: url
 		};
 	}
 
