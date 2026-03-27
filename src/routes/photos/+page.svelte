@@ -56,11 +56,16 @@
 				type="button"
 				onclick={() => openLightbox(index)}
 				aria-label={`Open ${photo.postTitle}`}
+				style={photo.width && photo.height
+					? `aspect-ratio: ${photo.width} / ${photo.height};`
+					: undefined}
 			>
 				<img
 					class="photo-card__image"
 					src={photo.displayUrl}
 					alt={photo.alt || photo.postTitle}
+					width={photo.width || undefined}
+					height={photo.height || undefined}
 					loading="lazy"
 					decoding="async"
 					sizes="(max-width: 640px) 48vw, (max-width: 1024px) 32vw, 18rem"
@@ -120,6 +125,7 @@
 		position: relative;
 		display: block;
 		width: 100%;
+		min-height: 12rem;
 		padding: 0;
 		border: 0;
 		background: transparent;
@@ -138,6 +144,11 @@
 		transition:
 			transform 180ms ease,
 			filter 180ms ease;
+	}
+
+	.photo-card__image-link[style*='aspect-ratio'] .photo-card__image {
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.photo-card__overlay {
