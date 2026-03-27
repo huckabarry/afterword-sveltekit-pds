@@ -13,7 +13,7 @@
 				<p class="admin-eyebrow">Outbox</p>
 				<h2>My posts</h2>
 			</div>
-			<a href="/admin/compose">New note</a>
+			<a href="/admin">New note</a>
 		</div>
 
 		{#if data.deleted}

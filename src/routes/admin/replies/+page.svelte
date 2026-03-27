@@ -74,7 +74,7 @@
 				<p class="admin-eyebrow">Replies</p>
 				<h2>Incoming ActivityPub replies</h2>
 			</div>
-			<a href="/admin/compose">New note</a>
+			<a href="/admin">New note</a>
 		</div>
 
 		{#if flash.sent}

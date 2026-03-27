@@ -28,7 +28,6 @@
 				<p class="admin-eyebrow">Home</p>
 				<h2>Compose a local note</h2>
 			</div>
-			<a href="/admin/compose">Open full compose</a>
 		</div>
 
 		{#if data.posted}

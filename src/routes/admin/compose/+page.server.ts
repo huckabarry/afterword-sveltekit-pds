@@ -34,9 +34,13 @@ function isLocalReplyTarget(origin: string, objectId: string) {
 }
 
 export const load: PageServerLoad = async ({ url }) => {
-	return {
-		replyTo: url.searchParams.get('replyTo') || ''
-	};
+	const replyTo = url.searchParams.get('replyTo') || '';
+
+	if (!replyTo) {
+		throw redirect(303, '/admin');
+	}
+
+	return { replyTo };
 };
 
 export const actions: Actions = {

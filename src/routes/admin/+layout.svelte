@@ -10,7 +10,6 @@
 		{ href: '/admin/following/accounts', label: 'Following', shortLabel: 'Following' },
 		{ href: '/admin/posts', label: 'Posts', shortLabel: 'Posts' },
 		{ href: '/admin/photos', label: 'Images', shortLabel: 'Images' },
-		{ href: '/admin/compose', label: 'Compose', shortLabel: 'Write' },
 		{ href: '/admin/messages', label: 'Messages', shortLabel: 'Messages' },
 		{ href: '/admin/replies', label: 'Replies', shortLabel: 'Replies' },
 		{ href: '/admin/webmentions', label: 'Webmentions', shortLabel: 'Mentions' },
@@ -80,7 +79,7 @@
 						{:else if data.pathname === '/admin/people'}
 							Profile
 						{:else if data.pathname === '/admin/compose'}
-							Compose
+							Reply
 						{:else if data.pathname.startsWith('/admin/posts')}
 							Posts
 						{:else if data.pathname === '/admin/photos'}
@@ -131,15 +130,6 @@
 			<div class="admin-content">
 				{@render children()}
 			</div>
-
-			<a
-				class="admin-topbar__quick admin-topbar__quick--floating"
-				href={data.pathname === '/admin/compose' ? '/admin' : '/admin/compose'}
-				aria-label={data.pathname === '/admin/compose' ? 'Close compose' : 'New note'}
-			>
-				<span class="admin-topbar__quick-icon" aria-hidden="true">{data.pathname === '/admin/compose' ? '×' : '+'}</span>
-				<span class="admin-topbar__quick-label">{data.pathname === '/admin/compose' ? 'Close' : 'New note'}</span>
-			</a>
 		</div>
 	</div>
 {:else}
