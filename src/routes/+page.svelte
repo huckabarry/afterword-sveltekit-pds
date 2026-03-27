@@ -140,7 +140,7 @@
 										{/if}
 									</a>
 								{/if}
-								<div class="status-row__actions">
+								<div class="status-row__actions status-row__actions--compact">
 									<div class="status-row__metrics">
 										<a class="status-row__action" href={statusUrl(post.slug)}>
 											<span class="status-row__icon" aria-hidden="true">

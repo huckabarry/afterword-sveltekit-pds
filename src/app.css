@@ -1537,6 +1537,17 @@ p:last-child {
 		justify-items: stretch;
 	}
 
+	.status-row__actions--compact {
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 0.55rem;
+	}
+
+	.status-row__actions--compact .status-row__metrics {
+		width: 100%;
+		min-width: 0;
+	}
+
 	.status-row__metrics {
 		display: inline-flex;
 		flex-wrap: nowrap;
