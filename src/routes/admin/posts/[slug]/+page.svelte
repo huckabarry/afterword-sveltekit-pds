@@ -21,7 +21,7 @@
 		</div>
 
 		<p class="admin-post-meta">
-			Published {formatDate(data.post.publishedAt)} / status: {data.post.deliveryStatus || 'pending'}
+			Published {formatDate(data.post.publishedAt)} / visibility: {data.post.visibility === 'followers' ? 'followers only' : data.post.visibility} / status: {data.post.deliveryStatus || 'pending'}
 		</p>
 
 		{#if data.post.inReplyToObjectId}

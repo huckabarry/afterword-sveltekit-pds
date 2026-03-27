@@ -1,14 +1,13 @@
 import { json } from '@sveltejs/kit';
 import { getActivityPubOrigin } from '$lib/server/activitypub';
-import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import {
 	createLocalNote,
 	createLocalReply,
 	getLocalReplyBySlug,
 	listLocalNotes,
+	normalizeApNoteVisibility,
 	updateLocalReplyDeliveryStatus
 } from '$lib/server/ap-notes';
-import { listFollowers } from '$lib/server/followers';
 import {
 	buildHomeTimeline,
 	decodeMastodonMediaId,
@@ -17,8 +16,8 @@ import {
 } from '$lib/server/mastodon-api';
 import { requireMastodonAccessToken } from '$lib/server/mastodon-auth';
 import {
+	deliverLocalCreateActivity,
 	deliverReplyToRemoteActor,
-	localReplyToCreateActivity,
 	localReplyToRemoteCreateActivity,
 	normalizeMentionText,
 	resolveThreadRootObjectId,
@@ -28,21 +27,6 @@ import { uploadRemoteImageUrls } from '$lib/server/media';
 
 function isLocalReplyTarget(origin: string, objectId: string) {
 	return String(objectId || '').startsWith(`${origin}/ap/`);
-}
-
-async function deliverLocalNoteToFollowers(
-	event: Parameters<typeof createLocalNote>[0],
-	note: NonNullable<Awaited<ReturnType<typeof createLocalNote>>>
-) {
-	const origin = getActivityPubOrigin(event);
-	const followers = await listFollowers(event);
-	const activity = await localReplyToCreateActivity(note, origin);
-
-	for (const follower of followers) {
-		const inboxUrl = follower.sharedInboxUrl || follower.inboxUrl;
-		if (!inboxUrl) continue;
-		await sendSignedActivity(origin, inboxUrl, activity);
-	}
 }
 
 function readEntries(source: FormData | Record<string, unknown>, key: string) {
@@ -85,6 +69,11 @@ export async function POST(event) {
 
 	const originalContent = normalizeMentionText(getValue('status'));
 	const inReplyToId = getValue('in_reply_to_id');
+	const requestedVisibility = getValue('visibility');
+	const visibility = normalizeApNoteVisibility(
+		requestedVisibility === 'private' ? 'followers' : requestedVisibility
+	);
+	const directTo = getValue('direct_to');
 	const mediaIds = [...readEntries(parsed, 'media_ids[]'), ...readEntries(parsed, 'media_ids')];
 	const candidateUrls = extractUrls(originalContent);
 	const importedAttachments = await uploadRemoteImageUrls(event, candidateUrls, {
@@ -104,6 +93,10 @@ export async function POST(event) {
 
 	if (!content && !hasMedia) {
 		return json({ error: 'status is required' }, { status: 422 });
+	}
+
+	if (!inReplyToId && visibility === 'direct' && !directTo) {
+		return json({ error: 'direct_to is required for direct messages' }, { status: 422 });
 	}
 
 	const attachments = [
@@ -142,7 +135,7 @@ export async function POST(event) {
 
 		try {
 			if (isLocalReplyTarget(origin, replyTo)) {
-				await deliverLocalNoteToFollowers(event, reply);
+				await deliverLocalCreateActivity(event, reply);
 			} else {
 				const remoteActivity = await localReplyToRemoteCreateActivity(reply, origin, replyTo);
 				await deliverReplyToRemoteActor(origin, replyTo, remoteActivity);
@@ -167,6 +160,8 @@ export async function POST(event) {
 	const note = await createLocalNote(event, {
 		contentHtml,
 		contentText: content,
+		visibility,
+		directRecipientActorId: visibility === 'direct' ? directTo : null,
 		attachments
 	});
 
@@ -175,7 +170,7 @@ export async function POST(event) {
 	}
 
 	try {
-		await deliverLocalNoteToFollowers(event, note);
+		await deliverLocalCreateActivity(event, note);
 		await updateLocalReplyDeliveryStatus(event, note.localSlug || '', 'delivered');
 	} catch (deliveryError) {
 		const message = deliveryError instanceof Error ? deliveryError.message : String(deliveryError);

@@ -2546,6 +2546,12 @@ p:last-child {
 	gap: 1rem;
 }
 
+.admin-compose-options {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+	gap: 0.85rem;
+}
+
 .admin-field {
 	display: grid;
 	gap: 0.45rem;
@@ -2556,7 +2562,13 @@ p:last-child {
 	color: #303330;
 }
 
+.admin-compose-count {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
 .admin-field input,
+.admin-field select,
 .admin-field textarea {
 	width: 100%;
 	border: 1px solid rgba(0, 0, 0, 0.12);

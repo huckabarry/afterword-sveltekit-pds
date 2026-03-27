@@ -40,6 +40,11 @@
 								<strong>{post.actorName}</strong>
 								<span>{post.actorHandle}</span>
 								<span>{formatDate(post.publishedAt)}</span>
+								{#if post.source === 'local' && post.visibility !== 'public'}
+									<span class="admin-post-status">
+										{post.visibility === 'followers' ? 'followers only' : 'direct'}
+									</span>
+								{/if}
 								{#if post.source === 'local' && post.deliveryStatus}
 									<span class="admin-post-status">{post.deliveryStatus}</span>
 								{/if}
@@ -77,7 +82,7 @@
 								{/if}
 								{#if post.publicHref}
 									<a class="admin-pill-link" href={post.publicHref} target="_blank" rel="noreferrer">
-										View public
+										{post.source === 'local' && post.visibility !== 'public' ? 'Open object' : 'View public'}
 									</a>
 								{/if}
 								{#if post.replyCount}

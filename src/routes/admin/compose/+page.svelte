@@ -1,5 +1,10 @@
 <script lang="ts">
 	let { data, form } = $props();
+	let content = $state('');
+
+	$effect(() => {
+		content = String(form?.content || '');
+	});
 </script>
 
 <section class="admin-panel">
@@ -27,7 +32,9 @@
 					name="content"
 					rows="10"
 					placeholder={data.replyTo ? 'Write your reply…' : 'Write a note to federate to your followers…'}
-				>{form?.content || ''}</textarea>
+					bind:value={content}
+				></textarea>
+				<p class="admin-field-note admin-compose-count">{content.length} characters</p>
 			</label>
 
 			<label class="admin-field">

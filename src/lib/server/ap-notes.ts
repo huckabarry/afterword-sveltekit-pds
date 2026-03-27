@@ -10,6 +10,15 @@ function getDb(event: Pick<RequestEvent, 'platform'>) {
 	);
 }
 
+export type ApNoteVisibility = 'public' | 'followers' | 'direct';
+
+export function normalizeApNoteVisibility(value: unknown): ApNoteVisibility {
+	const normalized = String(value || '').trim().toLowerCase();
+	if (normalized === 'followers' || normalized === 'private') return 'followers';
+	if (normalized === 'direct') return 'direct';
+	return 'public';
+}
+
 export type ApNoteRecord = {
 	id: number;
 	noteId: string;
@@ -25,6 +34,8 @@ export type ApNoteRecord = {
 	publishedAt: string;
 	objectUrl: string | null;
 	localSlug: string | null;
+	visibility: ApNoteVisibility;
+	directRecipientActorId: string | null;
 	deliveryStatus: string | null;
 	rawActivityJson: string | null;
 	attachments: Array<{
@@ -77,6 +88,8 @@ function mapNote(row: Record<string, unknown>): ApNoteRecord {
 		publishedAt: String(row.published_at || ''),
 		objectUrl: row.object_url ? String(row.object_url) : null,
 		localSlug: row.local_slug ? String(row.local_slug) : null,
+		visibility: normalizeApNoteVisibility(row.visibility),
+		directRecipientActorId: row.direct_recipient_actor_id ? String(row.direct_recipient_actor_id) : null,
 		deliveryStatus: row.delivery_status ? String(row.delivery_status) : null,
 		rawActivityJson: row.raw_activity_json ? String(row.raw_activity_json) : null,
 		attachments,
@@ -178,8 +191,9 @@ export async function createLocalReply(
 		.prepare(
 			`INSERT INTO ap_notes (
 				note_id, origin, actor_id, in_reply_to_object_id, thread_root_object_id,
-				content_html, content_text, published_at, object_url, local_slug, delivery_status, attachments_json
-			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+				content_html, content_text, published_at, object_url, local_slug, visibility,
+				direct_recipient_actor_id, delivery_status, attachments_json
+			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		)
 		.bind(
 			noteId,
@@ -191,6 +205,8 @@ export async function createLocalReply(
 			publishedAt,
 			noteId,
 			slug,
+			'public',
+			null,
 			'pending',
 			JSON.stringify(input.attachments || [])
 		)
@@ -204,6 +220,8 @@ export async function createLocalNote(
 	input: {
 		contentHtml: string;
 		contentText: string;
+		visibility?: ApNoteVisibility;
+		directRecipientActorId?: string | null;
 		attachments?: ApNoteRecord['attachments'];
 	}
 ) {
@@ -216,13 +234,17 @@ export async function createLocalNote(
 	const noteId = `${event.url.origin}/ap/notes/${slug}`;
 	const actorId = getActorId(event.url.origin);
 	const publishedAt = new Date().toISOString();
+	const visibility = normalizeApNoteVisibility(input.visibility);
+	const directRecipientActorId =
+		visibility === 'direct' ? String(input.directRecipientActorId || '').trim() || null : null;
 
 	await db
 		.prepare(
 			`INSERT INTO ap_notes (
 				note_id, origin, actor_id, thread_root_object_id, content_html, content_text,
-				published_at, object_url, local_slug, delivery_status, attachments_json
-			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+				published_at, object_url, local_slug, visibility, direct_recipient_actor_id,
+				delivery_status, attachments_json
+			) VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		)
 		.bind(
 			noteId,
@@ -233,6 +255,8 @@ export async function createLocalNote(
 			publishedAt,
 			noteId,
 			slug,
+			visibility,
+			directRecipientActorId,
 			'pending',
 			JSON.stringify(input.attachments || [])
 		)
@@ -351,6 +375,31 @@ export async function listRecentDirectMessages(
 			 FROM ap_notes
 			 WHERE origin = 'remote'
 			   AND in_reply_to_object_id IS NULL
+			 ORDER BY published_at DESC, created_at DESC
+			 LIMIT ?`
+		)
+		.bind(safeLimit)
+		.all<Record<string, unknown>>();
+
+	return (result.results || []).map(mapNote);
+}
+
+export async function listRecentLocalDirectMessages(
+	event: Pick<RequestEvent, 'platform'>,
+	limit = 25
+): Promise<ApNoteRecord[]> {
+	const db = getDb(event);
+	if (!db) {
+		return [];
+	}
+
+	const safeLimit = Math.max(1, Math.min(limit, 100));
+	const result = await db
+		.prepare(
+			`SELECT *
+			 FROM ap_notes
+			 WHERE origin = 'local'
+			   AND visibility = 'direct'
 			 ORDER BY published_at DESC, created_at DESC
 			 LIMIT ?`
 		)

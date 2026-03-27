@@ -17,6 +17,7 @@ export const load: PageServerLoad = async (event) => {
 			...message,
 			isFollowing: followingActorIds.has(message.actorId)
 		})),
+		sent: event.url.searchParams.get('sent') === '1',
 		followed: event.url.searchParams.get('followed') === '1',
 		unfollowed: event.url.searchParams.get('unfollowed') === '1'
 	};

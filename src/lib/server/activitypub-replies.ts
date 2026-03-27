@@ -1,7 +1,8 @@
-import { error } from '@sveltejs/kit';
+import { error, type RequestEvent } from '@sveltejs/kit';
 import { activityJson, getActorId } from '$lib/server/activitypub';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { getLocalReplyBySlug } from '$lib/server/ap-notes';
+import { listFollowers } from '$lib/server/followers';
 import type { ApNoteRecord } from '$lib/server/ap-notes';
 
 type RemoteActor = {
@@ -18,6 +19,7 @@ type ReplyMention = {
 };
 
 const MENTION_PATTERN = /(^|[\s(>])@?([A-Za-z0-9_.-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,})(?=$|[\s),.:;!?<])/g;
+const PUBLIC_AUDIENCE = 'https://www.w3.org/ns/activitystreams#Public';
 
 function getString(value: unknown) {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -144,6 +146,37 @@ async function resolveMentionTagsFromText(contentText: string) {
 	return Array.from(mentions.values());
 }
 
+function buildLocalAudience(
+	reply: ApNoteRecord,
+	origin: string,
+	extraRecipients: string[] = []
+) {
+	const to = new Set<string>();
+	const cc = new Set<string>();
+	const followersCollectionId = `${origin}/ap/followers`;
+
+	if (reply.visibility === 'followers') {
+		to.add(followersCollectionId);
+	} else if (reply.visibility === 'direct' && reply.directRecipientActorId) {
+		to.add(reply.directRecipientActorId);
+	} else {
+		to.add(PUBLIC_AUDIENCE);
+		cc.add(followersCollectionId);
+	}
+
+	for (const recipient of extraRecipients) {
+		const normalized = getString(recipient);
+		if (normalized) {
+			to.add(normalized);
+		}
+	}
+
+	return {
+		to: Array.from(to),
+		cc: Array.from(cc)
+	};
+}
+
 async function buildMentionedNote(
 	reply: ApNoteRecord,
 	origin: string,
@@ -165,10 +198,11 @@ async function buildMentionedNote(
 		contentHtml = prependMentionHtml(contentHtml, input.targetMention);
 	}
 
-	const to = new Set<string>(['https://www.w3.org/ns/activitystreams#Public']);
-	for (const mention of mentions.values()) {
-		to.add(mention.href);
-	}
+	const audience = buildLocalAudience(
+		reply,
+		origin,
+		Array.from(mentions.values()).map((mention) => mention.href)
+	);
 
 	return {
 		'@context': 'https://www.w3.org/ns/activitystreams',
@@ -177,8 +211,8 @@ async function buildMentionedNote(
 		attributedTo: getActorId(origin),
 		published: reply.publishedAt,
 		url: reply.noteId,
-		to: Array.from(to),
-		cc: [`${origin}/ap/followers`],
+		to: audience.to,
+		cc: audience.cc,
 		inReplyTo: reply.inReplyToObjectId || undefined,
 		content: contentHtml,
 		contentMap: {
@@ -281,15 +315,16 @@ export function localReplyToMentionedNote(
 }
 
 export async function localReplyToCreateActivity(reply: ApNoteRecord, origin: string) {
+	const noteObject = await localReplyToNote(reply, origin);
 	return {
 		'@context': 'https://www.w3.org/ns/activitystreams',
 		id: `${reply.noteId}#create`,
 		type: 'Create',
 		actor: getActorId(origin),
 		published: reply.publishedAt,
-		to: ['https://www.w3.org/ns/activitystreams#Public'],
-		cc: [`${origin}/ap/followers`],
-		object: await localReplyToNote(reply, origin)
+		to: noteObject.to,
+		cc: noteObject.cc,
+		object: noteObject
 	};
 }
 
@@ -311,6 +346,7 @@ export async function localReplyToRemoteCreateActivity(
 		href: targetActorId,
 		name: getMentionHandle(targetActorId, remoteActor)
 	};
+	const noteObject = await localReplyToMentionedNote(reply, origin, { targetActorId, mention });
 
 	return {
 		'@context': 'https://www.w3.org/ns/activitystreams',
@@ -318,9 +354,9 @@ export async function localReplyToRemoteCreateActivity(
 		type: 'Create',
 		actor: getActorId(origin),
 		published: reply.publishedAt,
-		to: ['https://www.w3.org/ns/activitystreams#Public', targetActorId],
-		cc: [`${origin}/ap/followers`],
-		object: await localReplyToMentionedNote(reply, origin, { targetActorId, mention })
+		to: noteObject.to,
+		cc: noteObject.cc,
+		object: noteObject
 	};
 }
 
@@ -345,6 +381,38 @@ export async function deliverReplyToRemoteActor(origin: string, inReplyToObjectI
 		targetActorId: remoteActor.id,
 		targetInbox
 	};
+}
+
+export async function deliverLocalCreateActivity(
+	event: Pick<RequestEvent, 'platform' | 'url'>,
+	note: ApNoteRecord
+) {
+	const origin = event.url.origin;
+	const activity = await localReplyToCreateActivity(note, origin);
+
+	if (note.visibility === 'direct') {
+		const targetActorId = getString(note.directRecipientActorId);
+		if (!targetActorId) {
+			throw error(400, 'Direct message is missing a recipient actor');
+		}
+
+		const remoteActor = await fetchRemoteActor(targetActorId);
+		const targetInbox = remoteActor.sharedInboxUrl || remoteActor.inboxUrl;
+		if (!targetInbox) {
+			throw error(400, 'Target actor does not expose an inbox');
+		}
+
+		await sendSignedActivity(origin, targetInbox, activity);
+		return;
+	}
+
+	const followers = await listFollowers(event);
+
+	for (const follower of followers) {
+		const inboxUrl = follower.sharedInboxUrl || follower.inboxUrl;
+		if (!inboxUrl) continue;
+		await sendSignedActivity(origin, inboxUrl, activity);
+	}
 }
 
 export function replyJson(body: unknown, init?: ResponseInit) {

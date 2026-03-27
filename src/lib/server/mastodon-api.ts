@@ -348,6 +348,12 @@ function serializeCard(status: StatusPost) {
 	};
 }
 
+function serializeLocalVisibility(value: string) {
+	if (value === 'direct') return 'direct';
+	if (value === 'followers') return 'private';
+	return 'public';
+}
+
 export async function serializeLocalNoteStatus(
 	event: Pick<RequestEvent, 'platform' | 'url'>,
 	note: LocalApNoteListItem
@@ -366,7 +372,7 @@ export async function serializeLocalNoteStatus(
 		in_reply_to_account_id: null,
 		sensitive: false,
 		spoiler_text: '',
-		visibility: 'public',
+		visibility: serializeLocalVisibility(note.visibility),
 		language: 'en',
 		uri: note.noteId,
 		url: note.objectUrl || note.noteId,

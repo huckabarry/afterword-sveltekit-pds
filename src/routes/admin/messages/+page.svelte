@@ -50,6 +50,10 @@
 			<p class="admin-form-success">Unfollowed.</p>
 		{/if}
 
+		{#if data.sent}
+			<p class="admin-form-success">Direct message sent.</p>
+		{/if}
+
 		{#if messages.length}
 			<ul class="admin-social-list">
 				{#each messages as message}
@@ -110,6 +114,14 @@
 							{/if}
 
 							<div class="admin-thread__actions admin-thread__actions--social">
+								{#if message.actorId}
+									<a
+										class="admin-pill-link"
+										href={`/admin?visibility=direct&directTo=${encodeURIComponent(message.actorId)}&directLabel=${encodeURIComponent(message.actorName || message.actorHandle || message.actorId)}`}
+									>
+										Message back
+									</a>
+								{/if}
 								<a class="admin-pill-link" href={message.noteId} target="_blank" rel="noreferrer">Open object</a>
 							</div>
 						</div>

@@ -1,12 +1,15 @@
 import { json } from '@sveltejs/kit';
 import { getActivityPubOrigin } from '$lib/server/activitypub';
-import { sendSignedActivity } from '$lib/server/activitypub-delivery';
-import { createLocalNote, createLocalReply, updateLocalReplyDeliveryStatus } from '$lib/server/ap-notes';
-import { requireAdminAccess } from '$lib/server/admin';
-import { listFollowers } from '$lib/server/followers';
 import {
+	createLocalNote,
+	createLocalReply,
+	normalizeApNoteVisibility,
+	updateLocalReplyDeliveryStatus
+} from '$lib/server/ap-notes';
+import { requireAdminAccess } from '$lib/server/admin';
+import {
+	deliverLocalCreateActivity,
 	deliverReplyToRemoteActor,
-	localReplyToCreateActivity,
 	localReplyToRemoteCreateActivity,
 	normalizeMentionText,
 	resolveThreadRootObjectId,
@@ -17,27 +20,14 @@ function isLocalReplyTarget(origin: string, objectId: string) {
 	return String(objectId || '').startsWith(`${origin}/ap/`);
 }
 
-async function deliverLocalNoteToFollowers(
-	event: Parameters<typeof createLocalNote>[0],
-	note: NonNullable<Awaited<ReturnType<typeof createLocalNote>>>
-) {
-	const origin = getActivityPubOrigin(event);
-	const followers = await listFollowers(event);
-	const activity = await localReplyToCreateActivity(note, origin);
-
-	for (const follower of followers) {
-		const inboxUrl = follower.sharedInboxUrl || follower.inboxUrl;
-		if (!inboxUrl) continue;
-		await sendSignedActivity(origin, inboxUrl, activity);
-	}
-}
-
 export async function POST(event) {
 	await requireAdminAccess(event);
 
 	const body = await event.request.json().catch(() => null);
 	const replyTo = String(body?.replyTo || '').trim();
 	const content = normalizeMentionText(String(body?.content || '').trim());
+	const visibility = normalizeApNoteVisibility(body?.visibility);
+	const directTo = String(body?.directTo || '').trim();
 	const attachmentInput: unknown[] = Array.isArray(body?.attachments) ? body.attachments : [];
 	const attachments = attachmentInput
 		.map((item: unknown) => {
@@ -56,6 +46,10 @@ export async function POST(event) {
 
 	if (!content) {
 		return json({ error: 'Content is required.' }, { status: 400 });
+	}
+
+	if (!replyTo && visibility === 'direct' && !directTo) {
+		return json({ error: 'directTo is required for direct messages.' }, { status: 400 });
 	}
 
 	const origin = getActivityPubOrigin(event);
@@ -77,7 +71,7 @@ export async function POST(event) {
 
 		try {
 			if (isLocalReplyTarget(origin, replyTo)) {
-				await deliverLocalNoteToFollowers(event, reply);
+				await deliverLocalCreateActivity(event, reply);
 			} else {
 				const remoteActivity = await localReplyToRemoteCreateActivity(reply, origin, replyTo);
 				await deliverReplyToRemoteActor(origin, replyTo, remoteActivity);
@@ -104,6 +98,8 @@ export async function POST(event) {
 	const note = await createLocalNote(event, {
 		contentHtml,
 		contentText: content,
+		visibility,
+		directRecipientActorId: visibility === 'direct' ? directTo : null,
 		attachments
 	});
 
@@ -112,7 +108,7 @@ export async function POST(event) {
 	}
 
 	try {
-		await deliverLocalNoteToFollowers(event, note);
+		await deliverLocalCreateActivity(event, note);
 		await updateLocalReplyDeliveryStatus(event, note.localSlug || '', 'delivered');
 	} catch (deliveryError) {
 		const message = deliveryError instanceof Error ? deliveryError.message : String(deliveryError);
@@ -126,7 +122,8 @@ export async function POST(event) {
 			noteId: note.noteId,
 			localSlug: note.localSlug,
 			contentText: note.contentText,
-			publishedAt: note.publishedAt
+			publishedAt: note.publishedAt,
+			visibility: note.visibility
 		}
 	});
 }

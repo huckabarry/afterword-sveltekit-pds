@@ -36,6 +36,12 @@
 								{data.actor.isFollowing ? 'Following' : 'Follow'}
 							</button>
 						</form>
+						<a
+							class="admin-pill-link"
+							href={`/admin?visibility=direct&directTo=${encodeURIComponent(data.actorId)}&directLabel=${encodeURIComponent(data.actor.name || data.actor.handle || data.actorId)}`}
+						>
+							Message
+						</a>
 						<form method="POST" action="?/refresh">
 							<input type="hidden" name="actorId" value={data.actorId} />
 							<button class="admin-pill-link" type="submit">Refresh posts</button>

@@ -7,6 +7,7 @@ import { getSiteProfile } from '$lib/server/profile';
 export type AdminPostFeedItem = {
 	id: string;
 	source: 'local' | 'mirrored';
+	visibility: 'public' | 'followers' | 'direct';
 	publishedAt: string;
 	actorName: string;
 	actorHandle: string;
@@ -49,6 +50,7 @@ export async function buildAdminPostFeed(
 			return {
 				id: objectId,
 				source: 'mirrored' as const,
+				visibility: 'public' as const,
 				publishedAt: post.date.toISOString(),
 				actorName: post.displayName,
 				actorHandle: post.handle,
@@ -71,6 +73,7 @@ export async function buildAdminPostFeed(
 	const local = localPosts.map((post) => ({
 		id: post.noteId,
 		source: 'local' as const,
+		visibility: post.visibility,
 		publishedAt: post.publishedAt,
 		actorName: profile.displayName,
 		actorHandle,
