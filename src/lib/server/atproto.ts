@@ -46,6 +46,7 @@ export type StatusPost = {
 	displayName: string;
 	handle: string;
 	avatar: string;
+	isReply: boolean;
 	replyCount: number;
 	repostCount: number;
 	likeCount: number;
@@ -379,6 +380,7 @@ function normalizeReply(node: Record<string, any>): StatusPost | null {
 		displayName: author.displayName || handle,
 		handle: handle ? `@${handle}` : '',
 		avatar: author.avatar || '',
+		isReply: Boolean(record.reply?.parent?.uri),
 		replyCount: Number(post.replyCount || 0),
 		repostCount: Number(post.repostCount || 0),
 		likeCount: Number(post.likeCount || 0),
@@ -409,6 +411,7 @@ function normalizeStatus(item: Record<string, any>, actor: string): StatusPost |
 		displayName: author.displayName || handle,
 		handle: `@${handle}`,
 		avatar: author.avatar || '',
+		isReply: Boolean(record.reply?.parent?.uri),
 		replyCount: Number(post.replyCount || 0),
 		repostCount: Number(post.repostCount || 0),
 		likeCount: Number(post.likeCount || 0),
