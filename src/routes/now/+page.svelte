@@ -139,11 +139,8 @@
 								ontouchend={handleNowTouchEnd}
 							>
 								<div class="now-carousel__viewport">
-									<div
-										class="now-carousel__track"
-										style:transform={`translateX(-${nowImageIndex * 100}%)`}
-									>
-										{#each data.nowImages as image}
+									{#each data.nowImages as image, index}
+										{#if index === nowImageIndex}
 											<a
 												class="now-carousel__slide"
 												href={image.imageUrl}
@@ -156,8 +153,8 @@
 													alt={image.alt || data.nowPost.title}
 												/>
 											</a>
-										{/each}
-									</div>
+										{/if}
+									{/each}
 								</div>
 								<div class="now-carousel__controls">
 									<button class="now-carousel__button" type="button" onclick={showPrevNowImage}>
@@ -428,14 +425,8 @@
 		border-radius: 0.75rem;
 	}
 
-	.now-carousel__track {
-		display: flex;
-		transition: transform 180ms ease;
-	}
-
 	.now-carousel__slide {
 		display: block;
-		flex: 0 0 100%;
 	}
 
 	.now-carousel__image {
@@ -523,16 +514,6 @@
 
 		.now-carousel__viewport {
 			overflow: hidden;
-		}
-
-		.now-carousel__track {
-			gap: 0;
-			width: 100%;
-			transition: transform 220ms ease;
-		}
-
-		.now-carousel__slide {
-			flex: 0 0 100%;
 		}
 
 		.now-carousel__image {
