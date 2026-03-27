@@ -1,7 +1,7 @@
 const ALBUMWHALE_LIST_URL = 'https://albumwhale.com/bryan/listening-now';
 const CRUCIAL_TRACKS_FEED_URL = 'https://www.crucialtracks.org/profile/bryan/feed.json';
 const REMOTE_MUSIC_CACHE_TTL_MS = 1000 * 60 * 10;
-const albumArchiveFiles = import.meta.glob(['/data/archive/albumwhale/**/*.md', '/archive/albumwhale/**/*.md'], {
+const albumArchiveFiles = import.meta.glob('/archive/albumwhale/**/*.md', {
 	query: '?raw',
 	import: 'default',
 	eager: true
