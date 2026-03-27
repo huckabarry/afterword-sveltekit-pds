@@ -22,35 +22,30 @@
 	let synced = $state(0);
 	let failures = $state<string[]>([]);
 	let message = $state('');
-	let copiedPath = $state('');
+	let copiedUrl = $state('');
 
-	function getCopyPath(photo: (typeof data.photos)[number]) {
-		if (photo.originalUrl?.startsWith('/')) {
-			return photo.originalUrl;
-		}
-
-		if (photo.displayUrl?.startsWith('/')) {
-			return photo.displayUrl;
-		}
+	function getCopyUrl(photo: (typeof data.photos)[number]) {
+		const source = photo.originalUrl || photo.displayUrl || photo.imageUrl;
+		if (!source) return '';
 
 		try {
-			return new URL(photo.originalUrl || photo.displayUrl || photo.imageUrl).pathname;
+			return new URL(source, data.siteOrigin).href;
 		} catch {
-			return photo.originalUrl || photo.displayUrl || photo.imageUrl;
+			return source;
 		}
 	}
 
-	async function copyPath(photo: (typeof data.photos)[number]) {
-		const path = getCopyPath(photo);
+	async function copyUrl(photo: (typeof data.photos)[number]) {
+		const url = getCopyUrl(photo);
 
 		try {
-			await navigator.clipboard.writeText(path);
-			copiedPath = path;
+			await navigator.clipboard.writeText(url);
+			copiedUrl = url;
 			window.setTimeout(() => {
-				if (copiedPath === path) copiedPath = '';
+				if (copiedUrl === url) copiedUrl = '';
 			}, 1800);
 		} catch {
-			copiedPath = '';
+			copiedUrl = '';
 		}
 	}
 
@@ -229,12 +224,12 @@
 									<a href={photo.displayUrl} target="_blank" rel="noreferrer">Display</a>
 								{/if}
 								<a href={photo.postSourceUrl} target="_blank" rel="noreferrer">Ghost</a>
-								<button class="admin-pill-link" type="button" onclick={() => copyPath(photo)}>
-									{copiedPath === getCopyPath(photo) ? 'Copied' : 'Copy path'}
+								<button class="admin-pill-link" type="button" onclick={() => copyUrl(photo)}>
+									{copiedUrl === getCopyUrl(photo) ? 'Copied' : 'Copy URL'}
 								</button>
 							</div>
 							<p class="admin-image-card__path">
-								<code>{getCopyPath(photo)}</code>
+								<code>{getCopyUrl(photo)}</code>
 							</p>
 						</div>
 					</article>

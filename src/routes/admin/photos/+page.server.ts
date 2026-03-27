@@ -10,6 +10,7 @@ export const load: PageServerLoad = async (event) => {
 	});
 
 	return {
+		siteOrigin: event.url.origin,
 		summary: await getGalleryManifestSummary(event),
 		photos: paged.photos,
 		pagination: {
