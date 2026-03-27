@@ -40,12 +40,6 @@
 	<article class="content content-page">
 		<div class="post-full-content">
 			<section class="content-body">
-				{#if data.profile.headerImageUrl}
-					<p><img src={data.profile.headerImageUrl} alt="" /></p>
-				{/if}
-
-				<p>{data.profile.bio}</p>
-
 				{#each aboutParagraphs.length ? aboutParagraphs : data.paragraphs as paragraph}
 					<p>{paragraph}</p>
 				{/each}
