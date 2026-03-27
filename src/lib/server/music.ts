@@ -1,15 +1,19 @@
 const ALBUMWHALE_LIST_URL = 'https://albumwhale.com/bryan/listening-now';
 const CRUCIAL_TRACKS_FEED_URL = 'https://www.crucialtracks.org/profile/bryan/feed.json';
-const albumArchiveFiles = import.meta.glob('/data/archive/albumwhale/**/*.md', {
+const REMOTE_MUSIC_CACHE_TTL_MS = 1000 * 60 * 10;
+const albumArchiveFiles = import.meta.glob(['/data/archive/albumwhale/**/*.md', '/archive/albumwhale/**/*.md'], {
 	query: '?raw',
 	import: 'default',
 	eager: true
 }) as Record<string, string>;
-const trackArchiveFiles = import.meta.glob('/data/archive/crucial-tracks/**/*.md', {
+const trackArchiveFiles = import.meta.glob(
+	['/data/archive/crucial-tracks/**/*.md', '/archive/crucial-tracks/**/*.md'],
+	{
 	query: '?raw',
 	import: 'default',
 	eager: true
-}) as Record<string, string>;
+	}
+) as Record<string, string>;
 
 type Frontmatter = Record<string, string | boolean | number | null>;
 
@@ -62,6 +66,7 @@ type CrucialTrackFeedDetails = {
 };
 
 type CrucialTrackFeedIndex = {
+	items: TrackEntry[];
 	bySourceUrl: Map<string, CrucialTrackFeedDetails>;
 	byAppleMusicUrl: Map<string, CrucialTrackFeedDetails>;
 	byTrackKey: Map<string, CrucialTrackFeedDetails>;
@@ -70,9 +75,24 @@ type CrucialTrackFeedIndex = {
 let albumWhalePageMapPromise: Promise<Map<string, string>> | null = null;
 let albumWhaleLinksPromise: Promise<Map<string, ListenLink[]>> | null = null;
 let crucialTracksDetailsPromise: Promise<CrucialTrackFeedIndex> | null = null;
+let crucialTracksDetailsExpiresAt = 0;
 
 function walkMarkdownFiles(root: string): string[] {
-	return Object.keys(root === 'albumwhale' ? albumArchiveFiles : trackArchiveFiles).sort();
+	const files = root === 'albumwhale' ? albumArchiveFiles : trackArchiveFiles;
+	const preferredByRelativePath = new Map<string, string>();
+
+	for (const absolutePath of Object.keys(files)) {
+		const relativePath = absolutePath
+			.replace(/^\/data\/archive\//, '')
+			.replace(/^\/archive\//, '');
+		const existing = preferredByRelativePath.get(relativePath);
+
+		if (!existing || absolutePath.startsWith('/archive/')) {
+			preferredByRelativePath.set(relativePath, absolutePath);
+		}
+	}
+
+	return [...preferredByRelativePath.values()].sort();
 }
 
 function parseFrontmatter(source: string): { data: Frontmatter; content: string } {
@@ -157,11 +177,34 @@ function formatDisplayDate(date: Date): string {
 	}).format(date);
 }
 
+function formatPacificArchiveTimestamp(date: Date): string {
+	const parts = new Intl.DateTimeFormat('en-GB', {
+		timeZone: 'America/Los_Angeles',
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false
+	}).formatToParts(date);
+
+	const lookup = (type: string) => parts.find((part) => part.type === type)?.value || '';
+	return `${lookup('day')}-${lookup('month')}-${lookup('year')} ${lookup('hour')}:${lookup('minute')}`;
+}
+
 function stripHtml(value: string): string {
 	return String(value || '')
 		.replace(/<[^>]+>/g, ' ')
 		.replace(/\s+/g, ' ')
 		.trim();
+}
+
+function absolutizeUrl(value: string, base: string): string {
+	try {
+		return new URL(String(value || ''), base).toString();
+	} catch {
+		return String(value || '').trim();
+	}
 }
 
 function extractMarkdownLink(value: string, labelPattern?: RegExp): string | null {
@@ -210,6 +253,10 @@ function extractTrackBody(body: string) {
 		playlistUrl,
 		note
 	};
+}
+
+function createTrackSlugFromPublishedAt(date: Date, trackTitle: string, artist: string) {
+	return `${slugify(formatPacificArchiveTimestamp(date))}-${slugify(`${trackTitle}-${artist}`)}`;
 }
 
 function getAlbumIdFromOriginalUrl(url: string): string | null {
@@ -344,7 +391,11 @@ export async function getAlbumBySlug(slug: string): Promise<AlbumEntry | null> {
 }
 
 async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
-	if (!crucialTracksDetailsPromise) {
+	if (crucialTracksDetailsPromise && crucialTracksDetailsExpiresAt > Date.now()) {
+		return crucialTracksDetailsPromise;
+	}
+
+	if (!crucialTracksDetailsPromise || crucialTracksDetailsExpiresAt <= Date.now()) {
 		crucialTracksDetailsPromise = (async () => {
 			try {
 				const response = await fetch(CRUCIAL_TRACKS_FEED_URL, {
@@ -355,6 +406,7 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 
 				if (!response.ok) {
 					return {
+						items: [],
 						bySourceUrl: new Map<string, CrucialTrackFeedDetails>(),
 						byAppleMusicUrl: new Map<string, CrucialTrackFeedDetails>(),
 						byTrackKey: new Map<string, CrucialTrackFeedDetails>()
@@ -367,19 +419,30 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 						_song_details?: {
 							artist?: string;
 							song?: string;
+							content?: string;
 							artwork_url?: string;
 							apple_music_url?: string;
 							songlink_url?: string;
 							preview_url?: string;
 						};
+						content_text?: string;
+						content_html?: string;
+						date_published?: string;
+						id?: string;
+						title?: string;
 					}>;
 				};
 
+				const items: TrackEntry[] = [];
 				const bySourceUrl = new Map<string, CrucialTrackFeedDetails>();
 				const byAppleMusicUrl = new Map<string, CrucialTrackFeedDetails>();
 				const byTrackKey = new Map<string, CrucialTrackFeedDetails>();
 
 				for (const item of data.items || []) {
+					const sourceUrl = absolutizeUrl(item.url || item.id || '', CRUCIAL_TRACKS_FEED_URL);
+					const trackTitle = String(item._song_details?.song || '').trim();
+					const artist = String(item._song_details?.artist || '').trim();
+					const publishedAt = new Date(String(item.date_published || Date.now()));
 					const details = {
 						artworkUrl: item._song_details?.artwork_url || null,
 						appleMusicUrl: item._song_details?.apple_music_url || null,
@@ -387,8 +450,8 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 						previewUrl: item._song_details?.preview_url || null
 					} satisfies CrucialTrackFeedDetails;
 
-					if (item.url) {
-						bySourceUrl.set(String(item.url), details);
+					if (sourceUrl) {
+						bySourceUrl.set(sourceUrl, details);
 					}
 
 					if (details.appleMusicUrl) {
@@ -396,25 +459,74 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 					}
 
 					const song = item._song_details?.song || '';
-					const artist = item._song_details?.artist || '';
 					if (song || artist) {
 						byTrackKey.set(normalizeTrackKey(song, artist), details);
+					}
+
+					if (trackTitle && artist && !Number.isNaN(publishedAt.getTime())) {
+						const note = stripHtml(
+							String(item._song_details?.content || item.content_text || item.content_html || '').trim()
+						);
+						const slug = createTrackSlugFromPublishedAt(publishedAt, trackTitle, artist);
+						const listenLinks: ListenLink[] = [];
+
+						if (sourceUrl) {
+							listenLinks.push({
+								label: 'Crucial Tracks',
+								url: sourceUrl
+							});
+						}
+						if (details.appleMusicUrl) {
+							listenLinks.push({
+								label: 'Apple Music',
+								url: details.appleMusicUrl
+							});
+						}
+						if (details.songlinkUrl) {
+							listenLinks.push({
+								label: 'Listen elsewhere',
+								url: details.songlinkUrl
+							});
+						}
+
+						items.push({
+							id: sourceUrl || slug,
+							slug,
+							title: `${trackTitle} - ${artist}`,
+							trackTitle,
+							artist,
+							note,
+							excerpt: note,
+							artworkUrl: details.artworkUrl,
+							publishedAt,
+							displayDate: formatDisplayDate(publishedAt),
+							sourceUrl,
+							localPath: `/listening/${slug}`,
+							appleMusicUrl: details.appleMusicUrl,
+							playlistUrl: null,
+							songlinkUrl: details.songlinkUrl,
+							previewUrl: details.previewUrl,
+							listenLinks
+						});
 					}
 				}
 
 				return {
+					items,
 					bySourceUrl,
 					byAppleMusicUrl,
 					byTrackKey
 				} satisfies CrucialTrackFeedIndex;
 			} catch {
 				return {
+					items: [],
 					bySourceUrl: new Map<string, CrucialTrackFeedDetails>(),
 					byAppleMusicUrl: new Map<string, CrucialTrackFeedDetails>(),
 					byTrackKey: new Map<string, CrucialTrackFeedDetails>()
 				} satisfies CrucialTrackFeedIndex;
 			}
 		})();
+		crucialTracksDetailsExpiresAt = Date.now() + REMOTE_MUSIC_CACHE_TTL_MS;
 	}
 
 	return crucialTracksDetailsPromise;
@@ -422,8 +534,7 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 
 export async function getTracks(): Promise<TrackEntry[]> {
 	const trackDetails = await getCrucialTrackDetails();
-
-	return walkMarkdownFiles('crucial-tracks')
+	const archivedTracks = walkMarkdownFiles('crucial-tracks')
 		.map((filePath) => {
 			const raw = trackArchiveFiles[filePath] || '';
 			const { data, content } = parseFrontmatter(raw);
@@ -481,6 +592,17 @@ export async function getTracks(): Promise<TrackEntry[]> {
 			} satisfies TrackEntry;
 		})
 		.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+
+	const archivedSourceUrls = new Set(
+		archivedTracks.map((track) => String(track.sourceUrl || '').trim()).filter(Boolean)
+	);
+	const liveOnlyTracks = trackDetails.items.filter(
+		(track) => !archivedSourceUrls.has(String(track.sourceUrl || '').trim())
+	);
+
+	return [...archivedTracks, ...liveOnlyTracks].sort(
+		(a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()
+	);
 }
 
 export async function getTrackBySlug(slug: string): Promise<TrackEntry | null> {
