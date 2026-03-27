@@ -1,5 +1,6 @@
 import { getActivityPubHandle, getActivityPubOrigin, getActorId } from '$lib/server/activitypub';
 import {
+	countDirectRepliesToObject,
 	getNoteById,
 	listDirectRepliesToObject,
 	listLocalNotes,
@@ -401,6 +402,7 @@ export async function serializeMirroredStatus(
 	const account = await buildLocalAccount(event);
 	const origin = getActivityPubOrigin(event);
 	const objectId = `${origin}/ap/status/${status.slug}`;
+	const replyCount = await countDirectRepliesToObject(event, objectId);
 	const favourited = await isObjectFavourited(event, objectId);
 	const bookmarked = await isObjectBookmarked(event, objectId);
 	const reblogged = await isObjectReblogged(event, objectId);
@@ -425,9 +427,9 @@ export async function serializeMirroredStatus(
 		language: 'en',
 		uri: objectId,
 		url: `${origin}/status/${status.slug}`,
-		replies_count: status.replyCount,
-		reblogs_count: status.repostCount + (reblogged ? 1 : 0),
-		favourites_count: status.likeCount + (favourited ? 1 : 0),
+		replies_count: replyCount,
+		reblogs_count: reblogged ? 1 : 0,
+		favourites_count: favourited ? 1 : 0,
 		favourited,
 		reblogged,
 		muted,

@@ -384,6 +384,27 @@ export async function listDirectRepliesToObject(
 	return (result.results || []).map(mapNote);
 }
 
+export async function countDirectRepliesToObject(
+	event: Pick<RequestEvent, 'platform'>,
+	objectId: string
+): Promise<number> {
+	const db = getDb(event);
+	if (!db) {
+		return 0;
+	}
+
+	const row = await db
+		.prepare(
+			`SELECT COUNT(*) AS reply_count
+			 FROM ap_notes
+			 WHERE in_reply_to_object_id = ?`
+		)
+		.bind(objectId)
+		.first<Record<string, unknown>>();
+
+	return Number(row?.reply_count || 0);
+}
+
 export async function getLocalReplyBySlug(
 	event: Pick<RequestEvent, 'platform'>,
 	slug: string
