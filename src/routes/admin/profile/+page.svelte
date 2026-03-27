@@ -1,18 +1,38 @@
 <script lang="ts">
 	let { data, form } = $props();
+	const defaultAvatarUrl = '/assets/images/status-avatar.jpg';
 
-	const previewProfile = $derived(
+	let avatarRemoved = $state(false);
+	let headerRemoved = $state(false);
+
+	$effect(() => {
+		avatarRemoved = Boolean(form?.removeAvatar);
+		headerRemoved = Boolean(form?.removeHeaderImage);
+	});
+
+	const currentAvatarUrl = $derived(form?.avatarUrl || data.profile.avatarUrl);
+	const currentHeaderUrl = $derived(form?.headerImageUrl || data.profile.headerImageUrl || '');
+	const hasCustomAvatar = $derived(Boolean(currentAvatarUrl) && currentAvatarUrl !== defaultAvatarUrl);
+	const displayAvatarUrl = $derived(avatarRemoved ? '' : currentAvatarUrl);
+	const displayHeaderUrl = $derived(headerRemoved ? '' : currentHeaderUrl);
+
+	const profileSource = $derived(
 		form?.success
 			? {
 					displayName: form.displayName,
 					avatarUrl: form.avatarUrl,
 					headerImageUrl: form.headerImageUrl,
 					bio: form.bio,
-					aboutBody: form.aboutBody,
-					aboutInterests: form.aboutInterestsInput
+					aboutBody: form.aboutBody
 				}
 			: data.profile
 	);
+
+	const previewProfile = $derived({
+		...profileSource,
+		avatarUrl: avatarRemoved ? defaultAvatarUrl : profileSource.avatarUrl,
+		headerImageUrl: displayHeaderUrl || null
+	});
 
 	const previewAboutInterestsInput = $derived(form?.aboutInterestsInput || data.aboutInterestsInput);
 	const previewLinksInput = $derived(form?.verificationLinksInput || data.verificationLinksInput);
@@ -38,35 +58,83 @@
 				<input name="displayName" type="text" value={form?.displayName || data.profile.displayName} />
 			</label>
 
-			<label class="admin-field">
-				<span>Avatar image URL</span>
-				<input
-					name="avatarUrl"
-					type="text"
-					value={form?.avatarUrl || data.profile.avatarUrl}
-					placeholder="/media/profile/avatar.jpg or https://example.com/avatar.jpg"
-				/>
-			</label>
+			<div class="admin-media-field">
+				<div class="admin-media-field__head">
+					<span>Avatar</span>
+					{#if hasCustomAvatar}
+						<button class="admin-ghost-button" type="button" onclick={() => (avatarRemoved = !avatarRemoved)}>
+							{avatarRemoved ? 'Keep current' : 'Remove'}
+						</button>
+					{/if}
+				</div>
 
-			<label class="admin-field">
-				<span>Upload avatar</span>
-				<input name="avatarFile" type="file" accept="image/*" />
-			</label>
+				{#if displayAvatarUrl}
+					<img class="admin-media-field__preview admin-media-field__preview--avatar" src={displayAvatarUrl} alt="" />
+				{:else}
+					<div class="admin-media-field__empty admin-media-field__empty--avatar">
+						{#if hasCustomAvatar}
+							The current avatar will be removed. The default avatar will be used after save.
+						{:else}
+							No custom avatar uploaded yet. The default avatar will stay in place.
+						{/if}
+					</div>
+				{/if}
 
-			<label class="admin-field">
-				<span>Header image URL</span>
-				<input
-					name="headerImageUrl"
-					type="text"
-					value={form?.headerImageUrl || data.profile.headerImageUrl || ''}
-					placeholder="/media/profile/header.jpg or https://example.com/header.jpg"
-				/>
-			</label>
+				<input type="hidden" name="removeAvatar" value={avatarRemoved ? '1' : '0'} />
 
-			<label class="admin-field">
-				<span>Upload header image</span>
-				<input name="headerFile" type="file" accept="image/*" />
-			</label>
+				<label class="admin-upload-control">
+					<span class="admin-ghost-button">{displayAvatarUrl ? 'Replace avatar' : 'Upload avatar'}</span>
+					<input
+						name="avatarFile"
+						type="file"
+						accept="image/*"
+						onchange={() => {
+							avatarRemoved = false;
+						}}
+					/>
+				</label>
+
+				<p class="admin-field-note">Upload a square-ish image for the cleanest crop.</p>
+			</div>
+
+			<div class="admin-media-field">
+				<div class="admin-media-field__head">
+					<span>Header image</span>
+					{#if currentHeaderUrl}
+						<button class="admin-ghost-button" type="button" onclick={() => (headerRemoved = !headerRemoved)}>
+							{headerRemoved ? 'Keep current' : 'Remove'}
+						</button>
+					{/if}
+				</div>
+
+				{#if displayHeaderUrl}
+					<img class="admin-media-field__preview admin-media-field__preview--header" src={displayHeaderUrl} alt="" />
+				{:else}
+					<div class="admin-media-field__empty">
+						{#if currentHeaderUrl}
+							The current header image will be removed after save.
+						{:else}
+							No header image uploaded yet.
+						{/if}
+					</div>
+				{/if}
+
+				<input type="hidden" name="removeHeaderImage" value={headerRemoved ? '1' : '0'} />
+
+				<label class="admin-upload-control">
+					<span class="admin-ghost-button">{displayHeaderUrl ? 'Replace header' : 'Upload header'}</span>
+					<input
+						name="headerFile"
+						type="file"
+						accept="image/*"
+						onchange={() => {
+							headerRemoved = false;
+						}}
+					/>
+				</label>
+
+				<p class="admin-field-note">Wide landscape images work best in the banner slot.</p>
+			</div>
 
 			<label class="admin-field">
 				<span>Bio</span>

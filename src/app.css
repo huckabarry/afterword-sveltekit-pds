@@ -1868,6 +1868,79 @@ p:last-child {
 	gap: 1rem;
 }
 
+.admin-media-field {
+	display: grid;
+	gap: 0.8rem;
+	padding: 1rem;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	border-radius: 20px;
+	background: rgba(250, 249, 244, 0.92);
+}
+
+.admin-media-field__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.admin-media-field__head span {
+	font-weight: 600;
+	color: #303330;
+}
+
+.admin-media-field__preview {
+	width: 100%;
+	border-radius: 18px;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	background: white;
+}
+
+.admin-media-field__preview--avatar {
+	width: 88px;
+	height: 88px;
+	border-radius: 999px;
+	object-fit: cover;
+}
+
+.admin-media-field__preview--header {
+	aspect-ratio: 16 / 6;
+	object-fit: cover;
+}
+
+.admin-media-field__empty {
+	display: grid;
+	place-items: center;
+	min-height: 140px;
+	padding: 1rem;
+	border-radius: 18px;
+	border: 1px dashed rgba(0, 0, 0, 0.12);
+	background: rgba(255, 255, 255, 0.78);
+	color: #686d68;
+	text-align: center;
+}
+
+.admin-media-field__empty--avatar {
+	min-height: 108px;
+}
+
+.admin-upload-control {
+	position: relative;
+	width: fit-content;
+	cursor: pointer;
+}
+
+.admin-upload-control input {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.admin-upload-control .admin-ghost-button {
+	pointer-events: none;
+}
+
 .admin-profile-preview__banner {
 	width: 100%;
 	max-height: 220px;

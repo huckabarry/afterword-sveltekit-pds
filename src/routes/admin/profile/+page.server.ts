@@ -26,29 +26,32 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions: Actions = {
 	default: async (event) => {
+		const currentProfile = await getSiteProfile(event);
 		const form = await event.request.formData();
 		const displayName = String(form.get('displayName') || '').trim();
-		const avatarUrl = String(form.get('avatarUrl') || '').trim();
-		const headerImageUrl = String(form.get('headerImageUrl') || '').trim();
 		const bio = String(form.get('bio') || '').trim();
 		const aboutBody = String(form.get('aboutBody') || '').trim();
 		const aboutInterestsInput = String(form.get('aboutInterests') || '');
 		const verificationLinksInput = String(form.get('verificationLinks') || '');
 		const migrationAliasesInput = String(form.get('migrationAliases') || '');
+		const removeAvatar = String(form.get('removeAvatar') || '') === '1';
+		const removeHeaderImage = String(form.get('removeHeaderImage') || '') === '1';
 		const avatarFile = form.get('avatarFile');
 		const headerFile = form.get('headerFile');
 
-		if (!displayName || !avatarUrl || !bio) {
+		if (!displayName || !bio) {
 			return fail(400, {
-				error: 'Display name, avatar URL, and bio are required.',
+				error: 'Display name and bio are required.',
 				displayName,
-				avatarUrl,
-				headerImageUrl,
+				avatarUrl: currentProfile.avatarUrl,
+				headerImageUrl: currentProfile.headerImageUrl || '',
 				bio,
 				aboutBody,
 				aboutInterestsInput,
 				verificationLinksInput,
-				migrationAliasesInput
+				migrationAliasesInput,
+				removeAvatar,
+				removeHeaderImage
 			});
 		}
 
@@ -67,10 +70,14 @@ export const actions: Actions = {
 					})
 				: [];
 
-		await updateSiteProfile(event, {
+		const finalAvatarUrl = uploadedAvatar?.url || (removeAvatar ? '' : currentProfile.avatarUrl);
+		const finalHeaderImageUrl =
+			uploadedHeader?.url || (removeHeaderImage ? null : currentProfile.headerImageUrl);
+
+		const savedProfile = await updateSiteProfile(event, {
 			displayName,
-			avatarUrl: uploadedAvatar?.url || avatarUrl,
-			headerImageUrl: uploadedHeader?.url || headerImageUrl || null,
+			avatarUrl: finalAvatarUrl,
+			headerImageUrl: finalHeaderImageUrl,
 			bio,
 			aboutBody,
 			aboutInterests: parseAboutInterestsInput(aboutInterestsInput),
@@ -80,14 +87,16 @@ export const actions: Actions = {
 
 		return {
 			success: true,
-			displayName,
-			avatarUrl: uploadedAvatar?.url || avatarUrl,
-			headerImageUrl: uploadedHeader?.url || headerImageUrl,
-			bio,
-			aboutBody,
+			displayName: savedProfile.displayName,
+			avatarUrl: savedProfile.avatarUrl,
+			headerImageUrl: savedProfile.headerImageUrl || '',
+			bio: savedProfile.bio,
+			aboutBody: savedProfile.aboutBody,
 			aboutInterestsInput,
 			verificationLinksInput,
-			migrationAliasesInput
+			migrationAliasesInput,
+			removeAvatar: false,
+			removeHeaderImage: false
 		};
 	}
 };
