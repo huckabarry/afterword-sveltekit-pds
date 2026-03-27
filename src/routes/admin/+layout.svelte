@@ -3,6 +3,7 @@
 	let menuOpen = $state(false);
 
 	const navItems = [
+		{ href: '/admin', label: 'Home', shortLabel: 'Home' },
 		{ href: '/admin/following', label: 'Feed', shortLabel: 'Feed' },
 		{ href: '/admin/profile', label: 'Profile', shortLabel: 'Profile' },
 		{ href: '/admin/followers', label: 'Followers', shortLabel: 'Followers' },
@@ -10,6 +11,7 @@
 		{ href: '/admin/posts', label: 'Posts', shortLabel: 'Posts' },
 		{ href: '/admin/photos', label: 'Images', shortLabel: 'Images' },
 		{ href: '/admin/compose', label: 'Compose', shortLabel: 'Write' },
+		{ href: '/admin/messages', label: 'Messages', shortLabel: 'Messages' },
 		{ href: '/admin/replies', label: 'Replies', shortLabel: 'Replies' },
 		{ href: '/admin/webmentions', label: 'Webmentions', shortLabel: 'Mentions' },
 		{ href: '/admin/standard-site', label: 'Standard Site', shortLabel: 'Standard' }
@@ -66,7 +68,7 @@
 					<p class="admin-topbar__eyebrow">Private workspace</p>
 					<p class="admin-topbar__title">
 						{#if data.pathname === '/admin'}
-							Feed
+							Home
 						{:else if data.pathname === '/admin/profile'}
 							Edit profile
 						{:else if data.pathname === '/admin/followers'}
@@ -83,6 +85,8 @@
 							Posts
 						{:else if data.pathname === '/admin/photos'}
 							Images
+						{:else if data.pathname === '/admin/messages'}
+							Messages
 						{:else if data.pathname === '/admin/replies'}
 							Replies
 						{:else if data.pathname === '/admin/webmentions'}
@@ -130,7 +134,7 @@
 
 			<a
 				class="admin-topbar__quick admin-topbar__quick--floating"
-				href={data.pathname === '/admin/compose' ? '/admin/following' : '/admin/compose'}
+				href={data.pathname === '/admin/compose' ? '/admin' : '/admin/compose'}
 				aria-label={data.pathname === '/admin/compose' ? 'Close compose' : 'New note'}
 			>
 				<span class="admin-topbar__quick-icon" aria-hidden="true">{data.pathname === '/admin/compose' ? '×' : '+'}</span>

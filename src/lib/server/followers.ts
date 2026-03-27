@@ -148,6 +148,18 @@ export async function listFollowers(event: Pick<RequestEvent, 'platform'>): Prom
 	return Promise.all(records.map((record: FollowerRecord) => hydrateFollowerMetadata(event, record)));
 }
 
+export async function countFollowers(event: Pick<RequestEvent, 'platform'>) {
+	const db = getDb(event);
+	if (!db) return 0;
+	await ensureFollowerStore(event);
+
+	const row = await db
+		.prepare(`SELECT COUNT(*) AS follower_count FROM ap_followers`)
+		.first<Record<string, unknown>>();
+
+	return Number(row?.follower_count || 0);
+}
+
 export async function upsertFollower(
 	event: Pick<RequestEvent, 'platform'>,
 	input: CreateFollowerInput

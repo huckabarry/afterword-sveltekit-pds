@@ -89,7 +89,7 @@ function makeLocalReplySlug() {
 	return `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-export async function storeRemoteReply(
+export async function storeRemoteNote(
 	event: Pick<RequestEvent, 'platform'>,
 	input: {
 		noteId: string;
@@ -104,6 +104,7 @@ export async function storeRemoteReply(
 		publishedAt: string;
 		objectUrl?: string | null;
 		rawActivityJson: string;
+		attachments?: ApNoteRecord['attachments'];
 	}
 ) {
 	const db = getDb(event);
@@ -116,8 +117,8 @@ export async function storeRemoteReply(
 			`INSERT INTO ap_notes (
 				note_id, origin, activity_id, actor_id, actor_name, actor_handle,
 				in_reply_to_object_id, thread_root_object_id, content_html, content_text,
-				published_at, object_url, raw_activity_json
-			) VALUES (?, 'remote', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				published_at, object_url, raw_activity_json, attachments_json
+			) VALUES (?, 'remote', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(note_id) DO UPDATE SET
 				activity_id = excluded.activity_id,
 				actor_id = excluded.actor_id,
@@ -130,6 +131,7 @@ export async function storeRemoteReply(
 				published_at = excluded.published_at,
 				object_url = excluded.object_url,
 				raw_activity_json = excluded.raw_activity_json,
+				attachments_json = excluded.attachments_json,
 				updated_at = CURRENT_TIMESTAMP`
 		)
 		.bind(
@@ -144,10 +146,13 @@ export async function storeRemoteReply(
 			input.contentText,
 			input.publishedAt,
 			input.objectUrl ?? null,
-			input.rawActivityJson
+			input.rawActivityJson,
+			JSON.stringify(input.attachments || [])
 		)
 		.run();
 }
+
+export const storeRemoteReply = storeRemoteNote;
 
 export async function createLocalReply(
 	event: Pick<RequestEvent, 'platform' | 'url'>,
@@ -328,6 +333,49 @@ export async function listRecentInboxReplies(
 		.all<Record<string, unknown>>();
 
 	return (result.results || []).map(mapNote);
+}
+
+export async function listRecentDirectMessages(
+	event: Pick<RequestEvent, 'platform'>,
+	limit = 25
+): Promise<ApNoteRecord[]> {
+	const db = getDb(event);
+	if (!db) {
+		return [];
+	}
+
+	const safeLimit = Math.max(1, Math.min(limit, 100));
+	const result = await db
+		.prepare(
+			`SELECT *
+			 FROM ap_notes
+			 WHERE origin = 'remote'
+			   AND in_reply_to_object_id IS NULL
+			 ORDER BY published_at DESC, created_at DESC
+			 LIMIT ?`
+		)
+		.bind(safeLimit)
+		.all<Record<string, unknown>>();
+
+	return (result.results || []).map(mapNote);
+}
+
+export async function countDirectMessages(event: Pick<RequestEvent, 'platform'>) {
+	const db = getDb(event);
+	if (!db) {
+		return 0;
+	}
+
+	const row = await db
+		.prepare(
+			`SELECT COUNT(*) AS message_count
+			 FROM ap_notes
+			 WHERE origin = 'remote'
+			   AND in_reply_to_object_id IS NULL`
+		)
+		.first<Record<string, unknown>>();
+
+	return Number(row?.message_count || 0);
 }
 
 export async function listLocalNotes(

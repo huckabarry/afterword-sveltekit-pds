@@ -205,6 +205,19 @@ export async function listRecentWebmentions(
 	}));
 }
 
+export async function countWebmentions(event: Pick<RequestEvent, 'platform'>) {
+	const db = getDb(event);
+	if (!db) {
+		return 0;
+	}
+
+	const row = await db
+		.prepare(`SELECT COUNT(*) AS webmention_count FROM webmentions`)
+		.first<Record<string, unknown>>();
+
+	return Number(row?.webmention_count || 0);
+}
+
 export async function updateWebmentionStatus(
 	event: Pick<RequestEvent, 'platform'>,
 	id: number,

@@ -6,9 +6,10 @@ import {
 	getActorId,
 	getInboxId
 } from '$lib/server/activitypub';
+import { classifyAudienceForLocalOrigin } from '$lib/server/activitypub-audience';
 import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { resolveThreadRootObjectId, stripHtmlToText } from '$lib/server/activitypub-replies';
-import { storeRemoteReply } from '$lib/server/ap-notes';
+import { storeRemoteNote } from '$lib/server/ap-notes';
 import { recordInteraction } from '$lib/server/interactions';
 import { verifyInboundActivitySignature } from '$lib/server/activitypub-signatures';
 import { getFollowingByActorId } from '$lib/server/activitypub-follows';
@@ -79,6 +80,40 @@ function getObjectFromCreateActivity(activity: SupportedInboxActivity) {
 	}
 
 	return activity.object as Record<string, unknown>;
+}
+
+function getAttachmentString(value: unknown) {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function extractAttachments(object: Record<string, unknown>) {
+	const attachments = Array.isArray(object.attachment) ? object.attachment : [];
+
+	return attachments
+		.map((item) => {
+			if (!item || typeof item !== 'object') return null;
+			const record = item as Record<string, unknown>;
+			const url =
+				getAttachmentString(record.url) ||
+				(typeof record.url === 'object' && record.url ? getAttachmentString((record.url as Record<string, unknown>).href) : null) ||
+				getAttachmentString(record.href);
+			if (!url) return null;
+
+			return {
+				url,
+				mediaType: getAttachmentString(record.mediaType) || 'image/jpeg',
+				alt: getAttachmentString(record.name) || ''
+			};
+		})
+		.filter(
+			(
+				item
+			): item is {
+				url: string;
+				mediaType: string;
+				alt: string;
+			} => Boolean(item)
+		);
 }
 
 export async function POST(event) {
@@ -196,6 +231,7 @@ export async function POST(event) {
 			const objectType = getString(object.type);
 			const noteId = getString(object.id);
 			const inReplyTo = getString(object.inReplyTo);
+			const audience = classifyAudienceForLocalOrigin(origin, activity, object);
 			const following = await getFollowingByActorId(event, actorId);
 			const actorIcon =
 				remoteActor.icon && typeof remoteActor.icon === 'object'
@@ -206,7 +242,12 @@ export async function POST(event) {
 					? (remoteActor.image as Record<string, unknown>)
 					: null;
 
-			if (following && noteId && ['Note', 'Article', 'Page'].includes(String(objectType || ''))) {
+			if (
+				following &&
+				noteId &&
+				['Note', 'Article', 'Page'].includes(String(objectType || '')) &&
+				!audience.addressedToLocalActor
+			) {
 				await cacheRemoteStatusObject(event, {
 					actorId,
 					object,
@@ -226,19 +267,48 @@ export async function POST(event) {
 				});
 			}
 
-			if (objectType !== 'Note' || !noteId || !inReplyTo) {
+			if (objectType !== 'Note' || !noteId) {
 				return new Response(null, { status: 202 });
 			}
 
-			const threadRootObjectId = await resolveThreadRootObjectId(inReplyTo, origin, event);
 			const contentHtml = getString(object.content) || '';
 			const sourceContent =
 				object.source && typeof object.source === 'object'
 					? getString((object.source as Record<string, unknown>).content) || ''
 					: '';
 			const contentText = sourceContent || stripHtmlToText(contentHtml) || contentHtml;
+			const attachments = extractAttachments(object);
 
-			await storeRemoteReply(event, {
+			if (!inReplyTo) {
+				if (!audience.addressedToLocalActor || audience.hasPublic || audience.hasFollowers) {
+					return new Response(null, { status: 202 });
+				}
+
+				await storeRemoteNote(event, {
+					noteId,
+					activityId,
+					actorId,
+					actorName: getString(object.name) || getString(remoteActor.name),
+					actorHandle: getString(remoteActor.preferredUsername),
+					contentHtml,
+					contentText,
+					publishedAt: getString(object.published) || new Date().toISOString(),
+					objectUrl: getString(object.url) || noteId,
+					rawActivityJson: rawBody,
+					attachments
+				});
+
+				console.log('[ap/inbox] direct message stored', {
+					actorId,
+					noteId
+				});
+
+				return new Response(null, { status: 202 });
+			}
+
+			const threadRootObjectId = await resolveThreadRootObjectId(inReplyTo, origin, event);
+
+			await storeRemoteNote(event, {
 				noteId,
 				activityId,
 				actorId,
@@ -250,7 +320,8 @@ export async function POST(event) {
 				contentText,
 				publishedAt: getString(object.published) || new Date().toISOString(),
 				objectUrl: getString(object.url) || noteId,
-				rawActivityJson: rawBody
+				rawActivityJson: rawBody,
+				attachments
 			});
 
 			console.log('[ap/inbox] reply stored', {

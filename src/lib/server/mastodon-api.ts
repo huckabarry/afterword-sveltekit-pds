@@ -3,12 +3,14 @@ import {
 	countDirectRepliesToObject,
 	getNoteById,
 	listDirectRepliesToObject,
+	listRecentDirectMessages,
 	listLocalNotes,
 	listRecentInboxReplies,
 	listNotesForThread,
 	type ApNoteRecord,
 	type LocalApNoteListItem
 } from '$lib/server/ap-notes';
+import { parseRawActivityVisibility } from '$lib/server/activitypub-audience';
 import { listFollowers } from '$lib/server/followers';
 import { getSiteProfile } from '$lib/server/profile';
 import { fetchActivityJson, fetchRemoteActor, stripHtmlToText } from '$lib/server/activitypub-replies';
@@ -1005,15 +1007,14 @@ export async function listMastodonConversations(
 	event: Pick<RequestEvent, 'platform' | 'url'>,
 	limit = 20
 ) {
-	const origin = getActivityPubOrigin(event);
-	const replies = await listRecentInboxReplies(event, origin, limit);
+	const messages = await listRecentDirectMessages(event, limit);
 
 	return await Promise.all(
-		replies.map(async (reply) => ({
-			id: encodeMastodonStatusId(`conversation:${reply.noteId}`, reply.publishedAt),
+		messages.map(async (message) => ({
+			id: encodeMastodonStatusId(`conversation:${message.noteId}`, message.publishedAt),
 			unread: false,
-			accounts: [await buildRemoteAccount(event, reply.actorId)],
-			last_status: await serializeReplyNote(event, reply)
+			accounts: [await buildRemoteAccount(event, message.actorId)],
+			last_status: await serializeReplyNote(event, message)
 		}))
 	);
 }
@@ -1086,7 +1087,7 @@ async function serializeReplyNote(event: Pick<RequestEvent, 'platform' | 'url'>,
 		in_reply_to_account_id: encodeMastodonAccountId(note.actorId),
 		sensitive: false,
 		spoiler_text: '',
-		visibility: 'public',
+		visibility: parseRawActivityVisibility(note.rawActivityJson, origin),
 		language: 'en',
 		uri: note.noteId,
 		url: note.objectUrl || note.noteId,

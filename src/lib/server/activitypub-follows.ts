@@ -146,6 +146,18 @@ export async function listFollowing(event: Pick<RequestEvent, 'platform'>): Prom
 	return Promise.all(records.map((record: FollowingRecord) => hydrateFollowingMetadata(event, record)));
 }
 
+export async function countFollowing(event: Pick<RequestEvent, 'platform'>) {
+	const db = getDb(event);
+	if (!db) return 0;
+	await ensureFollowingStore(event);
+
+	const row = await db
+		.prepare(`SELECT COUNT(*) AS following_count FROM ap_following`)
+		.first<Record<string, unknown>>();
+
+	return Number(row?.following_count || 0);
+}
+
 export async function getFollowingByActorId(
 	event: Pick<RequestEvent, 'platform'>,
 	actorId: string
