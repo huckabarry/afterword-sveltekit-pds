@@ -35,11 +35,31 @@ type GalleryManifestSummaryRow = {
 	last_synced_at: string | null;
 };
 
+type PhotoSyncStateRow = {
+	sync_key: string;
+	next_offset: number | null;
+	last_run_at: string | null;
+	last_cycle_completed_at: string | null;
+	last_error: string | null;
+	total_available: number | null;
+	updated_at: string | null;
+};
+
 export type GalleryManifestSummary = {
 	configured: boolean;
 	totalPhotos: number;
 	syncedToR2: number;
 	lastSyncedAt: string | null;
+};
+
+export type PhotoSyncState = {
+	syncKey: string;
+	nextOffset: number;
+	lastRunAt: string | null;
+	lastCycleCompletedAt: string | null;
+	lastError: string | null;
+	totalAvailable: number;
+	updatedAt: string | null;
 };
 
 type SyncPhotoManifestBatchOptions = {
@@ -59,6 +79,8 @@ function getGalleryDb(event: Pick<RequestEvent, 'platform'>) {
 function getGalleryBucket(event: Pick<RequestEvent, 'platform'>) {
 	return event.platform?.env?.R2_BUCKET ?? null;
 }
+
+const PHOTO_SYNC_KEY = 'ghost_gallery_manifest';
 
 async function ensureGalleryPhotoManifestSchema(db: GalleryDb) {
 	await db
@@ -99,9 +121,44 @@ async function ensureGalleryPhotoManifestSchema(db: GalleryDb) {
 		.run();
 }
 
+async function ensurePhotoSyncStateSchema(db: GalleryDb) {
+	await db
+		.prepare(
+			`CREATE TABLE IF NOT EXISTS photo_sync_state (
+				sync_key TEXT PRIMARY KEY,
+				next_offset INTEGER NOT NULL DEFAULT 0,
+				last_run_at TEXT,
+				last_cycle_completed_at TEXT,
+				last_error TEXT,
+				total_available INTEGER NOT NULL DEFAULT 0,
+				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`
+		)
+		.run();
+}
+
 function toPositiveInteger(value: number | undefined, fallback: number) {
 	const normalized = Number.isFinite(value) ? Number(value) : fallback;
 	return normalized > 0 ? Math.floor(normalized) : fallback;
+}
+
+function normalizePhotoSyncState(row: PhotoSyncStateRow | null | undefined): PhotoSyncState {
+	return {
+		syncKey: row?.sync_key || PHOTO_SYNC_KEY,
+		nextOffset: Math.max(0, Number(row?.next_offset || 0)),
+		lastRunAt: row?.last_run_at || null,
+		lastCycleCompletedAt: row?.last_cycle_completed_at || null,
+		lastError: row?.last_error || null,
+		totalAvailable: Math.max(0, Number(row?.total_available || 0)),
+		updatedAt: row?.updated_at || null
+	};
+}
+
+async function getSortedGhostPhotoItems() {
+	return (await getPhotoItems()).sort((a, b) => {
+		const dateDiff = a.postPublishedAt.getTime() - b.postPublishedAt.getTime();
+		return dateDiff || a.index - b.index;
+	});
 }
 
 function toGalleryPhotoItem(row: GalleryPhotoManifestRow): GalleryPhotoItem {
@@ -223,6 +280,35 @@ export async function getGalleryManifestSummary(
 		syncedToR2: Number(summary?.synced_to_r2 || 0),
 		lastSyncedAt: summary?.last_synced_at || null
 	};
+}
+
+export async function getPhotoSyncState(
+	event: Pick<RequestEvent, 'platform'>
+): Promise<PhotoSyncState> {
+	const db = getGalleryDb(event);
+	if (!db) {
+		return normalizePhotoSyncState(null);
+	}
+
+	await ensurePhotoSyncStateSchema(db);
+	const row = await db
+		.prepare(
+			`SELECT
+				sync_key,
+				next_offset,
+				last_run_at,
+				last_cycle_completed_at,
+				last_error,
+				total_available,
+				updated_at
+			FROM photo_sync_state
+			WHERE sync_key = ?
+			LIMIT 1`
+		)
+		.bind(PHOTO_SYNC_KEY)
+		.first<PhotoSyncStateRow>();
+
+	return normalizePhotoSyncState(row);
 }
 
 export async function getManifestGalleryPhotos(event: Pick<RequestEvent, 'platform'>) {
@@ -384,10 +470,7 @@ export async function syncPhotoManifestBatch(
 
 	const offset = toPositiveInteger(options.offset, 0);
 	const limit = Math.min(toPositiveInteger(options.limit, 20), 50);
-	const allPhotos = (await getPhotoItems()).sort((a, b) => {
-		const dateDiff = a.postPublishedAt.getTime() - b.postPublishedAt.getTime();
-		return dateDiff || a.index - b.index;
-	});
+	const allPhotos = await getSortedGhostPhotoItems();
 	const batch = allPhotos.slice(offset, offset + limit);
 	const synced: GalleryPhotoItem[] = [];
 	const failures: Array<{ id: string; postTitle: string; error: string }> = [];
@@ -418,5 +501,70 @@ export async function syncPhotoManifestBatch(
 		syncedCount: synced.length,
 		failures,
 		nextOffset: offset + batch.length < allPhotos.length ? offset + batch.length : null
+	};
+}
+
+export async function runScheduledPhotoSyncBatch(
+	event: Pick<RequestEvent, 'platform'>,
+	options: {
+		limit?: number;
+	} = {}
+) {
+	const db = getGalleryDb(event);
+	if (!db) {
+		throw new Error('D1 database is not configured');
+	}
+
+	await ensurePhotoSyncStateSchema(db);
+	const state = await getPhotoSyncState(event);
+	const limit = Math.min(toPositiveInteger(options.limit, 12), 25);
+	const result = await syncPhotoManifestBatch(event, {
+		offset: state.nextOffset,
+		limit
+	});
+	const lastRunAt = new Date().toISOString();
+	const cycleCompleted = result.nextOffset === null;
+	const nextOffset = cycleCompleted ? 0 : result.nextOffset ?? 0;
+	const lastError = result.failures.length
+		? result.failures
+				.slice(0, 3)
+				.map((failure) => `${failure.postTitle}: ${failure.error}`)
+				.join(' | ')
+		: null;
+
+	await db
+		.prepare(
+			`INSERT INTO photo_sync_state (
+				sync_key,
+				next_offset,
+				last_run_at,
+				last_cycle_completed_at,
+				last_error,
+				total_available,
+				updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+			ON CONFLICT(sync_key) DO UPDATE SET
+				next_offset = excluded.next_offset,
+				last_run_at = excluded.last_run_at,
+				last_cycle_completed_at = COALESCE(excluded.last_cycle_completed_at, photo_sync_state.last_cycle_completed_at),
+				last_error = excluded.last_error,
+				total_available = excluded.total_available,
+				updated_at = CURRENT_TIMESTAMP`
+		)
+		.bind(
+			PHOTO_SYNC_KEY,
+			nextOffset,
+			lastRunAt,
+			cycleCompleted ? lastRunAt : null,
+			lastError,
+			result.totalAvailable
+		)
+		.run();
+
+	return {
+		...result,
+		limit,
+		state: await getPhotoSyncState(event),
+		cycleCompleted
 	};
 }
