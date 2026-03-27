@@ -3,10 +3,9 @@
 	let menuOpen = $state(false);
 
 	const navItems = [
-		{ href: '/admin', label: 'Home', shortLabel: 'Home' },
+		{ href: '/admin/following', label: 'Feed', shortLabel: 'Feed' },
 		{ href: '/admin/profile', label: 'Profile', shortLabel: 'Profile' },
 		{ href: '/admin/followers', label: 'Followers', shortLabel: 'Followers' },
-		{ href: '/admin/following', label: 'Feed', shortLabel: 'Feed' },
 		{ href: '/admin/following/accounts', label: 'Following', shortLabel: 'Following' },
 		{ href: '/admin/posts', label: 'Posts', shortLabel: 'Posts' },
 		{ href: '/admin/photos', label: 'Images', shortLabel: 'Images' },
@@ -67,13 +66,13 @@
 					<p class="admin-topbar__eyebrow">Private workspace</p>
 					<p class="admin-topbar__title">
 						{#if data.pathname === '/admin'}
-							Dashboard
+							Feed
 						{:else if data.pathname === '/admin/profile'}
 							Edit profile
 						{:else if data.pathname === '/admin/followers'}
 							Followers
 						{:else if data.pathname === '/admin/following'}
-							Following feed
+							Feed
 						{:else if data.pathname === '/admin/following/accounts'}
 							Following
 						{:else if data.pathname === '/admin/people'}
@@ -131,7 +130,7 @@
 
 			<a
 				class="admin-topbar__quick admin-topbar__quick--floating"
-				href={data.pathname === '/admin/compose' ? '/admin' : '/admin/compose'}
+				href={data.pathname === '/admin/compose' ? '/admin/following' : '/admin/compose'}
 				aria-label={data.pathname === '/admin/compose' ? 'Close compose' : 'New note'}
 			>
 				<span class="admin-topbar__quick-icon" aria-hidden="true">{data.pathname === '/admin/compose' ? '×' : '+'}</span>

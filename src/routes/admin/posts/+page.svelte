@@ -11,7 +11,7 @@
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Outbox</p>
-				<h2>Local ActivityPub posts</h2>
+				<h2>My posts</h2>
 			</div>
 			<a href="/admin/compose">New note</a>
 		</div>
@@ -37,14 +37,29 @@
 						</div>
 						<div class="admin-social-card__body">
 							<div class="admin-social-card__meta">
-								<strong>{post.actorName || (post.inReplyToObjectId ? 'Reply' : 'Note')}</strong>
-								{#if post.actorHandle}
-									<span>{post.actorHandle}</span>
-								{/if}
+								<strong>{post.actorName}</strong>
+								<span>{post.actorHandle}</span>
 								<span>{formatDate(post.publishedAt)}</span>
-								<span>{post.deliveryStatus || 'pending'}</span>
+								{#if post.source === 'local' && post.deliveryStatus}
+									<span class="admin-post-status">{post.deliveryStatus}</span>
+								{/if}
+								{#if post.source === 'mirrored' && post.sourceHref}
+									<a
+										class="admin-source-icon"
+										href={post.sourceHref}
+										target="_blank"
+										rel="noreferrer"
+										aria-label="Open original Bluesky post"
+										title="Mirrored from Bluesky"
+									>
+										<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+											<path d="M5.69 4.78c2.35 1.76 4.88 5.33 5.81 7.27.93-1.94 3.46-5.51 5.81-7.27 1.69-1.27 4.43-2.26 4.43.87 0 .63-.36 5.29-.57 6.05-.72 2.66-3.35 3.34-5.69 2.94 4.09.7 5.13 3.04 2.88 5.39-4.27 4.46-6.14-1.12-6.62-2.55-.09-.26-.13-.38-.24-.38s-.15.12-.24.38c-.48 1.43-2.35 7.01-6.62 2.55-2.25-2.35-1.21-4.69 2.88-5.39-2.34.4-4.97-.28-5.69-2.94-.21-.76-.57-5.42-.57-6.05 0-3.13 2.74-2.14 4.43-.87Z"></path>
+										</svg>
+									</a>
+								{/if}
 							</div>
 							<p class="admin-social-card__content">{post.contentText}</p>
+
 							{#if post.attachments?.length}
 								<div class="admin-social-card__media-strip">
 									{#each post.attachments as attachment}
@@ -52,13 +67,21 @@
 									{/each}
 								</div>
 							{/if}
-							{#if post.inReplyToObjectId}
-								<p class="admin-thread__target">Replying to: {post.inReplyToObjectId}</p>
-							{/if}
+
 							<div class="admin-thread__actions admin-thread__actions--social">
-								<a class="admin-pill-link" href={`/admin/posts/${post.localSlug}`}>Open</a>
-								{#if post.incomingReplyCount}
-									<span class="admin-reply-count">{post.incomingReplyCount} replies</span>
+								<a class="admin-pill-link" href={post.openHref}>
+									{post.source === 'local' ? 'Edit' : 'Open post'}
+								</a>
+								{#if post.replyHref}
+									<a class="admin-pill-link" href={post.replyHref}>Reply on AP</a>
+								{/if}
+								{#if post.publicHref}
+									<a class="admin-pill-link" href={post.publicHref} target="_blank" rel="noreferrer">
+										View public
+									</a>
+								{/if}
+								{#if post.replyCount}
+									<span class="admin-reply-count">{post.replyCount} repl{post.replyCount === 1 ? 'y' : 'ies'}</span>
 								{/if}
 							</div>
 						</div>
@@ -66,58 +89,7 @@
 				{/each}
 			</ul>
 		{:else}
-			<p class="admin-empty">No local ActivityPub posts yet.</p>
-		{/if}
-	</div>
-
-	<div class="admin-card admin-feed-card">
-		<div class="admin-card__head">
-			<div>
-				<p class="admin-eyebrow">Mirrored lane</p>
-				<h2>Mirrored Bluesky posts</h2>
-			</div>
-		</div>
-
-		{#if data.mirroredStatuses.length}
-			<ul class="admin-social-list">
-				{#each data.mirroredStatuses as post}
-					<li class="admin-social-card">
-						<div class="admin-social-card__avatar-wrap">
-							<img
-								class="admin-social-card__avatar"
-								src={post.avatar || '/assets/images/status-avatar.jpg'}
-								alt={post.displayName || 'Avatar'}
-							/>
-						</div>
-						<div class="admin-social-card__body">
-							<div class="admin-social-card__meta">
-								<strong>{post.displayName}</strong>
-								<span>{post.handle}</span>
-								<span>{formatDate(post.date)}</span>
-							</div>
-							<p class="admin-social-card__content">{post.text}</p>
-							{#if post.images?.length}
-								<div class="admin-social-card__media-strip">
-									{#each post.images as image}
-										<img src={image.thumb || image.fullsize} alt={image.alt || 'Status image'} loading="lazy" />
-									{/each}
-								</div>
-							{/if}
-							<div class="admin-social-card__metrics">
-								<span>{post.replyCount} replies</span>
-								<span>{post.repostCount} reposts</span>
-								<span>{post.likeCount} likes</span>
-							</div>
-							<div class="admin-thread__actions admin-thread__actions--social">
-								<a class="admin-pill-link" href={`/status/${post.slug}`}>Open post</a>
-								<a class="admin-pill-link" href={`/admin/compose?replyTo=${encodeURIComponent(post.apObjectId)}`}>Reply on AP</a>
-							</div>
-						</div>
-					</li>
-				{/each}
-			</ul>
-		{:else}
-			<p class="admin-empty">No mirrored Bluesky posts available right now.</p>
+			<p class="admin-empty">No local or mirrored posts available yet.</p>
 		{/if}
 	</div>
 </section>
