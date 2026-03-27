@@ -32,17 +32,6 @@
 	let touchStartX = 0;
 	let touchDeltaX = 0;
 
-	function shouldRenderIntroParagraph(paragraph: string) {
-		const normalizedParagraph = paragraph.trim().toLowerCase();
-		const normalizedDescription = data.intro.description.trim().toLowerCase();
-
-		if (!normalizedParagraph || normalizedParagraph === normalizedDescription) {
-			return false;
-		}
-
-		return !normalizedParagraph.startsWith(normalizedDescription.replace(/[.:!?]+$/g, ''));
-	}
-
 	function showPrevNowImage() {
 		nowImageIndex = (nowImageIndex - 1 + data.nowImages.length) % data.nowImages.length;
 	}
@@ -92,6 +81,10 @@
 
 		touchDeltaX = 0;
 	}
+
+	function getNowIntroParagraph() {
+		return data.intro.paragraphs[0] || data.intro.description;
+	}
 </script>
 
 <svelte:head>
@@ -103,12 +96,7 @@
 	<article class="content content-page">
 		<div class="post-full-content">
 			<section class="content-body">
-				<p>{data.intro.description}</p>
-				{#each data.intro.paragraphs as paragraph}
-					{#if shouldRenderIntroParagraph(paragraph)}
-						<p>{paragraph}</p>
-					{/if}
-				{/each}
+				<p>{getNowIntroParagraph()}</p>
 			</section>
 		</div>
 	</article>

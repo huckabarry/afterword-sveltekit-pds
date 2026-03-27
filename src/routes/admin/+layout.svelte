@@ -9,7 +9,7 @@
 		{ href: '/admin/following', label: 'Feed', shortLabel: 'Feed' },
 		{ href: '/admin/following/accounts', label: 'Following', shortLabel: 'Following' },
 		{ href: '/admin/posts', label: 'Posts', shortLabel: 'Posts' },
-		{ href: '/admin/photos', label: 'Photos', shortLabel: 'Photos' },
+		{ href: '/admin/photos', label: 'Images', shortLabel: 'Images' },
 		{ href: '/admin/compose', label: 'Compose', shortLabel: 'Write' },
 		{ href: '/admin/replies', label: 'Replies', shortLabel: 'Replies' },
 		{ href: '/admin/webmentions', label: 'Webmentions', shortLabel: 'Mentions' },
@@ -83,7 +83,7 @@
 						{:else if data.pathname.startsWith('/admin/posts')}
 							Posts
 						{:else if data.pathname === '/admin/photos'}
-							Photos
+							Images
 						{:else if data.pathname === '/admin/replies'}
 							Replies
 						{:else if data.pathname === '/admin/webmentions'}

@@ -210,10 +210,11 @@ p:last-child {
 	width: min(42rem, 100%);
 	max-height: min(78vh, 42rem);
 	overflow: hidden;
-	border: 1px solid rgba(235, 235, 235, 0.16);
+	border: 1px solid rgba(28, 30, 31, 0.14);
 	border-radius: 1rem;
-	background: color-mix(in srgb, var(--surface) 94%, black 6%);
-	box-shadow: 0 24px 64px rgba(0, 0, 0, 0.38);
+	background: rgba(252, 252, 249, 0.86);
+	box-shadow: 0 24px 64px rgba(0, 0, 0, 0.24);
+	backdrop-filter: blur(18px);
 }
 
 .search-modal__head {
@@ -225,7 +226,7 @@ p:last-child {
 }
 
 .search-modal__label {
-	color: var(--muted);
+	color: rgba(34, 36, 37, 0.62);
 	font-size: 0.78rem;
 	font-weight: 700;
 	letter-spacing: 0.08em;
@@ -235,7 +236,7 @@ p:last-child {
 .search-modal__close {
 	border: 0;
 	background: transparent;
-	color: var(--muted);
+	color: rgba(34, 36, 37, 0.62);
 	font-size: 1.6rem;
 	line-height: 1;
 	cursor: pointer;
@@ -245,7 +246,7 @@ p:last-child {
 	display: grid;
 	gap: 0.5rem;
 	padding: 0 1rem 0.95rem;
-	border-bottom: 1px solid var(--border);
+	border-bottom: 1px solid rgba(28, 30, 31, 0.1);
 }
 
 .search-modal__field {
@@ -253,7 +254,7 @@ p:last-child {
 	padding: 0.9rem 0;
 	border: 0;
 	background: transparent;
-	color: #ffffff;
+	color: #171819;
 	font-family: 'Fira Sans', sans-serif;
 	font-size: 1.35rem;
 	font-weight: 600;
@@ -262,12 +263,12 @@ p:last-child {
 }
 
 .search-modal__field::placeholder {
-	color: color-mix(in srgb, var(--muted) 75%, white 25%);
+	color: rgba(34, 36, 37, 0.42);
 }
 
 .search-modal__hint,
 .search-modal__empty {
-	color: var(--muted);
+	color: rgba(34, 36, 37, 0.62);
 	font-size: 0.88rem;
 	line-height: 1.5;
 }
@@ -297,12 +298,14 @@ p:last-child {
 	gap: 0.9rem;
 	align-items: start;
 	padding: 0.85rem 1rem;
+	color: #171819;
 	text-decoration: none;
 }
 
 .search-result:hover,
 .search-result:focus-visible {
-	background: rgba(255, 255, 255, 0.04);
+	background: rgba(20, 21, 22, 0.06);
+	color: #171819;
 }
 
 .search-result__image {
@@ -322,21 +325,21 @@ p:last-child {
 	flex-wrap: wrap;
 	gap: 0.3rem 0.55rem;
 	margin-bottom: 0.22rem;
-	color: var(--muted);
+	color: rgba(34, 36, 37, 0.58);
 	font-size: 0.76rem;
 	font-family: 'IBM Plex Mono', monospace;
 }
 
 .search-result__title {
 	margin: 0;
-	color: #ffffff;
+	color: #111111;
 	font-size: 1.02rem;
 	line-height: 1.2;
 }
 
 .search-result__excerpt {
 	margin: 0.28rem 0 0;
-	color: var(--muted);
+	color: rgba(34, 36, 37, 0.72);
 	font-size: 0.9rem;
 	line-height: 1.5;
 }

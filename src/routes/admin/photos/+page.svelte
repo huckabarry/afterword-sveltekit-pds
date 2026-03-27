@@ -88,8 +88,8 @@
 	<div class="admin-card admin-card--narrow">
 		<div class="admin-card__head">
 			<div>
-				<p class="admin-eyebrow">Archive</p>
-				<h2>Photos</h2>
+				<p class="admin-eyebrow">Media</p>
+				<h2>Images</h2>
 			</div>
 		</div>
 
@@ -134,4 +134,121 @@
 			</div>
 		{/if}
 	</div>
+
+	<div class="admin-card">
+		<div class="admin-card__head">
+			<div>
+				<p class="admin-eyebrow">Manifest</p>
+				<h2>Recent synced images</h2>
+			</div>
+		</div>
+
+		{#if data.recentPhotos.length}
+			<div class="admin-image-grid">
+				{#each data.recentPhotos as photo}
+					<article class="admin-image-card">
+						<a
+							class="admin-image-card__thumb"
+							href={photo.lightboxUrl || photo.displayUrl || photo.originalUrl || photo.imageUrl}
+							target="_blank"
+							rel="noreferrer"
+						>
+							<img
+								src={photo.displayUrl || photo.originalUrl || photo.imageUrl}
+								alt={photo.alt || photo.postTitle}
+								loading="lazy"
+							/>
+						</a>
+						<div class="admin-image-card__meta">
+							<p class="admin-image-card__title">
+								<a href={photo.postPath}>{photo.postTitle}</a>
+							</p>
+							<p class="admin-image-card__detail">
+								{#if photo.width && photo.height}
+									{photo.width} × {photo.height}
+								{:else}
+									Dimensions pending
+								{/if}
+							</p>
+							<p class="admin-image-card__detail">
+								{photo.postPublishedAt.toLocaleDateString('en-US', {
+									month: 'short',
+									day: 'numeric',
+									year: 'numeric'
+								})}
+							</p>
+							<div class="admin-image-card__actions">
+								<a href={photo.originalUrl || photo.imageUrl} target="_blank" rel="noreferrer">Original</a>
+								{#if photo.displayUrl}
+									<a href={photo.displayUrl} target="_blank" rel="noreferrer">Display</a>
+								{/if}
+								<a href={photo.postSourceUrl} target="_blank" rel="noreferrer">Ghost</a>
+							</div>
+						</div>
+					</article>
+				{/each}
+			</div>
+		{:else}
+			<p class="admin-field-note">No images are in the manifest yet. Run a sync to populate this view.</p>
+		{/if}
+	</div>
 </section>
+
+<style>
+	.admin-image-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+		gap: 1rem;
+	}
+
+	.admin-image-card {
+		display: grid;
+		gap: 0.7rem;
+	}
+
+	.admin-image-card__thumb {
+		display: block;
+		border-radius: 16px;
+		overflow: hidden;
+		background: #f2ede2;
+		border: 1px solid rgba(0, 0, 0, 0.08);
+	}
+
+	.admin-image-card__thumb img {
+		display: block;
+		width: 100%;
+		height: auto;
+	}
+
+	.admin-image-card__meta {
+		display: grid;
+		gap: 0.2rem;
+	}
+
+	.admin-image-card__title {
+		margin: 0;
+		font-weight: 700;
+	}
+
+	.admin-image-card__title a {
+		text-decoration: none;
+	}
+
+	.admin-image-card__detail {
+		margin: 0;
+		color: rgba(17, 17, 17, 0.68);
+		font-size: 0.9rem;
+	}
+
+	.admin-image-card__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.45rem 0.8rem;
+		margin-top: 0.25rem;
+	}
+
+	.admin-image-card__actions a {
+		font-size: 0.9rem;
+		text-decoration: none;
+	}
+</style>

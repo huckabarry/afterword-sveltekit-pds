@@ -1,8 +1,10 @@
 import { fail } from '@sveltejs/kit';
 import {
+	formatAboutInterestsInput,
 	formatMigrationAliasesInput,
 	formatVerificationLinksInput,
 	getSiteProfile,
+	parseAboutInterestsInput,
 	parseMigrationAliasesInput,
 	parseVerificationLinksInput,
 	updateSiteProfile
@@ -15,6 +17,7 @@ export const load: PageServerLoad = async (event) => {
 
 	return {
 		profile,
+		aboutInterestsInput: formatAboutInterestsInput(profile.aboutInterests),
 		verificationLinksInput: formatVerificationLinksInput(profile.verificationLinks),
 		migrationAliasesInput: formatMigrationAliasesInput(profile.migrationAliases),
 		saved: event.url.searchParams.get('saved') === '1'
@@ -28,6 +31,8 @@ export const actions: Actions = {
 		const avatarUrl = String(form.get('avatarUrl') || '').trim();
 		const headerImageUrl = String(form.get('headerImageUrl') || '').trim();
 		const bio = String(form.get('bio') || '').trim();
+		const aboutBody = String(form.get('aboutBody') || '').trim();
+		const aboutInterestsInput = String(form.get('aboutInterests') || '');
 		const verificationLinksInput = String(form.get('verificationLinks') || '');
 		const migrationAliasesInput = String(form.get('migrationAliases') || '');
 		const avatarFile = form.get('avatarFile');
@@ -40,6 +45,8 @@ export const actions: Actions = {
 				avatarUrl,
 				headerImageUrl,
 				bio,
+				aboutBody,
+				aboutInterestsInput,
 				verificationLinksInput,
 				migrationAliasesInput
 			});
@@ -65,6 +72,8 @@ export const actions: Actions = {
 			avatarUrl: uploadedAvatar?.url || avatarUrl,
 			headerImageUrl: uploadedHeader?.url || headerImageUrl || null,
 			bio,
+			aboutBody,
+			aboutInterests: parseAboutInterestsInput(aboutInterestsInput),
 			verificationLinks: parseVerificationLinksInput(verificationLinksInput),
 			migrationAliases: parseMigrationAliasesInput(migrationAliasesInput)
 		});
@@ -75,6 +84,8 @@ export const actions: Actions = {
 			avatarUrl: uploadedAvatar?.url || avatarUrl,
 			headerImageUrl: uploadedHeader?.url || headerImageUrl,
 			bio,
+			aboutBody,
+			aboutInterestsInput,
 			verificationLinksInput,
 			migrationAliasesInput
 		};

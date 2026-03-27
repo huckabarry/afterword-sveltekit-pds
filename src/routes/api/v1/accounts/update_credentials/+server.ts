@@ -29,6 +29,8 @@ export async function PATCH(event) {
 		avatarUrl: avatarUploads[0]?.url || profile.avatarUrl,
 		headerImageUrl: headerUploads[0]?.url || profile.headerImageUrl,
 		bio: String(formData.get('note') || profile.bio).trim() || profile.bio,
+		aboutBody: profile.aboutBody,
+		aboutInterests: profile.aboutInterests,
 		verificationLinks: profile.verificationLinks,
 		migrationAliases: profile.migrationAliases
 	});

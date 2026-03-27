@@ -259,6 +259,46 @@ export async function getManifestGalleryPhotos(event: Pick<RequestEvent, 'platfo
 	return (result.results || []).map(toGalleryPhotoItem);
 }
 
+export async function getRecentManifestGalleryPhotos(
+	event: Pick<RequestEvent, 'platform'>,
+	limit = 18
+) {
+	const db = getGalleryDb(event);
+	if (!db) return [] satisfies GalleryPhotoItem[];
+
+	await ensureGalleryPhotoManifestSchema(db);
+	const normalizedLimit = Math.min(Math.max(Math.floor(limit), 1), 60);
+	const result = await db
+		.prepare(
+			`SELECT
+				id,
+				post_id,
+				post_title,
+				post_path,
+				post_source_url,
+				post_published_at,
+				image_url,
+				alt,
+				sort_index,
+				asset_key,
+				is_synced_to_r2,
+				original_url,
+				display_url,
+				lightbox_url,
+				width,
+				height,
+				synced_at,
+				updated_at
+			FROM gallery_photo_manifest
+			ORDER BY post_published_at DESC, sort_index ASC
+			LIMIT ?`
+		)
+		.bind(normalizedLimit)
+		.all<GalleryPhotoManifestRow>();
+
+	return (result.results || []).map(toGalleryPhotoItem);
+}
+
 export async function syncPhotoManifestBatch(
 	event: Pick<RequestEvent, 'platform'>,
 	options: SyncPhotoManifestBatchOptions = {}

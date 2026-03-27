@@ -12,11 +12,23 @@
 				avatarUrl: string;
 				headerImageUrl: string | null;
 				bio: string;
+				aboutBody: string;
+				aboutInterests: string[];
 				verificationLinks: { label: string; url: string }[];
 				migrationAliases: string[];
 			};
 		};
 	} = $props();
+
+	const aboutParagraphs = $derived.by(() =>
+		(data.profile.aboutBody || '')
+			.split(/\r?\n\r?\n+/)
+			.map((paragraph) => paragraph.replace(/\r?\n/g, ' ').trim())
+			.filter(Boolean)
+	);
+	const aboutInterests = $derived.by(() =>
+		data.profile.aboutInterests?.length ? data.profile.aboutInterests : data.interests
+	);
 </script>
 
 <svelte:head>
@@ -34,14 +46,14 @@
 
 				<p>{data.profile.bio}</p>
 
-				{#each data.paragraphs as paragraph}
+				{#each aboutParagraphs.length ? aboutParagraphs : data.paragraphs as paragraph}
 					<p>{paragraph}</p>
 				{/each}
 
 				<h2>Interests</h2>
 
 				<div class="about-interests" aria-label="Interests">
-					{#each data.interests as interest}
+					{#each aboutInterests as interest}
 						{#if interest.toLowerCase() === 'photography walks'}
 							<span class="tag-pill">{interest}</span>
 						{:else if interest.toLowerCase() === 'writing'}

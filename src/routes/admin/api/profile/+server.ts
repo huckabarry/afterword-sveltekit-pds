@@ -1,5 +1,10 @@
 import { json } from '@sveltejs/kit';
-import { getSiteProfile, updateSiteProfile, type VerificationLink } from '$lib/server/profile';
+import {
+	getSiteProfile,
+	parseAboutInterestsInput,
+	updateSiteProfile,
+	type VerificationLink
+} from '$lib/server/profile';
 import { requireAdminAccess } from '$lib/server/admin';
 
 function normalizeVerificationLinks(value: unknown): VerificationLink[] {
@@ -30,6 +35,7 @@ export async function POST(event) {
 	const avatarUrl = String(body?.avatarUrl || '').trim();
 	const headerImageUrl = String(body?.headerImageUrl || '').trim();
 	const bio = String(body?.bio || '').trim();
+	const aboutBody = String(body?.aboutBody || '').trim();
 	const verificationLinks = normalizeVerificationLinks(body?.verificationLinks);
 
 	if (!displayName || !avatarUrl || !bio) {
@@ -41,6 +47,8 @@ export async function POST(event) {
 		avatarUrl,
 		headerImageUrl: headerImageUrl || null,
 		bio,
+		aboutBody,
+		aboutInterests: parseAboutInterestsInput(String(body?.aboutInterests || '')),
 		verificationLinks,
 		migrationAliases: Array.isArray(body?.migrationAliases)
 			? body.migrationAliases.map((item: unknown) => String(item || '').trim()).filter(Boolean)

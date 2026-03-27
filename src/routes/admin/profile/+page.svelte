@@ -7,11 +7,14 @@
 					displayName: form.displayName,
 					avatarUrl: form.avatarUrl,
 					headerImageUrl: form.headerImageUrl,
-					bio: form.bio
+					bio: form.bio,
+					aboutBody: form.aboutBody,
+					aboutInterests: form.aboutInterestsInput
 				}
 			: data.profile
 	);
 
+	const previewAboutInterestsInput = $derived(form?.aboutInterestsInput || data.aboutInterestsInput);
 	const previewLinksInput = $derived(form?.verificationLinksInput || data.verificationLinksInput);
 	const previewMigrationAliasesInput = $derived(form?.migrationAliasesInput || data.migrationAliasesInput);
 </script>
@@ -21,7 +24,7 @@
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Edit profile</p>
-				<h2>Identity, avatar, and verification links</h2>
+				<h2>Identity, about copy, and verification links</h2>
 			</div>
 		</div>
 
@@ -68,6 +71,24 @@
 			<label class="admin-field">
 				<span>Bio</span>
 				<textarea name="bio" rows="4">{form?.bio || data.profile.bio}</textarea>
+			</label>
+
+			<label class="admin-field">
+				<span>About section</span>
+				<textarea
+					name="aboutBody"
+					rows="10"
+					placeholder="Write the longer About page copy here. Separate paragraphs with a blank line."
+				>{form?.aboutBody || data.profile.aboutBody}</textarea>
+			</label>
+
+			<label class="admin-field">
+				<span>About interests</span>
+				<textarea
+					name="aboutInterests"
+					rows="8"
+					placeholder="One interest per line"
+				>{form?.aboutInterestsInput || data.aboutInterestsInput}</textarea>
 			</label>
 
 			<label class="admin-field">
@@ -122,6 +143,26 @@
 					<p>{previewProfile.bio}</p>
 				</div>
 			</div>
+
+			{#if previewProfile.aboutBody?.trim()}
+				<div class="admin-link-list">
+					<p><strong>About</strong></p>
+					{#each previewProfile.aboutBody.split(/\r?\n\r?\n+/).map((paragraph) => paragraph.replace(/\r?\n/g, ' ').trim()).filter(Boolean) as paragraph}
+						<p>{paragraph}</p>
+					{/each}
+				</div>
+			{/if}
+
+			{#if previewAboutInterestsInput.trim()}
+				<div class="admin-field-note">
+					<strong>Interests:</strong>
+					<ul class="admin-link-list">
+						{#each previewAboutInterestsInput.split(/\r?\n/).filter(Boolean) as interest}
+							<li>{interest}</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 
 			{#if previewLinksInput.trim()}
 				<ul class="admin-link-list">

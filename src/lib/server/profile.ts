@@ -1,4 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
+import { getAboutContent } from '$lib/server/content';
 
 type ProfileRow = Record<string, unknown>;
 
@@ -12,15 +13,21 @@ export type SiteProfile = {
 	avatarUrl: string;
 	headerImageUrl: string | null;
 	bio: string;
+	aboutBody: string;
+	aboutInterests: string[];
 	verificationLinks: VerificationLink[];
 	migrationAliases: string[];
 };
+
+const DEFAULT_ABOUT_CONTENT = getAboutContent();
 
 const DEFAULT_PROFILE: SiteProfile = {
 	displayName: 'Bryan Robb',
 	avatarUrl: '/assets/images/status-avatar.jpg',
 	headerImageUrl: null,
 	bio: 'Writer, photographer, and urban planner publishing from Afterword.',
+	aboutBody: DEFAULT_ABOUT_CONTENT.paragraphs.join('\n\n'),
+	aboutInterests: DEFAULT_ABOUT_CONTENT.interests,
 	verificationLinks: [{ label: 'Bluesky', url: 'https://bsky.app/profile/afterword.blog' }],
 	migrationAliases: []
 };
@@ -130,6 +137,33 @@ function serializeMigrationAliases(aliases: string[]) {
 	return JSON.stringify(dedupeMigrationAliases(aliases));
 }
 
+function parseAboutInterests(value: unknown): string[] {
+	if (typeof value !== 'string' || !value.trim()) {
+		return DEFAULT_PROFILE.aboutInterests;
+	}
+
+	try {
+		const parsed = JSON.parse(value);
+		if (!Array.isArray(parsed)) return DEFAULT_PROFILE.aboutInterests;
+
+		const interests = parsed
+			.map((item) => String(item || '').trim())
+			.filter(Boolean);
+
+		return interests.length ? interests : [];
+	} catch {
+		return DEFAULT_PROFILE.aboutInterests;
+	}
+}
+
+function serializeAboutInterests(interests: string[]) {
+	return JSON.stringify(
+		interests
+			.map((item) => String(item || '').trim())
+			.filter(Boolean)
+	);
+}
+
 function mapProfile(row: ProfileRow | null | undefined): SiteProfile {
 	if (!row) return DEFAULT_PROFILE;
 
@@ -138,6 +172,8 @@ function mapProfile(row: ProfileRow | null | undefined): SiteProfile {
 		avatarUrl: normalizeUrl(String(row.avatar_url || ''), DEFAULT_PROFILE.avatarUrl) || DEFAULT_PROFILE.avatarUrl,
 		headerImageUrl: normalizeUrl(String(row.header_image_url || ''), null),
 		bio: String(row.bio || DEFAULT_PROFILE.bio),
+		aboutBody: String(row.about_body || DEFAULT_PROFILE.aboutBody),
+		aboutInterests: parseAboutInterests(row.about_interests_json),
 		verificationLinks: parseVerificationLinks(row.verification_links_json),
 		migrationAliases: parseMigrationAliases(row.migration_aliases_json)
 	};
@@ -148,10 +184,12 @@ export async function getSiteProfile(event: Pick<RequestEvent, 'platform'>): Pro
 	if (!db) return DEFAULT_PROFILE;
 
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN migration_aliases_json TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_body TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_interests_json TEXT`).run().catch(() => {});
 
 	const row = await db
 		.prepare(
-			`SELECT display_name, avatar_url, header_image_url, bio, verification_links_json, migration_aliases_json
+			`SELECT display_name, avatar_url, header_image_url, bio, about_body, about_interests_json, verification_links_json, migration_aliases_json
 			 FROM site_profile
 			 WHERE id = 1
 			 LIMIT 1`
@@ -170,16 +208,22 @@ export async function updateSiteProfile(
 		throw new Error('D1 database is not configured');
 	}
 
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN migration_aliases_json TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_body TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_interests_json TEXT`).run().catch(() => {});
+
 	await db
 		.prepare(
 			`INSERT INTO site_profile (
-				id, display_name, avatar_url, header_image_url, bio, verification_links_json, migration_aliases_json
-			) VALUES (1, ?, ?, ?, ?, ?, ?)
+				id, display_name, avatar_url, header_image_url, bio, about_body, about_interests_json, verification_links_json, migration_aliases_json
+			) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET
 				display_name = excluded.display_name,
 				avatar_url = excluded.avatar_url,
 				header_image_url = excluded.header_image_url,
 				bio = excluded.bio,
+				about_body = excluded.about_body,
+				about_interests_json = excluded.about_interests_json,
 				verification_links_json = excluded.verification_links_json,
 				migration_aliases_json = excluded.migration_aliases_json,
 				updated_at = CURRENT_TIMESTAMP`
@@ -189,6 +233,8 @@ export async function updateSiteProfile(
 			normalizeUrl(input.avatarUrl, DEFAULT_PROFILE.avatarUrl),
 			normalizeUrl(input.headerImageUrl || '', null),
 			String(input.bio || DEFAULT_PROFILE.bio).trim(),
+			String(input.aboutBody || DEFAULT_PROFILE.aboutBody).trim(),
+			serializeAboutInterests(input.aboutInterests),
 			serializeVerificationLinks(input.verificationLinks),
 			serializeMigrationAliases(input.migrationAliases)
 		)
@@ -227,4 +273,15 @@ export function parseMigrationAliasesInput(value: string) {
 
 export function formatMigrationAliasesInput(aliases: string[]) {
 	return aliases.join('\n');
+}
+
+export function parseAboutInterestsInput(value: string) {
+	return String(value || '')
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+}
+
+export function formatAboutInterestsInput(interests: string[]) {
+	return interests.join('\n');
 }
