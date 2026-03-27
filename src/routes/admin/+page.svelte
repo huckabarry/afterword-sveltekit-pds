@@ -6,11 +6,16 @@
 	}
 </script>
 
-<section class="admin-panel">
-	<div class="admin-panel__hero">
-		<div>
+<section class="admin-panel admin-dashboard">
+	<section class="admin-card admin-dashboard__hero">
+		<div class="admin-dashboard__hero-copy">
 			<p class="admin-eyebrow">Back room</p>
 			<h2 class="admin-panel__title">A quieter way to run the social side of the site.</h2>
+			<p class="admin-dashboard__lede">
+				Recent replies are the main thing to keep an eye on here. The counts give you a quick sense of
+				motion, and the smaller side rail keeps Bluesky mirrors and webmentions available without crowding
+				the page.
+			</p>
 		</div>
 
 		<div class="admin-summary-grid">
@@ -31,35 +36,15 @@
 				<span class="admin-stat__label">Mirrored Bluesky posts</span>
 			</div>
 		</div>
-	</div>
+	</section>
 
-	<div class="admin-grid">
-		<section class="admin-card">
+	<div class="admin-dashboard__layout">
+		<section class="admin-card admin-dashboard__primary">
 			<div class="admin-card__head">
-				<h3>Mirrored Bluesky posts</h3>
-				<a href="/admin/posts">View all</a>
-			</div>
-
-			{#if data.mirroredStatuses.length}
-				<ul class="admin-list">
-					{#each data.mirroredStatuses as post}
-						<li class="admin-list-item">
-							<div>
-								<p class="admin-list-item__title">{post.displayName || post.handle}</p>
-								<p class="admin-list-item__meta">{post.text}</p>
-							</div>
-							<a class="admin-pill-link" href={`/admin/compose?replyTo=${encodeURIComponent(post.apObjectId)}`}>Reply on AP</a>
-						</li>
-					{/each}
-				</ul>
-			{:else}
-				<p class="admin-empty">No mirrored Bluesky posts available right now.</p>
-			{/if}
-		</section>
-
-		<section class="admin-card">
-			<div class="admin-card__head">
-				<h3>Recent replies</h3>
+				<div>
+					<p class="admin-eyebrow">Main queue</p>
+					<h3>Recent replies</h3>
+				</div>
 				<a href="/admin/replies">View all</a>
 			</div>
 
@@ -145,28 +130,59 @@
 			{/if}
 		</section>
 
-		<section class="admin-card">
-			<div class="admin-card__head">
-				<h3>Recent webmentions</h3>
-				<a href="/admin/webmentions">Moderate</a>
-			</div>
+		<div class="admin-dashboard__rail">
+			<section class="admin-card admin-dashboard__secondary">
+				<div class="admin-card__head">
+					<div>
+						<p class="admin-eyebrow">Publishing</p>
+						<h3>Mirrored Bluesky posts</h3>
+					</div>
+					<a href="/admin/posts">View all</a>
+				</div>
 
-			{#if data.webmentions.length}
-				<ul class="admin-list">
-					{#each data.webmentions as mention}
-						<li class="admin-list-item">
-							<div>
-								<p class="admin-list-item__title">
-									{mention.sourceTitle || mention.sourceDomain || mention.sourceUrl}
-								</p>
-								<p class="admin-list-item__meta">{mention.status} / {mention.targetUrl}</p>
-							</div>
-						</li>
-					{/each}
-				</ul>
-			{:else}
-				<p class="admin-empty">No webmentions yet.</p>
-			{/if}
-		</section>
+				{#if data.mirroredStatuses.length}
+					<ul class="admin-list">
+						{#each data.mirroredStatuses as post}
+							<li class="admin-list-item">
+								<div>
+									<p class="admin-list-item__title">{post.displayName || post.handle}</p>
+									<p class="admin-list-item__meta">{post.text}</p>
+								</div>
+								<a class="admin-pill-link" href={`/admin/compose?replyTo=${encodeURIComponent(post.apObjectId)}`}>Reply on AP</a>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="admin-empty">No mirrored Bluesky posts available right now.</p>
+				{/if}
+			</section>
+
+			<section class="admin-card admin-dashboard__secondary">
+				<div class="admin-card__head">
+					<div>
+						<p class="admin-eyebrow">Mentions</p>
+						<h3>Recent webmentions</h3>
+					</div>
+					<a href="/admin/webmentions">Moderate</a>
+				</div>
+
+				{#if data.webmentions.length}
+					<ul class="admin-list">
+						{#each data.webmentions as mention}
+							<li class="admin-list-item">
+								<div>
+									<p class="admin-list-item__title">
+										{mention.sourceTitle || mention.sourceDomain || mention.sourceUrl}
+									</p>
+									<p class="admin-list-item__meta">{mention.status} / {mention.targetUrl}</p>
+								</div>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="admin-empty">No webmentions yet.</p>
+				{/if}
+			</section>
+		</div>
 	</div>
 </section>
