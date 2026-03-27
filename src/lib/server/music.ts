@@ -6,14 +6,11 @@ const albumArchiveFiles = import.meta.glob(['/data/archive/albumwhale/**/*.md', 
 	import: 'default',
 	eager: true
 }) as Record<string, string>;
-const trackArchiveFiles = import.meta.glob(
-	['/data/archive/crucial-tracks/**/*.md', '/archive/crucial-tracks/**/*.md'],
-	{
+const trackArchiveFiles = import.meta.glob('/archive/crucial-tracks/**/*.md', {
 	query: '?raw',
 	import: 'default',
 	eager: true
-	}
-) as Record<string, string>;
+}) as Record<string, string>;
 
 type Frontmatter = Record<string, string | boolean | number | null>;
 
