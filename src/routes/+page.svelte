@@ -281,6 +281,19 @@
 		object-fit: cover;
 	}
 
+	.section-block-status__card .status-row__media:not(.status-row__media--multi) .status-row__image {
+		display: grid;
+		place-items: center;
+		background: color-mix(in srgb, var(--surface) 88%, black 12%);
+	}
+
+	.section-block-status__card .status-row__media:not(.status-row__media--multi) .status-row__image img {
+		height: auto;
+		max-height: min(34rem, 72vh);
+		object-fit: contain;
+		background: transparent;
+	}
+
 	.section-block-status__card .status-row__media--multi .status-row__image img {
 		height: 9rem;
 	}
