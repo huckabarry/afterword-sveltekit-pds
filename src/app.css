@@ -1615,6 +1615,8 @@ p:last-child {
 
 .admin-shell {
 	min-width: 0;
+	width: min(100%, 820px);
+	margin-inline: auto;
 }
 
 .admin-sidebar {
@@ -1812,6 +1814,7 @@ p:last-child {
 .admin-panel {
 	display: grid;
 	gap: 1.25rem;
+	width: 100%;
 }
 
 .admin-panel__hero {
@@ -1896,6 +1899,8 @@ p:last-child {
 
 .admin-card--narrow {
 	max-width: 720px;
+	width: 100%;
+	justify-self: center;
 }
 
 .admin-feed-card {
