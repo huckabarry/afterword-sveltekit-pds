@@ -22,6 +22,37 @@
 	let synced = $state(0);
 	let failures = $state<string[]>([]);
 	let message = $state('');
+	let copiedPath = $state('');
+
+	function getCopyPath(photo: (typeof data.photos)[number]) {
+		if (photo.originalUrl?.startsWith('/')) {
+			return photo.originalUrl;
+		}
+
+		if (photo.displayUrl?.startsWith('/')) {
+			return photo.displayUrl;
+		}
+
+		try {
+			return new URL(photo.originalUrl || photo.displayUrl || photo.imageUrl).pathname;
+		} catch {
+			return photo.originalUrl || photo.displayUrl || photo.imageUrl;
+		}
+	}
+
+	async function copyPath(photo: (typeof data.photos)[number]) {
+		const path = getCopyPath(photo);
+
+		try {
+			await navigator.clipboard.writeText(path);
+			copiedPath = path;
+			window.setTimeout(() => {
+				if (copiedPath === path) copiedPath = '';
+			}, 1800);
+		} catch {
+			copiedPath = '';
+		}
+	}
 
 	async function syncPhotos() {
 		if (syncing) return;
@@ -139,13 +170,28 @@
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Manifest</p>
-				<h2>Recent synced images</h2>
+				<h2>Synced images</h2>
 			</div>
+			<p class="admin-field-note">
+				Showing {data.photos.length ? `${(data.pagination.page - 1) * data.pagination.limit + 1}-${(data.pagination.page - 1) * data.pagination.limit + data.photos.length}` : '0'} of {data.pagination.total}
+			</p>
 		</div>
 
-		{#if data.recentPhotos.length}
+		{#if data.pagination.totalPages > 1}
+			<nav class="admin-image-pagination" aria-label="Image pages">
+				{#if data.pagination.page > 1}
+					<a class="admin-pill-link" href={`/admin/photos?page=${data.pagination.page - 1}`}>Previous</a>
+				{/if}
+				<span class="admin-field-note">Page {data.pagination.page} of {data.pagination.totalPages}</span>
+				{#if data.pagination.page < data.pagination.totalPages}
+					<a class="admin-pill-link" href={`/admin/photos?page=${data.pagination.page + 1}`}>Next</a>
+				{/if}
+			</nav>
+		{/if}
+
+		{#if data.photos.length}
 			<div class="admin-image-grid">
-				{#each data.recentPhotos as photo}
+				{#each data.photos as photo}
 					<article class="admin-image-card">
 						<a
 							class="admin-image-card__thumb"
@@ -183,13 +229,31 @@
 									<a href={photo.displayUrl} target="_blank" rel="noreferrer">Display</a>
 								{/if}
 								<a href={photo.postSourceUrl} target="_blank" rel="noreferrer">Ghost</a>
+								<button class="admin-pill-link" type="button" onclick={() => copyPath(photo)}>
+									{copiedPath === getCopyPath(photo) ? 'Copied' : 'Copy path'}
+								</button>
 							</div>
+							<p class="admin-image-card__path">
+								<code>{getCopyPath(photo)}</code>
+							</p>
 						</div>
 					</article>
 				{/each}
 			</div>
 		{:else}
 			<p class="admin-field-note">No images are in the manifest yet. Run a sync to populate this view.</p>
+		{/if}
+
+		{#if data.pagination.totalPages > 1}
+			<nav class="admin-image-pagination admin-image-pagination--bottom" aria-label="Image pages">
+				{#if data.pagination.page > 1}
+					<a class="admin-pill-link" href={`/admin/photos?page=${data.pagination.page - 1}`}>Previous</a>
+				{/if}
+				<span class="admin-field-note">Page {data.pagination.page} of {data.pagination.totalPages}</span>
+				{#if data.pagination.page < data.pagination.totalPages}
+					<a class="admin-pill-link" href={`/admin/photos?page=${data.pagination.page + 1}`}>Next</a>
+				{/if}
+			</nav>
 		{/if}
 	</div>
 </section>
@@ -247,8 +311,30 @@
 		margin-top: 0.25rem;
 	}
 
-	.admin-image-card__actions a {
+	.admin-image-card__actions a,
+	.admin-image-card__actions button {
 		font-size: 0.9rem;
 		text-decoration: none;
+	}
+
+	.admin-image-card__path {
+		margin: 0.15rem 0 0;
+		font-size: 0.8rem;
+		color: rgba(17, 17, 17, 0.58);
+		word-break: break-all;
+	}
+
+	.admin-image-pagination {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 1rem;
+	}
+
+	.admin-image-pagination--bottom {
+		margin-top: 1rem;
+		margin-bottom: 0;
 	}
 </style>

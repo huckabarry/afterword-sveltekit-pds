@@ -299,6 +299,72 @@ export async function getRecentManifestGalleryPhotos(
 	return (result.results || []).map(toGalleryPhotoItem);
 }
 
+export async function getPagedManifestGalleryPhotos(
+	event: Pick<RequestEvent, 'platform'>,
+	options: {
+		page?: number;
+		limit?: number;
+	} = {}
+) {
+	const db = getGalleryDb(event);
+	if (!db) {
+		return {
+			photos: [] satisfies GalleryPhotoItem[],
+			page: 1,
+			limit: 48,
+			total: 0,
+			totalPages: 1
+		};
+	}
+
+	await ensureGalleryPhotoManifestSchema(db);
+	const page = Math.max(1, Math.floor(options.page || 1));
+	const limit = Math.min(Math.max(Math.floor(options.limit || 48), 1), 96);
+	const offset = (page - 1) * limit;
+	const totalRow = await db
+		.prepare(`SELECT COUNT(*) AS total_count FROM gallery_photo_manifest`)
+		.first<{ total_count?: number | null }>();
+	const total = Number(totalRow?.total_count || 0);
+	const totalPages = Math.max(1, Math.ceil(total / limit));
+	const normalizedPage = Math.min(page, totalPages);
+	const normalizedOffset = (normalizedPage - 1) * limit;
+	const result = await db
+		.prepare(
+			`SELECT
+				id,
+				post_id,
+				post_title,
+				post_path,
+				post_source_url,
+				post_published_at,
+				image_url,
+				alt,
+				sort_index,
+				asset_key,
+				is_synced_to_r2,
+				original_url,
+				display_url,
+				lightbox_url,
+				width,
+				height,
+				synced_at,
+				updated_at
+			FROM gallery_photo_manifest
+			ORDER BY post_published_at DESC, sort_index ASC
+			LIMIT ? OFFSET ?`
+		)
+		.bind(limit, normalizedOffset)
+		.all<GalleryPhotoManifestRow>();
+
+	return {
+		photos: (result.results || []).map(toGalleryPhotoItem),
+		page: normalizedPage,
+		limit,
+		total,
+		totalPages
+	};
+}
+
 export async function syncPhotoManifestBatch(
 	event: Pick<RequestEvent, 'platform'>,
 	options: SyncPhotoManifestBatchOptions = {}
