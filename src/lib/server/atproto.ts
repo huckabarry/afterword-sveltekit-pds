@@ -3,7 +3,7 @@ const BLOB_URL = 'https://bsky.social/xrpc/com.atproto.sync.getBlob';
 const RESOLVE_HANDLE_URL = 'https://bsky.social/xrpc/com.atproto.identity.resolveHandle';
 const AUTHOR_FEED_URL = 'https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed';
 const CHECKIN_COLLECTION = 'blog.afterword.checkin';
-const DEFAULT_REPO = 'afterword.blog';
+const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 const FEED_LIMIT = 20;
 const STATUS_CACHE_TTL_MS = 60_000;
 
@@ -81,6 +81,10 @@ function getRepos() {
 		.split(',')
 		.map((value) => value.trim())
 		.filter(Boolean);
+}
+
+function getPrimaryRepo() {
+	return getRepos()[0] || DEFAULT_REPO;
 }
 
 function getStatusCache() {
@@ -511,10 +515,12 @@ export async function getCheckins() {
 	}
 }
 
-async function fetchStatuses(actor = DEFAULT_REPO, includeThreadContext = true) {
+async function fetchStatuses(actor: string | undefined, includeThreadContext = true) {
+	const targetActor = actor || getPrimaryRepo();
+
 	try {
 		const response = await fetch(
-			`${AUTHOR_FEED_URL}?actor=${encodeURIComponent(actor)}&limit=${FEED_LIMIT}`,
+			`${AUTHOR_FEED_URL}?actor=${encodeURIComponent(targetActor)}&limit=${FEED_LIMIT}`,
 			{
 				headers: { accept: 'application/json' }
 			}
@@ -527,7 +533,7 @@ async function fetchStatuses(actor = DEFAULT_REPO, includeThreadContext = true) 
 		const data = (await response.json()) as { feed?: Array<Record<string, any>> };
 
 		const posts = (data.feed || [])
-			.map((item) => normalizeStatus(item, actor))
+			.map((item) => normalizeStatus(item, targetActor))
 			.filter((post): post is StatusPost => Boolean(post));
 
 		return includeThreadContext
@@ -540,15 +546,16 @@ async function fetchStatuses(actor = DEFAULT_REPO, includeThreadContext = true) 
 }
 
 async function getCachedStatuses(
-	actor = DEFAULT_REPO,
+	actor?: string,
 	options?: {
 		includeThreadContext?: boolean;
 		freshnessMs?: number;
 	}
 ) {
+	const targetActor = actor || getPrimaryRepo();
 	const includeThreadContext = options?.includeThreadContext ?? true;
 	const freshnessMs = Math.max(0, options?.freshnessMs ?? STATUS_CACHE_TTL_MS);
-	const cacheKey = `${actor}:${includeThreadContext ? 'full' : 'lite'}`;
+	const cacheKey = `${targetActor}:${includeThreadContext ? 'full' : 'lite'}`;
 	const cache = getStatusCache();
 	const cached = cache.get(cacheKey);
 
@@ -556,7 +563,7 @@ async function getCachedStatuses(
 		return cached.statuses;
 	}
 
-	const statuses = await fetchStatuses(actor, includeThreadContext);
+	const statuses = await fetchStatuses(targetActor, includeThreadContext);
 	cache.set(cacheKey, {
 		expiresAt: Date.now() + freshnessMs,
 		statuses
@@ -564,11 +571,11 @@ async function getCachedStatuses(
 	return statuses;
 }
 
-export async function getStatuses(actor = DEFAULT_REPO) {
+export async function getStatuses(actor?: string) {
 	return getCachedStatuses(actor, { includeThreadContext: true });
 }
 
-export async function getStatusesLite(actor = DEFAULT_REPO) {
+export async function getStatusesLite(actor?: string) {
 	return getCachedStatuses(actor, { includeThreadContext: false });
 }
 

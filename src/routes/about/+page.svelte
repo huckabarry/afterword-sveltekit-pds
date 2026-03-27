@@ -60,15 +60,6 @@
 					{/each}
 				</div>
 
-				{#if data.profile.verificationLinks.length}
-					<h2>Elsewhere</h2>
-					<ul>
-						{#each data.profile.verificationLinks as link}
-							<li><a href={link.url} target="_blank" rel="noreferrer me">{link.label}</a></li>
-						{/each}
-					</ul>
-				{/if}
-
 				{#if data.profile.migrationAliases?.length}
 					<h2>Moved from</h2>
 					<p>This account also replaces older ActivityPub identities I previously used.</p>
