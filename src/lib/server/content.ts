@@ -24,6 +24,12 @@ export type NowIntroContent = {
 	paragraphs: string[];
 };
 
+export type SimplePageContent = {
+	title: string;
+	description: string;
+	paragraphs: string[];
+};
+
 function parseFrontmatter(source: string): ParsedContent {
 	const normalized = String(source || '');
 	const match = normalized.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
@@ -103,4 +109,18 @@ export function getNowIntroContent(): NowIntroContent {
 		description: String(parsed.data.description || ''),
 		paragraphs: bodyToParagraphs(parsed.body)
 	};
+}
+
+export function getSimplePageContent(name: string, fallbackTitle: string): SimplePageContent {
+	const parsed = parseFrontmatter(readContentFile(name));
+
+	return {
+		title: String(parsed.data.title || fallbackTitle),
+		description: String(parsed.data.description || ''),
+		paragraphs: bodyToParagraphs(parsed.body)
+	};
+}
+
+export function getColophonContent(): SimplePageContent {
+	return getSimplePageContent('colophon.md', 'Colophon');
 }

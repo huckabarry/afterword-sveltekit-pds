@@ -96,7 +96,8 @@
 					</li>
 					<li>
 						If you’re mostly trying to figure out who I am before diving in, the
-						<a href="/about">About page</a> fills in more of the background.
+						<a href="/about">About page</a> fills in more of the background, and the
+						<a href="/colophon">Colophon</a> explains how this site is put together.
 					</li>
 				</ul>
 

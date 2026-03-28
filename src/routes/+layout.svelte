@@ -178,6 +178,8 @@
 				<a class="site-foot-nav-item" href="/photos">Gallery</a>
 				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/now">Now</a>
+				<span class="site-foot-separator">/</span>
+				<a class="site-foot-nav-item" href="/colophon">Colophon</a>
 				{#each profile.verificationLinks as link}
 					<span class="site-foot-separator">/</span>
 					<a class="site-foot-nav-item" href={link.url} target="_blank" rel="noreferrer me">{link.label}</a>
