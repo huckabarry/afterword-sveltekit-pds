@@ -24,10 +24,19 @@
 				</p>
 
 				<p>
-					By profession I’m an urban planner. Outside of work I’m usually taking pictures,
-					trying to grow tomatoes, listening closely to music, wandering around with too many
-					thoughts about buildings and public space, or tinkering with personal publishing
-					systems because I still believe the internet should have more human-sized corners.
+					By profession I’m an urban planner. Outside of work I’m usually taking pictures as
+					an amateur photographer, trying to grow tomatoes, or listening closely to music. I
+					play guitar too, usually in a nerdy pedals-and-amps way, but mostly because getting
+					lost in it is still one of the best ways I know to reset and feel a little more like
+					myself. I’m also married and a dad of two little ones, which shapes the rhythms of
+					this place even when I’m not writing about family directly.
+				</p>
+
+				<p>
+					A lot of what shows up here comes from wandering around with too many thoughts about
+					buildings, public space, neighborhood life, creativity, and the question of how to
+					make a personal site feel more human than a profile page. I still believe the
+					internet should have more human-sized corners.
 				</p>
 
 				<h2>Start Here</h2>
@@ -48,7 +57,7 @@
 					</li>
 					<li>
 						<a href="/listening">Listening Now</a> and <a href="/music">Music</a> if you want
-						the soundtrack.
+						the soundtrack, or the part of my brain that gets excited about guitar sounds.
 					</li>
 					<li>
 						<a href="/check-ins">Check-ins</a> if you like maps, places, and traces of where

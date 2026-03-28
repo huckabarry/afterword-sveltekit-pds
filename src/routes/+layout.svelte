@@ -147,7 +147,6 @@
 							<li class="site-nav-list-item"><a class="site-nav-item" href="/hello">Hello</a></li>
 							<li class="site-nav-list-item"><a class="site-nav-item" href="/photos">Gallery</a></li>
 							<li class="site-nav-list-item"><a class="site-nav-item" href="/now">Now</a></li>
-							<li class="site-nav-list-item"><a class="site-nav-item" href="/about">About</a></li>
 						</ul>
 					</nav>
 
