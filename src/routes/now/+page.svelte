@@ -1,9 +1,29 @@
 <script lang="ts">
 	import type { Checkin } from '$lib/server/atproto';
-	import { formatDate } from '$lib/format';
-	import CheckinMap from '$lib/components/CheckinMap.svelte';
 	import type { BlogPost } from '$lib/server/ghost';
 	import type { AlbumEntry, TrackEntry } from '$lib/server/music';
+
+	type TimelineLink = {
+		label: string;
+		url: string;
+		external?: boolean;
+	};
+
+	type TimelineItem = {
+		id: string;
+		label: string;
+		title: string;
+		href: string;
+		date: Date;
+		dateLabel: string;
+		summary: string;
+		meta: string;
+		imageUrl: string | null;
+		imageAlt: string;
+		tags: string[];
+		audioUrl: string | null;
+		links: TimelineLink[];
+	};
 
 	let {
 		data
@@ -14,81 +34,196 @@
 				description: string;
 				paragraphs: string[];
 			};
-			nowPost: BlogPost | null;
-			nowImages: Array<{
-				id: string;
-				imageUrl: string;
-				alt: string;
-			}>;
-			nowContentHtml: string;
-			latestCheckin: Checkin | null;
+			nowPosts: BlogPost[];
+			bookPosts: BlogPost[];
+			checkins: Checkin[];
 			albums: AlbumEntry[];
 			tracks: TrackEntry[];
 		};
 	} = $props();
 
-	let nowImageIndex = $state(0);
-	let currentAlbumPage = $state(0);
-	let touchStartX = 0;
-	let touchDeltaX = 0;
-
-	function showPrevNowImage() {
-		nowImageIndex = (nowImageIndex - 1 + data.nowImages.length) % data.nowImages.length;
-	}
-
-	function showNextNowImage() {
-		nowImageIndex = (nowImageIndex + 1) % data.nowImages.length;
-	}
-
-	function getAlbumPageCount() {
-		return Math.max(1, Math.ceil(data.albums.length / 2));
-	}
-
-	function getVisibleAlbums() {
-		const start = currentAlbumPage * 2;
-		return data.albums.slice(start, start + 2);
-	}
-
-	function showPreviousAlbumPage() {
-		currentAlbumPage = (currentAlbumPage - 1 + getAlbumPageCount()) % getAlbumPageCount();
-	}
-
-	function showNextAlbumPage() {
-		currentAlbumPage = (currentAlbumPage + 1) % getAlbumPageCount();
-	}
-
-	function handleNowTouchStart(event: TouchEvent) {
-		touchStartX = event.touches[0]?.clientX ?? 0;
-		touchDeltaX = 0;
-	}
-
-	function handleNowTouchMove(event: TouchEvent) {
-		const currentX = event.touches[0]?.clientX ?? touchStartX;
-		touchDeltaX = currentX - touchStartX;
-	}
-
-	function handleNowTouchEnd() {
-		if (Math.abs(touchDeltaX) < 40) {
-			touchDeltaX = 0;
-			return;
-		}
-
-		if (touchDeltaX < 0) {
-			showNextNowImage();
-		} else {
-			showPrevNowImage();
-		}
-
-		touchDeltaX = 0;
-	}
-
 	function getNowIntroParagraph() {
 		return data.intro.paragraphs[0] || data.intro.description;
 	}
 
-	function getAlbumLead() {
-		return data.albums[0] ?? null;
+	function stripHtml(value: string) {
+		return String(value || '')
+			.replace(/<[^>]+>/g, ' ')
+			.replace(/&nbsp;/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
 	}
+
+	function summarize(value: string, maxLength = 220) {
+		const text = stripHtml(value);
+		if (!text || text.length <= maxLength) {
+			return text;
+		}
+
+		const clipped = text.slice(0, maxLength).replace(/\s+\S*$/, '');
+		return `${clipped}…`;
+	}
+
+	function formatTimelineDate(value: Date) {
+		const date = value instanceof Date ? value : new Date(value);
+		const currentYear = new Date().getFullYear();
+
+		return new Intl.DateTimeFormat('en-GB', {
+			day: '2-digit',
+			month: 'short',
+			...(date.getFullYear() !== currentYear ? { year: 'numeric' as const } : {})
+		}).format(date);
+	}
+
+	function formatTagLabel(slug: string) {
+		return String(slug || '')
+			.split('-')
+			.filter(Boolean)
+			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+			.join(' ');
+	}
+
+	function getPostTimelineLabel(post: BlogPost) {
+		if (post.tags.includes('books') || post.tags.includes('book-reviews')) {
+			return 'Book';
+		}
+
+		if (
+			post.tags.includes('gallery') ||
+			post.tags.includes('hash-gallery') ||
+			post.tags.includes('photography')
+		) {
+			return 'Photo Note';
+		}
+
+		return 'Now';
+	}
+
+	function getPostTimelineTags(post: BlogPost) {
+		return (post.tags || [])
+			.filter(
+				(tag) =>
+					tag &&
+					!tag.startsWith('hash-') &&
+					tag !== 'now' &&
+					tag !== 'books' &&
+					tag !== 'book-reviews'
+			)
+			.slice(0, 3)
+			.map(formatTagLabel);
+	}
+
+	function toPostTimelineItem(post: BlogPost): TimelineItem {
+		const isBook = post.tags.includes('books') || post.tags.includes('book-reviews');
+		const summary = post.excerpt || summarize(post.html);
+
+		return {
+			id: `post-${post.slug}`,
+			label: getPostTimelineLabel(post),
+			title: post.title,
+			href: post.path,
+			date: post.publishedAt,
+			dateLabel: formatTimelineDate(post.publishedAt),
+			summary,
+			meta: '',
+			imageUrl: post.coverImage || null,
+			imageAlt: post.title,
+			tags: getPostTimelineTags(post),
+			audioUrl: null,
+			links: [
+				{
+					label: isBook ? 'Read note' : 'Read post',
+					url: post.path
+				}
+			]
+		};
+	}
+
+	function toCheckinTimelineItem(checkin: Checkin): TimelineItem {
+		return {
+			id: `checkin-${checkin.slug}`,
+			label: 'Check-In',
+			title: checkin.name,
+			href: checkin.canonicalPath,
+			date: checkin.visitedAt,
+			dateLabel: formatTimelineDate(checkin.visitedAt),
+			summary: summarize(checkin.excerpt || checkin.note || checkin.place || ''),
+			meta: checkin.place || checkin.venueCategory || '',
+			imageUrl: checkin.coverImage || checkin.photoUrls[0] || null,
+			imageAlt: checkin.name,
+			tags: (checkin.tags || []).slice(0, 3).map(formatTagLabel),
+			audioUrl: null,
+			links: [
+				{ label: 'View check-in', url: checkin.canonicalPath },
+				{ label: 'All check-ins', url: '/check-ins' }
+			]
+		};
+	}
+
+	function toTrackTimelineItem(track: TrackEntry): TimelineItem {
+		return {
+			id: `track-${track.slug}`,
+			label: 'Listening',
+			title: track.trackTitle,
+			href: track.localPath,
+			date: track.publishedAt,
+			dateLabel: formatTimelineDate(track.publishedAt),
+			summary: summarize(track.note || ''),
+			meta: track.artist,
+			imageUrl: track.artworkUrl || null,
+			imageAlt: `${track.trackTitle} by ${track.artist}`,
+			tags: [],
+			audioUrl: track.previewUrl || null,
+			links: [
+				{ label: 'Track note', url: track.localPath },
+				...track.listenLinks.slice(0, 3).map((link) => ({
+					label: link.label,
+					url: link.url,
+					external: true
+				}))
+			]
+		};
+	}
+
+	function toAlbumTimelineItem(album: AlbumEntry): TimelineItem {
+		return {
+			id: `album-${album.slug}`,
+			label: 'Album Rotation',
+			title: album.albumTitle,
+			href: album.localPath,
+			date: album.publishedAt,
+			dateLabel: formatTimelineDate(album.publishedAt),
+			summary: summarize(album.note || ''),
+			meta: album.artist,
+			imageUrl: album.coverImage || null,
+			imageAlt: `${album.albumTitle} by ${album.artist}`,
+			tags: [],
+			audioUrl: null,
+			links: [
+				{ label: 'Album note', url: album.localPath },
+				...album.listenLinks.slice(0, 3).map((link) => ({
+					label: link.label,
+					url: link.url,
+					external: true
+				}))
+			]
+		};
+	}
+
+	function getTimelineItems() {
+		return [
+			...data.nowPosts.map(toPostTimelineItem),
+			...data.bookPosts.map(toPostTimelineItem),
+			...data.checkins.map(toCheckinTimelineItem),
+			...data.tracks.map(toTrackTimelineItem),
+			...data.albums.map(toAlbumTimelineItem)
+		]
+			.sort((a, b) => b.date.getTime() - a.date.getTime())
+			.slice(0, 12);
+	}
+
+	let timelineItems = $derived.by(() => getTimelineItems());
+	let indexItems = $derived.by(() => timelineItems.slice(0, 8));
 </script>
 
 <svelte:head>
@@ -106,304 +241,197 @@
 	</article>
 </section>
 
-{#if data.nowPost || data.latestCheckin || data.tracks.length || data.albums.length}
+{#if indexItems.length}
 	<section class="section-block">
 		<h2 class="section-title">On This Page</h2>
-		<div class="now-index" aria-label="Current threads">
-			{#if data.nowPost}
-				<a class="now-index__item" href="#lately">
-					<span class="now-index__label">Lately</span>
-					<strong class="now-index__title">{data.nowPost.title}</strong>
-					<time class="now-index__meta" datetime={data.nowPost.publishedAt.toISOString()}>
-						{formatDate(data.nowPost.publishedAt)}
-					</time>
-				</a>
-			{/if}
-
-			{#if data.latestCheckin}
-				<a class="now-index__item" href="#wandering">
-					<span class="now-index__label">Latest Check-In</span>
-					<strong class="now-index__title">{data.latestCheckin.name}</strong>
-					<span class="now-index__meta">
-						{#if data.latestCheckin.place}{data.latestCheckin.place} · {/if}{formatDate(
-							data.latestCheckin.visitedAt
-						)}
-					</span>
-				</a>
-			{/if}
-
-			{#if data.tracks.length}
-				{@const track = data.tracks[0]}
-				<a class="now-index__item" href="#listening">
-					<span class="now-index__label">Listening</span>
-					<strong class="now-index__title">{track.trackTitle}</strong>
-					<span class="now-index__meta">{track.artist}</span>
-				</a>
-			{/if}
-
-			{#if getAlbumLead()}
-				{@const album = getAlbumLead()}
-				<a class="now-index__item" href="#rotation">
-					<span class="now-index__label">Rotation</span>
-					<strong class="now-index__title">{album.albumTitle}</strong>
-					{#if album.artist}
-						<span class="now-index__meta">{album.artist}</span>
-					{/if}
-				</a>
-			{/if}
-		</div>
+		<ol class="now-index" aria-label="Current threads">
+			{#each indexItems as item}
+				<li class="now-index__row">
+					<a class="now-index__item" href={`#${item.id}`}>
+						<time class="now-index__date" datetime={item.date.toISOString()}>
+							{item.dateLabel}
+						</time>
+						<span class="now-index__rail" aria-hidden="true">
+							<span class="now-index__dot"></span>
+						</span>
+						<div class="now-index__body">
+							<span class="now-index__label">{item.label}</span>
+							<strong class="now-index__title">{item.title}</strong>
+							<div class:now-index__detail--thumb={Boolean(item.imageUrl)} class="now-index__detail">
+								{#if item.imageUrl}
+									<img class="now-index__thumb" src={item.imageUrl} alt={item.imageAlt} />
+								{/if}
+								{#if item.summary}
+									<p class="now-index__summary">{item.summary}</p>
+								{/if}
+							</div>
+						</div>
+					</a>
+				</li>
+			{/each}
+		</ol>
 	</section>
 {/if}
 
-{#if data.nowPost}
-	<section class="section-block" id="lately">
-		<h2 class="section-title">Lately</h2>
-		<article class="content content-page">
-			<div class="post-full-content">
-				<section class="content-body">
-					<div class="entry__meta">
-						<time datetime={data.nowPost.publishedAt.toISOString()}>
-							{formatDate(data.nowPost.publishedAt)}
+{#if timelineItems.length}
+	<section class="section-block">
+		<div class="now-flow" aria-label="Now timeline">
+			{#each timelineItems as item}
+				<article class="now-flow__entry" id={item.id}>
+					<div class="now-flow__date-column">
+						<time class="now-flow__date" datetime={item.date.toISOString()}>
+							{item.dateLabel}
 						</time>
 					</div>
-					<h3 class="entry__title">
-						<a href={data.nowPost.path}>{data.nowPost.title}</a>
-					</h3>
-					{#if data.nowImages.length > 1}
-						<section class="now-carousel" aria-label="Now post images">
-							<div
-								class="now-carousel__frame"
-								role="group"
-								aria-label="Now post image carousel"
-								ontouchstart={handleNowTouchStart}
-								ontouchmove={handleNowTouchMove}
-								ontouchend={handleNowTouchEnd}
-							>
-								<div class="now-carousel__viewport">
-									{#each data.nowImages as image, index}
-										{#if index === nowImageIndex}
-											<a
-												class="now-carousel__slide"
-												href={image.imageUrl}
-												target="_blank"
-												rel="noreferrer"
-											>
-												<img
-													class="now-carousel__image"
-													src={image.imageUrl}
-													alt={image.alt || data.nowPost.title}
-												/>
-											</a>
-										{/if}
-									{/each}
-								</div>
-								<div class="now-carousel__controls">
-									<button class="now-carousel__button" type="button" onclick={showPrevNowImage}>
-										Prev
-									</button>
-									<span class="now-carousel__position">
-										{nowImageIndex + 1} / {data.nowImages.length}
-									</span>
-									<button class="now-carousel__button" type="button" onclick={showNextNowImage}>
-										Next
-									</button>
-								</div>
-								<div class="now-carousel__dots" aria-hidden="true">
-									{#each data.nowImages as _, index}
-										<span class:now-carousel__dot--active={index === nowImageIndex} class="now-carousel__dot"></span>
-									{/each}
-								</div>
-							</div>
-						</section>
-					{/if}
-					<div class="entry__content">
-						{@html data.nowContentHtml}
+					<div class="now-flow__rail" aria-hidden="true">
+						<span class="now-flow__dot"></span>
 					</div>
-				</section>
-			</div>
-		</article>
-	</section>
-{/if}
-
-{#if data.latestCheckin}
-	<section class="section-block section-block-checkin" id="wandering">
-		<h2 class="section-title">Latest Check-In</h2>
-		<article class="checkin-card checkin-card--featured">
-			{#if data.latestCheckin.coverImage}
-				<a class="checkin-card__media" href={data.latestCheckin.canonicalPath}>
-					<img
-						class="checkin-card__image"
-						src={data.latestCheckin.coverImage}
-						alt={data.latestCheckin.name}
-					/>
-				</a>
-			{/if}
-			<div class="checkin-card__body">
-				<div class="checkin-card__meta">
-					<time datetime={data.latestCheckin.visitedAt.toISOString()}>
-						{formatDate(data.latestCheckin.visitedAt)}
-					</time>
-					{#if data.latestCheckin.place}
-						<span>{data.latestCheckin.place}</span>
-					{/if}
-				</div>
-				<h3 class="checkin-card__title">
-					<a href={data.latestCheckin.canonicalPath}>{data.latestCheckin.name}</a>
-				</h3>
-				{#if data.latestCheckin.excerpt || data.latestCheckin.note}
-					<p class="checkin-card__excerpt">
-						{data.latestCheckin.excerpt || data.latestCheckin.note}
-					</p>
-				{/if}
-			</div>
-		</article>
-		{#if data.latestCheckin.mapEmbedUrl}
-			<section class="checkin-map" aria-label="Map">
-				<CheckinMap
-					latitude={data.latestCheckin.latitude}
-					longitude={data.latestCheckin.longitude}
-					name={data.latestCheckin.name}
-				/>
-				<div class="checkin-map__actions">
-					{#if data.latestCheckin.appleMapsUrl}
-						<a class="post-action-link" href={data.latestCheckin.appleMapsUrl} target="_blank" rel="noreferrer">
-							Open in Maps
-						</a>
-					{/if}
-					<a class="post-action-link" href={data.latestCheckin.canonicalPath}>View full check-in</a>
-					<a class="post-action-link" href="/check-ins">All check-ins</a>
-				</div>
-			</section>
-		{/if}
-	</section>
-{/if}
-
-{#if data.tracks.length}
-	<section class="section-block" id="listening">
-		<div class="section-head section-head--now">
-			<h2 class="section-title">Listening Now</h2>
-		</div>
-		<section class="track-list">
-			{#each data.tracks as track}
-				<article class="track-row track-row--now">
-					{#if track.artworkUrl}
-						<a class="track-row__art-link" href={track.localPath}>
-							<img class="track-row__art" src={track.artworkUrl} alt={track.trackTitle} />
-						</a>
-					{/if}
-					<div class="track-row__body track-row__body--now">
-						<a class="track-row__link" href={track.localPath}>
-							<time class="track-row__date" datetime={track.publishedAt.toISOString()}>
-								{track.displayDate}
-							</time>
-							<h3 class="track-row__title">{track.trackTitle}</h3>
-							<p class="track-row__artist">{track.artist}</p>
-						</a>
-					</div>
-					{#if track.note}
-						<p class="track-row__note track-row__note--now">{track.note}</p>
-					{/if}
-					{#if track.previewUrl}
-						<div class="track-preview track-preview--inline track-preview--now">
-							<audio
-								controls
-								preload="none"
-								src={track.previewUrl}
-								aria-label={`Preview ${track.trackTitle} by ${track.artist}`}
-							></audio>
+					<div class="now-flow__content">
+						<div class="now-flow__kicker-row">
+							<span class="now-flow__kicker">{item.label}</span>
+							{#if item.meta}
+								<span class="now-flow__meta">{item.meta}</span>
+							{/if}
 						</div>
-					{/if}
-					<div class="track-row__actions track-row__actions--now">
-						{#each track.listenLinks as link}
-							<a class="tag-pill track-row__action" href={link.url} target="_blank" rel="noreferrer">
-								{link.label}
+
+						<h2 class="now-flow__title">
+							<a href={item.href}>{item.title}</a>
+						</h2>
+
+						{#if item.tags.length}
+							<div class="now-flow__tags">
+								{#each item.tags as tag}
+									<span class="tag-pill">{tag}</span>
+								{/each}
+							</div>
+						{/if}
+
+						{#if item.imageUrl}
+							<a class="now-flow__media-link" href={item.href}>
+								<img class="now-flow__media" src={item.imageUrl} alt={item.imageAlt} />
 							</a>
-						{/each}
+						{/if}
+
+						{#if item.summary}
+							<p class="now-flow__summary">{item.summary}</p>
+						{/if}
+
+						{#if item.audioUrl}
+							<div class="now-flow__audio">
+								<audio controls preload="none" src={item.audioUrl} aria-label={`Preview ${item.title}`}></audio>
+							</div>
+						{/if}
+
+						{#if item.links.length}
+							<div class="now-flow__actions">
+								{#each item.links as link}
+									<a
+										class="tag-pill now-flow__action"
+										href={link.url}
+										target={link.external ? '_blank' : undefined}
+										rel={link.external ? 'noreferrer' : undefined}
+									>
+										{link.label}
+									</a>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				</article>
 			{/each}
-		</section>
-		<div class="home-stream-tags">
-			<a class="tag-pill" href="/listening">Tracks</a>
-			<a class="home-updates__more-link" href="/listening">More listening notes <span aria-hidden="true">→</span></a>
-		</div>
-	</section>
-{/if}
-
-{#if data.albums.length}
-	<section class="section-block" id="rotation">
-		<div class="section-head section-head--now">
-			<h2 class="section-title">Album Rotation</h2>
-			{#if data.albums.length > 2}
-				<div class="home-updates__controls">
-					<button class="home-updates__button" type="button" onclick={showPreviousAlbumPage}>
-						Back
-					</button>
-					<button class="home-updates__button" type="button" onclick={showNextAlbumPage}>
-						Next
-					</button>
-				</div>
-			{/if}
-		</div>
-		<section class="cover-grid">
-			{#each getVisibleAlbums() as album}
-				<article class="cover-card">
-					<a class="cover-card-link" href={album.localPath}>
-						{#if album.coverImage}
-							<img class="cover-card-image" src={album.coverImage} alt={album.albumTitle} />
-						{:else}
-							<span class="cover-card-image cover-card-image-fallback" aria-hidden="true"></span>
-						{/if}
-						<span class="cover-card-title">{album.albumTitle}</span>
-						{#if album.artist}
-							<span class="cover-card-subtitle">{album.artist}</span>
-						{/if}
-					</a>
-				</article>
-			{/each}
-		</section>
-		{#if data.albums.length > 2}
-			<div class="now-albums__position-row" aria-hidden="true">
-				<span class="now-albums__position">{currentAlbumPage + 1} / {getAlbumPageCount()}</span>
-			</div>
-		{/if}
-		<div class="home-stream-tags">
-			<a class="tag-pill" href="/music">Albums</a>
-			<a class="home-updates__more-link" href="/music">See all albums <span aria-hidden="true">→</span></a>
 		</div>
 	</section>
 {/if}
 
 <style>
 	.now-index {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.85rem;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		position: relative;
+	}
+
+	.now-index__row + .now-index__row {
+		margin-top: 0.95rem;
 	}
 
 	.now-index__item {
 		display: grid;
-		gap: 0.22rem;
-		padding: 0.95rem 1rem;
-		border: 1px solid color-mix(in srgb, var(--line) 82%, transparent 18%);
-		border-radius: 0.8rem;
-		background: color-mix(in srgb, var(--surface) 82%, white 18%);
+		grid-template-columns: 5.5rem 1.2rem minmax(0, 1fr);
+		gap: 0.85rem;
+		align-items: start;
+		padding: 0.2rem 0;
 		text-decoration: none;
 		color: inherit;
-		transition:
-			transform 140ms ease,
-			border-color 140ms ease,
-			background 140ms ease;
+		transition: opacity 140ms ease;
 	}
 
 	.now-index__item:hover,
 	.now-index__item:focus-visible {
-		transform: translateY(-1px);
-		border-color: color-mix(in srgb, var(--accent) 28%, var(--line) 72%);
-		background: color-mix(in srgb, var(--surface) 70%, white 30%);
+		opacity: 0.86;
 	}
 
-	.now-index__label {
+	.now-index__date,
+	.now-flow__date {
+		font-size: 0.8rem;
+		line-height: 1.35;
+		color: var(--muted);
+	}
+
+	.now-index__date {
+		padding-top: 0.15rem;
+	}
+
+	.now-index__body,
+	.now-flow__content {
+		min-width: 0;
+	}
+
+	.now-index__rail,
+	.now-flow__rail {
+		position: relative;
+		display: block;
+		min-height: 100%;
+	}
+
+	.now-index__rail::before,
+	.now-flow__rail::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 50%;
+		width: 1px;
+		background: color-mix(in srgb, var(--line) 82%, transparent 18%);
+		transform: translateX(-50%);
+	}
+
+	.now-index__rail::before {
+		bottom: -1.1rem;
+	}
+
+	.now-index__row:last-child .now-index__rail::before {
+		bottom: 0.2rem;
+	}
+
+	.now-index__dot,
+	.now-flow__dot {
+		position: absolute;
+		left: 50%;
+		width: 0.58rem;
+		height: 0.58rem;
+		border-radius: 999px;
+		background: var(--surface);
+		border: 2px solid color-mix(in srgb, var(--accent) 45%, var(--line) 55%);
+		transform: translateX(-50%);
+	}
+
+	.now-index__dot {
+		top: 0.42rem;
+	}
+
+	.now-index__label,
+	.now-flow__kicker {
+		display: inline-block;
 		font-size: 0.72rem;
 		font-weight: 700;
 		letter-spacing: 0.08em;
@@ -411,217 +439,179 @@
 		color: var(--muted);
 	}
 
-	.now-index__title {
-		font-family: 'Fira Sans', sans-serif;
-		font-size: 1.05rem;
-		line-height: 1.2;
+	.now-index__label {
+		margin-bottom: 0.18rem;
 	}
 
-	.now-index__meta {
-		font-size: 0.88rem;
-		line-height: 1.4;
-		color: var(--muted);
-	}
-
-	.section-head--now {
-		margin-bottom: 1.15rem;
-	}
-
-	.track-row--now {
-		grid-template-columns: clamp(5.25rem, 20vw, 7.75rem) minmax(0, 1fr);
-		column-gap: 1rem;
-		row-gap: 0.7rem;
-	}
-
-	.track-row__body--now {
-		min-width: 0;
-		align-self: center;
-	}
-
-	.track-row--now .track-row__art-link {
+	.now-index__title,
+	.now-flow__title {
 		display: block;
-		width: 100%;
+		font-family: 'Fira Sans', sans-serif;
+		line-height: 1.18;
 	}
 
-	.track-row--now .track-row__art {
-		width: 100%;
-		height: auto;
-		aspect-ratio: 1 / 1;
-	}
-
-	.track-row--now .track-row__date {
-		margin-bottom: 0.08rem;
-	}
-
-	.track-row--now .track-row__title {
+	.now-index__title {
 		font-size: 1.08rem;
 	}
 
-	.track-row--now .track-row__artist {
-		margin-top: 0.08rem;
-		font-size: 0.98rem;
+	.now-index__detail {
+		margin-top: 0.45rem;
 	}
 
-	.track-row__note--now,
-	.track-preview--now,
-	.track-row__actions--now {
-		grid-column: 1 / -1;
+	.now-index__detail--thumb {
+		display: grid;
+		grid-template-columns: 4.35rem minmax(0, 1fr);
+		gap: 0.7rem;
+		align-items: start;
+	}
+
+	.now-index__thumb {
+		display: block;
 		width: 100%;
+		aspect-ratio: 1 / 1;
+		object-fit: cover;
+		border-radius: 0.35rem;
+		background: color-mix(in srgb, var(--surface) 82%, white 18%);
 	}
 
-	.track-row__note--now {
+	.now-index__summary {
 		margin: 0;
-	}
-
-	.track-preview--now {
-		margin-top: 0;
-	}
-
-	.track-preview--now audio {
-		width: 100%;
-		max-width: none;
-	}
-
-	.track-row__actions--now {
-		margin-top: 0;
-		width: 100%;
-	}
-
-	.now-albums__position-row {
-		display: flex;
-		justify-content: flex-end;
-		margin-top: 0.55rem;
-	}
-
-	.now-albums__position {
-		display: inline-flex;
-		align-items: center;
+		font-size: 0.95rem;
+		line-height: 1.5;
 		color: var(--muted);
-		font-size: 0.82rem;
-		line-height: 1;
 	}
 
-	.now-carousel {
-		margin: 0 0 1.15rem;
-	}
-
-	.now-carousel__frame {
+	.now-flow {
 		position: relative;
 	}
 
-	.now-carousel__viewport {
-		overflow: hidden;
-		border-radius: 0.75rem;
+	.now-flow__entry {
+		display: grid;
+		grid-template-columns: 5.5rem 1.2rem minmax(0, 1fr);
+		gap: 0.95rem;
+		align-items: start;
 	}
 
-	.now-carousel__slide {
+	.now-flow__entry + .now-flow__entry {
+		margin-top: 2.4rem;
+	}
+
+	.now-flow__date-column {
+		position: relative;
+	}
+
+	.now-flow__date {
+		position: sticky;
+		top: 5.5rem;
+		display: inline-block;
+		padding-top: 0.15rem;
+	}
+
+	.now-flow__rail::before {
+		bottom: -2.5rem;
+	}
+
+	.now-flow__entry:last-child .now-flow__rail::before {
+		bottom: 0;
+	}
+
+	.now-flow__dot {
+		top: 0.46rem;
+	}
+
+	.now-flow__kicker-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.55rem;
+		margin-bottom: 0.42rem;
+	}
+
+	.now-flow__meta {
+		font-size: 0.9rem;
+		color: var(--muted);
+	}
+
+	.now-flow__title {
+		margin: 0;
+		font-size: clamp(1.25rem, 2.3vw, 1.72rem);
+	}
+
+	.now-flow__title a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.now-flow__title a:hover,
+	.now-flow__title a:focus-visible {
+		color: var(--accent);
+	}
+
+	.now-flow__tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+		margin-top: 0.72rem;
+	}
+
+	.now-flow__media-link {
 		display: block;
+		margin-top: 1rem;
+		text-decoration: none;
 	}
 
-	.now-carousel__image {
+	.now-flow__media {
 		display: block;
 		width: 100%;
-		max-height: 36rem;
-		object-fit: cover;
-		border-radius: 0.75rem;
+		height: auto;
+		border-radius: 0.9rem;
+		background: color-mix(in srgb, var(--surface) 86%, white 14%);
 	}
 
-	.now-carousel__controls {
-		position: absolute;
-		top: 0.75rem;
-		right: 0.75rem;
-		display: inline-flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: 0.45rem;
-		padding: 0.35rem 0.45rem;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: 999px;
-		background: rgba(23, 24, 25, 0.72);
-		backdrop-filter: blur(8px);
-		color: #d4d7d8;
-		font-size: 0.84rem;
+	.now-flow__summary {
+		margin: 0.95rem 0 0;
+		font-size: 1rem;
+		line-height: 1.68;
+		color: var(--muted);
 	}
 
-	.now-carousel__button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0.18rem 0.5rem;
-		border: 1px solid rgba(255, 255, 255, 0.12);
-		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.03);
-		color: #d4d7d8;
-		font: inherit;
-		cursor: pointer;
+	.now-flow__audio {
+		margin-top: 0.95rem;
 	}
 
-	.now-carousel__button:hover {
-		color: #ffffff;
-		border-color: rgba(255, 255, 255, 0.25);
+	.now-flow__audio audio {
+		display: block;
+		width: 100%;
 	}
 
-	.now-carousel__position {
-		white-space: nowrap;
-		font-size: 0.8rem;
-		line-height: 1;
+	.now-flow__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-top: 0.95rem;
 	}
 
-	.now-carousel__dots {
-		display: none;
-	}
-
-	.now-carousel__dot {
-		width: 0.42rem;
-		height: 0.42rem;
-		border-radius: 50%;
-		background: rgba(255, 255, 255, 0.28);
-	}
-
-	.now-carousel__dot--active {
-		background: #f2f4a3;
+	.now-flow__action {
+		text-decoration: none;
 	}
 
 	@media (max-width: 640px) {
-		.now-index {
-			grid-template-columns: 1fr;
+		.now-index__item,
+		.now-flow__entry {
+			grid-template-columns: 4.25rem 1rem minmax(0, 1fr);
+			gap: 0.72rem;
 		}
 
-		.track-row--now {
-			grid-template-columns: 4.5rem minmax(0, 1fr);
-			column-gap: 0.85rem;
+		.now-index__detail--thumb {
+			grid-template-columns: 3.4rem minmax(0, 1fr);
 		}
 
-		.track-row--now .track-row__art-link {
-			width: 4.5rem;
+		.now-flow__date {
+			top: 4.8rem;
 		}
 
-		.track-row--now .track-row__art {
-			width: 4.5rem;
-			height: 4.5rem;
-		}
-
-		.cover-grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-
-		.now-carousel__viewport {
-			overflow: hidden;
-		}
-
-		.now-carousel__image {
-			max-height: 21rem;
-		}
-
-		.now-carousel__controls {
-			display: none;
-		}
-
-		.now-carousel__dots {
-			display: flex;
-			justify-content: center;
-			gap: 0.35rem;
-			margin-top: 0.55rem;
+		.now-flow__entry + .now-flow__entry {
+			margin-top: 1.9rem;
 		}
 	}
 </style>

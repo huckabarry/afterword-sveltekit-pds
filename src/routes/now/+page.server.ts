@@ -1,28 +1,26 @@
 import { getCheckins } from '$lib/server/atproto';
 import { getNowIntroContent } from '$lib/server/content';
-import { getLatestNowPost, getPostImages, stripImagesFromHtml } from '$lib/server/ghost';
+import { getRecentTaggedPosts } from '$lib/server/ghost';
 import { getAlbums, getTracks } from '$lib/server/music';
 
 export async function load() {
-	const [intro, nowPost, checkins, albums, tracks] = await Promise.all([
+	const [intro, nowPosts, bookPosts, checkins, albums, tracks] = await Promise.all([
 		getNowIntroContent(),
-		getLatestNowPost(),
+		getRecentTaggedPosts(['now'], 5),
+		getRecentTaggedPosts(['books', 'book-reviews'], 3),
 		getCheckins(),
 		getAlbums(),
 		getTracks()
 	]);
 
-	const nowImages = nowPost ? getPostImages(nowPost) : [];
-	const nowContentHtml =
-		nowPost && nowImages.length > 1 ? stripImagesFromHtml(nowPost.html) : (nowPost?.html ?? '');
+	const bookIds = new Set(bookPosts.map((post) => post.id));
 
 	return {
 		intro,
-		nowPost,
-		nowImages,
-		nowContentHtml,
-		latestCheckin: checkins[0] || null,
-		albums: albums.slice(0, 8),
-		tracks: tracks.slice(0, 1)
+		nowPosts: nowPosts.filter((post) => !bookIds.has(post.id)).slice(0, 4),
+		bookPosts: bookPosts.slice(0, 2),
+		checkins: checkins.slice(0, 4),
+		albums: albums.slice(0, 3),
+		tracks: tracks.slice(0, 3)
 	};
 }

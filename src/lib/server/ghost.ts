@@ -652,6 +652,44 @@ export async function getRecentBlogPosts(limit = 8): Promise<BlogPost[]> {
 	}));
 }
 
+export async function getRecentTaggedPosts(tagSlugs: string[], limit = 6): Promise<BlogPost[]> {
+	const normalizedTags = [...new Set(
+		(tagSlugs || []).map((tag) => String(tag || '').trim().toLowerCase()).filter(Boolean)
+	)];
+
+	if (!normalizedTags.length) {
+		return [];
+	}
+
+	const siteUrl = getGhostUrl();
+	const filter = `status:published+tag:[${normalizedTags.join(',')}]`;
+	const livePosts = await loadRecentLivePosts(siteUrl, filter, Math.max(limit * 2, limit));
+	const fallbackPool = normalizedTags.includes('now')
+		? [...loadNowFallbackPosts(), ...loadFallbackPosts()]
+		: loadFallbackPosts();
+	const fallbackPosts = [...new Map(fallbackPool.map((post) => [String((post as { id?: string }).id || ''), post])).values()];
+	const rawPosts = livePosts.length ? livePosts : fallbackPosts;
+
+	const posts = rawPosts
+		.map((post: Record<string, unknown>) => normalizePost(post, siteUrl))
+		.filter((post: BlogPost) => post.title && post.html)
+		.filter((post: BlogPost) => post.tags.some((tag) => normalizedTags.includes(tag)))
+		.sort((a: BlogPost, b: BlogPost) => b.publishedAt.getTime() - a.publishedAt.getTime())
+		.slice(0, limit);
+
+	const sourceMap = new Map<string, string>(
+		posts.map((post: BlogPost) => [normalizeSourceUrl(post.sourceUrl), post.path])
+	);
+
+	return posts.map((post: BlogPost) => ({
+		...post,
+		html: rewriteInternalLinks(post.html, sourceMap, siteUrl),
+		publicTags: post.tags
+			.map((tag: string) => toPublicTag(tag))
+			.filter((tag: GhostTag | null): tag is GhostTag => Boolean(tag))
+	}));
+}
+
 export async function getLatestNowPost(): Promise<BlogPost | null> {
 	const siteUrl = getGhostUrl();
 	const livePosts = await loadLivePosts(siteUrl, NOW_FILTER);
