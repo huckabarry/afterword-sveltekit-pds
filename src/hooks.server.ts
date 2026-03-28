@@ -1,4 +1,5 @@
 import type { Handle } from '@sveltejs/kit';
+import { maybeAutoMoveFollowersToMicroblog } from '$lib/server/activitypub-move';
 
 function isCorsPath(pathname: string) {
 	return (
@@ -22,6 +23,10 @@ function applyCorsHeaders(response: Response, origin: string | null) {
 export const handle: Handle = async ({ event, resolve }) => {
 	if (isCorsPath(event.url.pathname) && event.request.method === 'OPTIONS') {
 		return applyCorsHeaders(new Response(null, { status: 204 }), event.request.headers.get('origin'));
+	}
+
+	if (event.platform?.ctx) {
+		event.platform.ctx.waitUntil(maybeAutoMoveFollowersToMicroblog(event));
 	}
 
 	const response = await resolve(event);

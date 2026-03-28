@@ -4,6 +4,12 @@ import { sendSignedActivity } from '$lib/server/activitypub-delivery';
 import { fetchActivityJson } from '$lib/server/activitypub-replies';
 import { listDeliveredFollowerActorIds, recordDeliveryAttempt } from '$lib/server/deliveries';
 import { listFollowers, updateFollowerDeliveryStatus } from '$lib/server/followers';
+import {
+	DEFAULT_MOVE_TARGET_ACTOR_URL,
+	DEFAULT_MOVE_TARGET_HANDLE,
+	getSiteProfile,
+	updateSiteProfile
+} from '$lib/server/profile';
 
 export type ResolvedMoveTarget = {
 	handle: string | null;
@@ -18,6 +24,8 @@ export type MoveDeliveryResult = {
 	status: string;
 	error?: string;
 };
+
+let autoMovePromise: Promise<void> | null = null;
 
 function getString(value: unknown) {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -210,4 +218,81 @@ export async function deliverMoveToFollowers(
 		followerCount: followers.length,
 		results
 	};
+}
+
+export function shouldAutoMoveFollowers(event: Pick<RequestEvent, 'url'>) {
+	if (event.url.hostname !== 'afterword.blog') {
+		return false;
+	}
+
+	if (event.url.pathname.startsWith('/_app/')) {
+		return false;
+	}
+
+	if (event.url.pathname.startsWith('/assets/')) {
+		return false;
+	}
+
+	if (event.url.pathname.startsWith('/gallery-assets/')) {
+		return false;
+	}
+
+	if (event.url.pathname.startsWith('/gallery-images/')) {
+		return false;
+	}
+
+	if (event.url.pathname.startsWith('/media/')) {
+		return false;
+	}
+
+	return true;
+}
+
+export async function maybeAutoMoveFollowersToMicroblog(
+	event: Pick<RequestEvent, 'platform' | 'url'>
+) {
+	if (!shouldAutoMoveFollowers(event)) {
+		return;
+	}
+
+	if (autoMovePromise) {
+		return autoMovePromise;
+	}
+
+	autoMovePromise = (async () => {
+		try {
+			const currentProfile = await getSiteProfile(event);
+			const targetHandle = currentProfile.moveTargetHandle || DEFAULT_MOVE_TARGET_HANDLE;
+			const targetActorUrl = currentProfile.moveTargetActorUrl || DEFAULT_MOVE_TARGET_ACTOR_URL;
+			const moveStartedAt = currentProfile.moveStartedAt || new Date().toISOString();
+
+			await updateSiteProfile(event, {
+				...currentProfile,
+				moveTargetHandle: targetHandle,
+				moveTargetActorUrl: targetActorUrl,
+				moveStartedAt
+			});
+
+			const delivery = await deliverMoveToFollowers(event, {
+				targetActorUrl,
+				moveStartedAt,
+				skipDelivered: true
+			});
+
+			console.info('[activitypub-move:auto]', {
+				targetActorUrl,
+				followerCount: delivery.followerCount,
+				delivered: delivery.results.filter((result) => result.status === 'delivered').length,
+				alreadyDelivered: delivery.results.filter(
+					(result) => result.status === 'already-delivered'
+				).length,
+				failed: delivery.results.filter((result) => result.status === 'failed').length,
+				skipped: delivery.results.filter((result) => result.status === 'skipped').length
+			});
+		} catch (error) {
+			console.error('[activitypub-move:auto:error]', error);
+		}
+	})();
+
+	return autoMovePromise;
 }

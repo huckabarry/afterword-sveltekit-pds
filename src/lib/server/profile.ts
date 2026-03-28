@@ -23,8 +23,8 @@ export type SiteProfile = {
 };
 
 const DEFAULT_ABOUT_CONTENT = getAboutContent();
-const DEFAULT_MOVE_TARGET_HANDLE = 'bryan@micro.blog';
-const DEFAULT_MOVE_TARGET_ACTOR_URL = 'https://micro.blog/activitypub/bryan';
+export const DEFAULT_MOVE_TARGET_HANDLE = 'bryan@micro.blog';
+export const DEFAULT_MOVE_TARGET_ACTOR_URL = 'https://micro.blog/activitypub/bryan';
 
 const DEFAULT_PROFILE: SiteProfile = {
 	displayName: 'Bryan Robb',
