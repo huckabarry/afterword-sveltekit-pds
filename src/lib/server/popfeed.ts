@@ -335,11 +335,18 @@ function looksLikeIsbnDbCover(url: string) {
 	return /^https:\/\/images\.isbndb\.com\/covers\//i.test(String(url || '').trim());
 }
 
+function getOpenLibraryCoverUrl(identifiers: Record<string, string>) {
+	const isbn = String(identifiers.isbn13 || identifiers.isbn10 || '').trim();
+	return isbn
+		? `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg?default=false`
+		: null;
+}
+
 async function isAvailableBookCover(url: string) {
 	const normalized = String(url || '').trim();
 
-	if (!looksLikeIsbnDbCover(normalized)) {
-		return true;
+	if (!normalized) {
+		return false;
 	}
 
 	const cache = getBookCoverCache();
@@ -358,7 +365,9 @@ async function isAvailableBookCover(url: string) {
 		const contentLength = Number.parseInt(response.headers.get('content-length') || '', 10);
 		const available =
 			response.ok &&
-			(!Number.isFinite(contentLength) || contentLength !== ISBNDB_PLACEHOLDER_CONTENT_LENGTH);
+			(!looksLikeIsbnDbCover(normalized) ||
+				!Number.isFinite(contentLength) ||
+				contentLength !== ISBNDB_PLACEHOLDER_CONTENT_LENGTH);
 
 		cache.set(normalized, {
 			expiresAt: Date.now() + BOOK_COVER_CACHE_TTL_MS,
@@ -453,6 +462,7 @@ export async function getPopfeedItems(): Promise<PopfeedItem[]> {
 		const items = itemCollectionRecords
 			.map((record) => normalizeItem(record, did, serviceUrl, listsByUri))
 			.filter((item): item is PopfeedItem => Boolean(item))
+			.filter((item) => item.listType !== 'to_read_books')
 			.sort((left, right) => {
 				const dateDelta = right.date.getTime() - left.date.getTime();
 				if (dateDelta !== 0) {
@@ -475,19 +485,35 @@ export async function getPopfeedItems(): Promise<PopfeedItem[]> {
 
 		const verified = await Promise.all(
 			deduped.map(async (item) => {
-				if (
-					item.type === 'book' &&
-					item.posterImage &&
-					looksLikeIsbnDbCover(item.posterImage) &&
-					!(await isAvailableBookCover(item.posterImage))
-				) {
-					return {
-						...item,
-						posterImage: null
-					};
+				if (item.type !== 'book') {
+					return item;
 				}
 
-				return item;
+				let posterImage = item.posterImage;
+
+				if (
+					posterImage &&
+					looksLikeIsbnDbCover(posterImage) &&
+					!(await isAvailableBookCover(posterImage))
+				) {
+					posterImage = null;
+				}
+
+				const openLibraryCoverUrl = getOpenLibraryCoverUrl(item.identifiers);
+				if (
+					openLibraryCoverUrl &&
+					(!posterImage || looksLikeIsbnDbCover(posterImage)) &&
+					(await isAvailableBookCover(openLibraryCoverUrl))
+				) {
+					posterImage = openLibraryCoverUrl;
+				}
+
+				return posterImage === item.posterImage
+					? item
+					: {
+							...item,
+							posterImage
+						};
 			})
 		);
 

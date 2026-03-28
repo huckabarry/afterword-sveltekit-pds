@@ -1423,6 +1423,10 @@ p:last-child {
 	margin-top: 0.5rem;
 }
 
+.media-card--text-only .media-card__caption {
+	margin-top: 0;
+}
+
 .media-card__title {
 	font-family: 'Fira Sans', sans-serif;
 	font-style: normal;

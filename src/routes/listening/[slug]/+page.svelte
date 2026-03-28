@@ -32,8 +32,12 @@
 			{#if data.track.artist}
 				<p class="media-entry__credit">{data.track.artist}</p>
 			{/if}
-			{#if data.track.note}
-				<div class="media-entry__note">
+			{#if data.track.noteHtml}
+				<div class="media-entry__note entry__content">
+					{@html data.track.noteHtml}
+				</div>
+			{:else if data.track.note}
+				<div class="media-entry__note entry__content">
 					<p>{data.track.note}</p>
 				</div>
 			{/if}

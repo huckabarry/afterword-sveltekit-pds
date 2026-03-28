@@ -1,0 +1,205 @@
+{
+	"lexicon": 1,
+	"id": "blog.afterword.media.track",
+	"defs": {
+		"main": {
+			"type": "record",
+			"key": "any",
+			"description": "A durable track note authored by Bryan and stored in his PDS. The record is meant to be self-contained enough to render without live scraping.",
+			"record": {
+				"type": "object",
+				"required": ["title", "artist", "loggedAt"],
+				"properties": {
+					"title": {
+						"type": "string",
+						"maxLength": 300,
+						"description": "Track title as it should be displayed."
+					},
+					"artist": {
+						"type": "string",
+						"maxLength": 300,
+						"description": "Primary artist credit."
+					},
+					"releaseTitle": {
+						"type": "string",
+						"maxLength": 300,
+						"description": "Optional album or release title for the track."
+					},
+					"note": {
+						"type": "string",
+						"maxLength": 10000,
+						"description": "Optional listening note or commentary."
+					},
+					"noteHtml": {
+						"type": "string",
+						"maxLength": 20000,
+						"description": "Optional preserved HTML fragment for the note body. The site still owns the surrounding page layout."
+					},
+					"loggedAt": {
+						"type": "string",
+						"format": "datetime",
+						"description": "When Bryan logged or published the entry."
+					},
+					"source": {
+						"type": "object",
+						"description": "Optional origin record used during import or cross-linking.",
+						"required": ["provider", "url"],
+						"properties": {
+							"provider": {
+								"type": "string",
+								"maxLength": 100,
+								"description": "Source service, for example crucialtracks."
+							},
+							"url": {
+								"type": "string",
+								"format": "uri",
+								"description": "Canonical URL for the source entry."
+							},
+							"recordId": {
+								"type": "string",
+								"maxLength": 300,
+								"description": "Optional provider record identifier."
+							},
+							"label": {
+								"type": "string",
+								"maxLength": 100,
+								"description": "Optional human-readable label for the source."
+							}
+						}
+					},
+					"artwork": {
+						"type": "object",
+						"description": "Artwork stored as a PDS blob so rendering does not depend on the remote service staying online.",
+						"required": ["image"],
+						"properties": {
+							"image": {
+								"type": "blob",
+								"accept": ["image/*"],
+								"maxSize": 5000000
+							},
+							"alt": {
+								"type": "string",
+								"maxLength": 1000
+							},
+							"originalUrl": {
+								"type": "string",
+								"format": "uri",
+								"description": "Original remote image URL before ingest."
+							},
+							"aspectRatio": {
+								"type": "object",
+								"required": ["width", "height"],
+								"properties": {
+									"width": {
+										"type": "integer",
+										"minimum": 1
+									},
+									"height": {
+										"type": "integer",
+										"minimum": 1
+									}
+								}
+							}
+						}
+					},
+					"playback": {
+						"type": "object",
+						"description": "Optional playback convenience data. This is not the canonical source of truth and should be safe to omit.",
+						"properties": {
+							"previewUrl": {
+								"type": "string",
+								"format": "uri",
+								"description": "Direct preview URL suitable for the native audio player."
+							},
+							"embedUrl": {
+								"type": "string",
+								"format": "uri",
+								"description": "Optional provider embed URL if Bryan later wants an inline player."
+							},
+							"embedProvider": {
+								"type": "string",
+								"maxLength": 100
+							},
+							"mimeType": {
+								"type": "string",
+								"maxLength": 100
+							},
+							"durationSeconds": {
+								"type": "integer",
+								"minimum": 0
+							}
+						}
+					},
+					"links": {
+						"type": "array",
+						"maxLength": 20,
+						"description": "Canonical outbound links for listening, lookup, or source attribution.",
+						"items": {
+							"type": "object",
+							"required": ["label", "url"],
+							"properties": {
+								"label": {
+									"type": "string",
+									"maxLength": 100
+								},
+								"url": {
+									"type": "string",
+									"format": "uri"
+								},
+								"kind": {
+									"type": "string",
+									"maxLength": 50,
+									"description": "Suggested values include source, listen, playlist, or lookup."
+								},
+								"provider": {
+									"type": "string",
+									"maxLength": 100
+								}
+							}
+						}
+					},
+					"identifiers": {
+						"type": "object",
+						"description": "Optional service identifiers kept for portability or future enrichment.",
+						"properties": {
+							"appleMusicUrl": {
+								"type": "string",
+								"format": "uri"
+							},
+							"songlinkUrl": {
+								"type": "string",
+								"format": "uri"
+							},
+							"isrc": {
+								"type": "string",
+								"maxLength": 32
+							}
+						}
+					},
+					"provenance": {
+						"type": "object",
+						"description": "Optional import metadata retained for backup and auditing.",
+						"properties": {
+							"importedAt": {
+								"type": "string",
+								"format": "datetime"
+							},
+							"archivePath": {
+								"type": "string",
+								"maxLength": 1000
+							},
+							"scraper": {
+								"type": "string",
+								"maxLength": 200
+							},
+							"scrapedAt": {
+								"type": "string",
+								"format": "datetime"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

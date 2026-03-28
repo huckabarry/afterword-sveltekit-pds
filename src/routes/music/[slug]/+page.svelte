@@ -32,8 +32,12 @@
 			{#if data.album.artist}
 				<p class="media-entry__credit">{data.album.artist}</p>
 			{/if}
-			{#if data.album.note}
-				<div class="media-entry__note">
+			{#if data.album.noteHtml}
+				<div class="media-entry__note entry__content">
+					{@html data.album.noteHtml}
+				</div>
+			{:else if data.album.note}
+				<div class="media-entry__note entry__content">
 					<p>{data.album.note}</p>
 				</div>
 			{/if}
@@ -45,7 +49,10 @@
 				{#if data.album.sourceUrl}
 					<div>
 						<dt>Source</dt>
-						<dd><a href={data.album.sourceUrl} target="_blank" rel="noreferrer">View on Album Whale</a></dd>
+						<dd>
+							<a href={data.album.sourceUrl} target="_blank" rel="noreferrer">View on Album Whale</a
+							>
+						</dd>
 					</div>
 				{/if}
 			</dl>

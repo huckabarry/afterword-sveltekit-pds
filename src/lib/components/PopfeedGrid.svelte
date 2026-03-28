@@ -20,6 +20,10 @@
 	function usesPosterRatio(item: PopfeedItem) {
 		return item.type === 'movie' || item.type === 'tv_show';
 	}
+
+	function showsFallback(item: PopfeedItem) {
+		return item.type !== 'book';
+	}
 </script>
 
 <section class="stream-head">
@@ -29,21 +33,25 @@
 
 <section class="media-grid">
 	{#each items as item}
-		<article class="media-card">
-			<a
-				class={`media-card__cover ${usesPosterRatio(item) ? 'media-card__cover--poster' : 'media-card__cover--natural'}`}
-				href={item.localPath}
-			>
-				{#if item.posterImage}
-					<img src={item.posterImage} alt={item.title} />
-				{:else}
-					<span
-						class={`media-card__fallback ${usesPosterRatio(item) ? 'media-card__fallback--poster' : 'media-card__fallback--natural'}`}
-					>
-						{item.title}
-					</span>
-				{/if}
-			</a>
+		<article
+			class={`media-card ${!item.posterImage && !showsFallback(item) ? 'media-card--text-only' : ''}`}
+		>
+			{#if item.posterImage || showsFallback(item)}
+				<a
+					class={`media-card__cover ${usesPosterRatio(item) ? 'media-card__cover--poster' : 'media-card__cover--natural'}`}
+					href={item.localPath}
+				>
+					{#if item.posterImage}
+						<img src={item.posterImage} alt={item.title} />
+					{:else}
+						<span
+							class={`media-card__fallback ${usesPosterRatio(item) ? 'media-card__fallback--poster' : 'media-card__fallback--natural'}`}
+						>
+							{item.title}
+						</span>
+					{/if}
+				</a>
+			{/if}
 			<div class="media-card__caption">
 				<a class="media-card__title" href={item.localPath}>{item.title}</a>
 				{#if getCaption(item)}

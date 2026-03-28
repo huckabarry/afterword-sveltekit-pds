@@ -1,3 +1,5 @@
+import { getPdsAlbums, getPdsTracks } from '$lib/server/pds-music';
+
 const ALBUMWHALE_LIST_URL = 'https://albumwhale.com/bryan/listening-now';
 const CRUCIAL_TRACKS_FEED_URL = 'https://www.crucialtracks.org/profile/bryan/feed.json';
 const REMOTE_MUSIC_CACHE_TTL_MS = 1000 * 60 * 10;
@@ -26,6 +28,7 @@ export type AlbumEntry = {
 	albumTitle: string;
 	artist: string;
 	note: string;
+	noteHtml?: string | null;
 	excerpt: string;
 	coverImage: string | null;
 	publishedAt: Date;
@@ -33,6 +36,7 @@ export type AlbumEntry = {
 	sourceUrl: string;
 	localPath: string;
 	listenLinks: ListenLink[];
+	archivePath?: string | null;
 };
 
 export type TrackEntry = {
@@ -42,6 +46,7 @@ export type TrackEntry = {
 	trackTitle: string;
 	artist: string;
 	note: string;
+	noteHtml?: string | null;
 	excerpt: string;
 	artworkUrl: string | null;
 	publishedAt: Date;
@@ -53,6 +58,7 @@ export type TrackEntry = {
 	songlinkUrl: string | null;
 	previewUrl: string | null;
 	listenLinks: ListenLink[];
+	archivePath?: string | null;
 };
 
 type CrucialTrackFeedDetails = {
@@ -60,6 +66,7 @@ type CrucialTrackFeedDetails = {
 	appleMusicUrl: string | null;
 	songlinkUrl: string | null;
 	previewUrl: string | null;
+	noteHtml: string | null;
 };
 
 type CrucialTrackFeedIndex = {
@@ -79,9 +86,7 @@ function walkMarkdownFiles(root: string): string[] {
 	const preferredByRelativePath = new Map<string, string>();
 
 	for (const absolutePath of Object.keys(files)) {
-		const relativePath = absolutePath
-			.replace(/^\/data\/archive\//, '')
-			.replace(/^\/archive\//, '');
+		const relativePath = absolutePath.replace(/^\/data\/archive\//, '').replace(/^\/archive\//, '');
 		const existing = preferredByRelativePath.get(relativePath);
 
 		if (!existing || absolutePath.startsWith('/archive/')) {
@@ -187,6 +192,36 @@ function getTrackDedupKey(track: {
 	return `${normalizeTrackKey(String(track.trackTitle || ''), String(track.artist || ''))}::${publishedAt}`;
 }
 
+function getAlbumDedupKey(album: {
+	localPath?: string | null;
+	sourceUrl?: string | null;
+	slug?: string | null;
+}) {
+	const sourceUrl = String(album.sourceUrl || '').trim();
+
+	if (sourceUrl) {
+		return sourceUrl;
+	}
+
+	const localPath = String(album.localPath || '').trim();
+	if (localPath) {
+		return localPath;
+	}
+
+	return String(album.slug || '').trim();
+}
+
+function mergeMusicEntries<T extends { publishedAt: Date }>(
+	preferred: T[],
+	fallback: T[],
+	getKey: (item: T) => string
+) {
+	const seen = new Set(preferred.map((item) => getKey(item)).filter(Boolean));
+	return [...preferred, ...fallback.filter((item) => !seen.has(getKey(item)))].sort(
+		(a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()
+	);
+}
+
 function formatDisplayDate(date: Date): string {
 	return new Intl.DateTimeFormat('en-GB', {
 		day: '2-digit',
@@ -286,7 +321,8 @@ function extractAlbumBody(body: string) {
 
 	return {
 		coverImage: linkedImageMatch ? linkedImageMatch[2] : imageMatch?.[2] || null,
-		note
+		note,
+		noteHtml: null as string | null
 	};
 }
 
@@ -301,14 +337,21 @@ function extractTrackBody(body: string) {
 	const playlistUrl = extractMarkdownLink(body, /playlist/i);
 	const noteMatch = body.match(/<div>([\s\S]*?)<\/div>/i);
 	const note = stripHtml(noteMatch?.[1] || '');
+	const noteHtml = noteMatch?.[1]?.trim() || null;
 
 	return {
 		trackTitle: title,
 		artist,
 		appleMusicUrl,
 		playlistUrl,
-		note
+		note,
+		noteHtml
 	};
+}
+
+function extractTrackNoteHtmlFromContentHtml(value: string) {
+	const noteMatch = String(value || '').match(/<div>([\s\S]*?)<\/div>/i);
+	return noteMatch?.[1]?.trim() || null;
 }
 
 function createTrackSlugFromPublishedAt(date: Date, trackTitle: string, artist: string) {
@@ -360,7 +403,9 @@ function extractListenLinksFromAlbumPage(pageHtml: string, pageUrl: string): Lis
 	}
 
 	const seen = new Set<string>();
-	const links = [...sectionMatch[1].matchAll(/<li>\s*<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/li>/gi)];
+	const links = [
+		...sectionMatch[1].matchAll(/<li>\s*<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/li>/gi)
+	];
 
 	return links
 		.map((match) => ({
@@ -409,7 +454,7 @@ async function getAlbumWhaleListenLinks(): Promise<Map<string, ListenLink[]>> {
 	return albumWhaleLinksPromise;
 }
 
-export async function getAlbums(): Promise<AlbumEntry[]> {
+export async function getArchiveAlbums(): Promise<AlbumEntry[]> {
 	const listenLinksByAlbumId = await getAlbumWhaleListenLinks();
 
 	return walkMarkdownFiles('albumwhale')
@@ -429,21 +474,18 @@ export async function getAlbums(): Promise<AlbumEntry[]> {
 				albumTitle: title,
 				artist,
 				note: body.note,
+				noteHtml: body.noteHtml,
 				excerpt: body.note,
 				coverImage: body.coverImage,
 				publishedAt,
 				displayDate: formatDisplayDate(publishedAt),
 				sourceUrl: String(data.original_url || ''),
 				localPath: `/music/${slug}`,
-				listenLinks: listenLinksByAlbumId.get(albumId) || []
+				listenLinks: listenLinksByAlbumId.get(albumId) || [],
+				archivePath: filePath
 			} satisfies AlbumEntry;
 		})
 		.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
-}
-
-export async function getAlbumBySlug(slug: string): Promise<AlbumEntry | null> {
-	const albums = await getAlbums();
-	return albums.find((album) => album.slug === slug) || null;
 }
 
 async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
@@ -503,7 +545,8 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 						artworkUrl: item._song_details?.artwork_url || null,
 						appleMusicUrl: item._song_details?.apple_music_url || null,
 						songlinkUrl: item._song_details?.songlink_url || null,
-						previewUrl: item._song_details?.preview_url || null
+						previewUrl: item._song_details?.preview_url || null,
+						noteHtml: extractTrackNoteHtmlFromContentHtml(String(item.content_html || ''))
 					} satisfies CrucialTrackFeedDetails;
 
 					if (sourceUrl) {
@@ -521,7 +564,9 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 
 					if (trackTitle && artist && !Number.isNaN(publishedAt.getTime())) {
 						const note = stripHtml(
-							String(item._song_details?.content || item.content_text || item.content_html || '').trim()
+							String(
+								item._song_details?.content || item.content_text || item.content_html || ''
+							).trim()
 						);
 						const slug = createTrackSlugFromPublishedAt(publishedAt, trackTitle, artist);
 						const listenLinks: ListenLink[] = [];
@@ -552,6 +597,7 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 							trackTitle,
 							artist,
 							note,
+							noteHtml: details.noteHtml,
 							excerpt: note,
 							artworkUrl: details.artworkUrl,
 							publishedAt,
@@ -588,9 +634,9 @@ async function getCrucialTrackDetails(): Promise<CrucialTrackFeedIndex> {
 	return crucialTracksDetailsPromise;
 }
 
-export async function getTracks(): Promise<TrackEntry[]> {
+export async function getArchiveTracks(): Promise<TrackEntry[]> {
 	const trackDetails = await getCrucialTrackDetails();
-	const archivedTracks = walkMarkdownFiles('crucial-tracks')
+	return walkMarkdownFiles('crucial-tracks')
 		.map((filePath) => {
 			const raw = trackArchiveFiles[filePath] || '';
 			const { data, content } = parseFrontmatter(raw);
@@ -601,7 +647,9 @@ export async function getTracks(): Promise<TrackEntry[]> {
 			const sourceUrl = String(data.original_url || '');
 			const enriched =
 				trackDetails.bySourceUrl.get(sourceUrl) ||
-				(parsed.appleMusicUrl ? trackDetails.byAppleMusicUrl.get(parsed.appleMusicUrl) : undefined) ||
+				(parsed.appleMusicUrl
+					? trackDetails.byAppleMusicUrl.get(parsed.appleMusicUrl)
+					: undefined) ||
 				trackDetails.byTrackKey.get(normalizeTrackKey(parsed.trackTitle, parsed.artist));
 			const listenLinks: ListenLink[] = [];
 
@@ -634,6 +682,7 @@ export async function getTracks(): Promise<TrackEntry[]> {
 				trackTitle: parsed.trackTitle || String(data.title || 'Untitled'),
 				artist: parsed.artist,
 				note: parsed.note,
+				noteHtml: enriched?.noteHtml || parsed.noteHtml,
 				excerpt: parsed.note,
 				artworkUrl: enriched?.artworkUrl || null,
 				publishedAt,
@@ -644,11 +693,18 @@ export async function getTracks(): Promise<TrackEntry[]> {
 				playlistUrl: parsed.playlistUrl,
 				songlinkUrl: enriched?.songlinkUrl || null,
 				previewUrl: enriched?.previewUrl || null,
-				listenLinks
+				listenLinks,
+				archivePath: filePath
 			} satisfies TrackEntry;
 		})
 		.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+}
 
+async function getLegacyTracks() {
+	const [trackDetails, archivedTracks] = await Promise.all([
+		getCrucialTrackDetails(),
+		getArchiveTracks()
+	]);
 	const archivedSourceUrls = new Set(
 		archivedTracks.map((track) => String(track.sourceUrl || '').trim()).filter(Boolean)
 	);
@@ -665,6 +721,41 @@ export async function getTracks(): Promise<TrackEntry[]> {
 	return [...archivedTracks, ...liveOnlyTracks].sort(
 		(a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()
 	);
+}
+
+async function getLegacyAlbums() {
+	return getArchiveAlbums();
+}
+
+export async function getAlbums(): Promise<AlbumEntry[]> {
+	const [pdsAlbums, legacyAlbums] = await Promise.all([
+		getPdsAlbums().catch(() => []),
+		getLegacyAlbums()
+	]);
+
+	if (!pdsAlbums.length) {
+		return legacyAlbums;
+	}
+
+	return mergeMusicEntries(pdsAlbums, legacyAlbums, getAlbumDedupKey);
+}
+
+export async function getTracks(): Promise<TrackEntry[]> {
+	const [pdsTracks, legacyTracks] = await Promise.all([
+		getPdsTracks().catch(() => []),
+		getLegacyTracks()
+	]);
+
+	if (!pdsTracks.length) {
+		return legacyTracks;
+	}
+
+	return mergeMusicEntries(pdsTracks, legacyTracks, getTrackDedupKey);
+}
+
+export async function getAlbumBySlug(slug: string): Promise<AlbumEntry | null> {
+	const albums = await getAlbums();
+	return albums.find((album) => album.slug === slug) || null;
 }
 
 export async function getTrackBySlug(slug: string): Promise<TrackEntry | null> {
