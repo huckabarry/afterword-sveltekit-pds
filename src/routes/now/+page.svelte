@@ -122,7 +122,7 @@
 
 			{#if data.latestCheckin}
 				<a class="now-index__item" href="#wandering">
-					<span class="now-index__label">Out And About</span>
+					<span class="now-index__label">Latest Check-In</span>
 					<strong class="now-index__title">{data.latestCheckin.name}</strong>
 					<span class="now-index__meta">
 						{#if data.latestCheckin.place}{data.latestCheckin.place} · {/if}{formatDate(
@@ -227,7 +227,7 @@
 
 {#if data.latestCheckin}
 	<section class="section-block section-block-checkin" id="wandering">
-		<h2 class="section-title">Out And About</h2>
+		<h2 class="section-title">Latest Check-In</h2>
 		<article class="checkin-card checkin-card--featured">
 			{#if data.latestCheckin.coverImage}
 				<a class="checkin-card__media" href={data.latestCheckin.canonicalPath}>
