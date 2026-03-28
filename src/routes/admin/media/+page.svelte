@@ -163,7 +163,7 @@
 			await loadReviewQueue();
 			reviewState = {
 				running: false,
-				message: action === 'approve' ? 'Book cover approved.' : 'Book cover hidden.',
+				message: action === 'approve' ? 'Fallback cover approved.' : 'Book cover hidden.',
 				errors: []
 			};
 		} catch (error) {
@@ -263,7 +263,7 @@
 	}
 
 	async function runBookCoverOverrides() {
-		const batchSize = 6;
+		const batchSize = 12;
 		coverState = {
 			running: true,
 			message: '',
@@ -319,7 +319,7 @@
 
 			coverState = {
 				running: false,
-				message: `Queued ${imported} candidate book covers from ${available} Popfeed books. ${skipped} were skipped.`,
+				message: `Queued ${imported} books for poster review from ${available} Popfeed books. ${skipped} were skipped.`,
 				errors
 			};
 			await loadReviewQueue();
@@ -349,7 +349,7 @@
 		overallErrors = [...musicState.errors, ...coverState.errors];
 		overallMessage =
 			musicOk && coversOk
-				? 'Media assets were synced into your PDS and book-cover candidates were refreshed.'
+				? 'Media assets were synced into your PDS and the book-cover review queue was refreshed.'
 				: 'Media sync finished with some issues. See the notes below.';
 
 		syncingAll = false;
@@ -371,8 +371,8 @@
 
 		<p class="admin-field-note">
 			Use this screen to move remote media artwork into your PDS. Music import uploads track and
-			album art from your archive-backed entries, and the Popfeed pass queues candidate book covers
-			for review without editing the original Popfeed records.
+			album art from your archive-backed entries, and the Popfeed pass queues books whose posters
+			need manual cleanup in Popfeed without editing the original Popfeed records.
 		</p>
 
 		<div class="admin-form-actions">
@@ -396,7 +396,7 @@
 				bind:checked={forceBookCovers}
 				disabled={syncingAll || coverState.running}
 			/>
-			<span>Force-refresh existing queued book cover candidates</span>
+			<span>Force-refresh existing queued book review items</span>
 		</label>
 
 		{#if overallMessage}
@@ -470,13 +470,13 @@
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Books</p>
-				<h2>Queue Popfeed cover candidates</h2>
+				<h2>Queue books for poster review</h2>
 			</div>
 		</div>
 
 		<p class="admin-field-note">
-			This fetches candidate book covers into your own PDS namespace for review. Only approved
-			covers appear publicly; untrusted book-cover sources stay hidden until you approve them.
+			This flags books whose current Popfeed poster is missing or untrusted. Best fix: change the
+			poster in Popfeed. The site will keep those covers hidden until you do.
 		</p>
 
 		<div class="admin-form-actions">
@@ -487,9 +487,9 @@
 				disabled={syncingAll || coverState.running}
 			>
 				{#if coverState.running}
-					Queueing covers…
+					Refreshing queue…
 				{:else}
-					Run book-cover queue
+					Refresh book review queue
 				{/if}
 			</button>
 		</div>
@@ -522,8 +522,9 @@
 		</div>
 
 		<p class="admin-field-note">
-			These books are using hidden or untrusted art in Popfeed. Approve a queued candidate to show
-			it publicly, or hide the image entirely.
+			These books are using hidden or untrusted art in Popfeed. Best fix: replace the poster in
+			Popfeed. You can hide the image here while you do that. If an older fallback is already
+			queued, you can still use it temporarily.
 		</p>
 
 		<div class="admin-form-actions">
@@ -570,23 +571,23 @@
 					<article class="cover-review-card">
 						<div class="cover-review-images">
 							<div class="cover-review-figure">
-								<p class="cover-review-caption">Queued candidate</p>
+								<p class="cover-review-caption">Queued fallback</p>
 								{#if item.candidateImageUrl}
 									<img
 										class="cover-review-image"
 										src={item.candidateImageUrl}
-										alt={`Candidate cover for ${item.title}`}
+										alt={`Fallback cover for ${item.title}`}
 										loading="lazy"
 									/>
 								{:else}
 									<div class="cover-review-image cover-review-image--empty">
-										<span>No candidate cover queued</span>
+										<span>No fallback cover is queued</span>
 									</div>
 								{/if}
 							</div>
 
 							<div class="cover-review-figure">
-								<p class="cover-review-caption">Original source</p>
+								<p class="cover-review-caption">Current Popfeed poster</p>
 								{#if item.sourceImageUrl}
 									<img
 										class="cover-review-image"
@@ -615,7 +616,7 @@
 
 							<div class="cover-review-details">
 								{#if item.candidateProvider}
-									<p class="cover-review-caption">Candidate provider: {item.candidateProvider}</p>
+									<p class="cover-review-caption">Fallback provider: {item.candidateProvider}</p>
 								{/if}
 								{#if item.isbn}
 									<p class="cover-review-caption">ISBN: <code>{item.isbn}</code></p>
@@ -626,27 +627,16 @@
 								<a href={item.localPath} target="_blank" rel="noreferrer">Open local page</a>
 								{#if item.openLibraryUrl}
 									<a href={item.openLibraryUrl} target="_blank" rel="noreferrer"
-										>Open Library search</a
+										>Open Library search (reference only)</a
 									>
 								{/if}
 							</div>
 
-							<div class="admin-form-actions cover-review-actions">
-								{#if item.candidateImageUrl}
-									<button
-										class="admin-button"
-										type="button"
-										onclick={() => reviewCover(item.sourceUri, 'approve')}
-										disabled={isReviewActionRunning(item.sourceUri)}
-									>
-										{#if reviewPending[item.sourceUri] === 'approve'}
-											Approving…
-										{:else}
-											Approve candidate
-										{/if}
-									</button>
-								{/if}
+							<p class="cover-review-caption cover-review-caption--callout">
+								Recommended: fix the poster in Popfeed, then refresh this queue.
+							</p>
 
+							<div class="admin-form-actions cover-review-actions">
 								<button
 									class="admin-button review-action-secondary"
 									type="button"
@@ -659,6 +649,21 @@
 										Hide image
 									{/if}
 								</button>
+
+								{#if item.candidateImageUrl}
+									<button
+										class="admin-button review-action-secondary"
+										type="button"
+										onclick={() => reviewCover(item.sourceUri, 'approve')}
+										disabled={isReviewActionRunning(item.sourceUri)}
+									>
+										{#if reviewPending[item.sourceUri] === 'approve'}
+											Approving…
+										{:else}
+											Use queued fallback
+										{/if}
+									</button>
+								{/if}
 							</div>
 						</div>
 					</article>
@@ -778,6 +783,10 @@
 	}
 
 	.cover-review-actions {
+		margin-top: 1rem;
+	}
+
+	.cover-review-caption--callout {
 		margin-top: 1rem;
 	}
 

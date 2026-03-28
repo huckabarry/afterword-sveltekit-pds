@@ -1,5 +1,4 @@
 import { env } from '$env/dynamic/private';
-import { inferImageDimensions, inferImageMimeType } from '$lib/server/image-metadata';
 import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-identity';
 import type { PopfeedItem } from '$lib/server/popfeed';
 
@@ -8,10 +7,7 @@ export const PDS_POPFEED_OVERRIDE_COLLECTION = 'blog.afterword.media.popfeedOver
 const CREATE_SESSION_NSID = 'com.atproto.server.createSession';
 const LIST_RECORDS_NSID = 'com.atproto.repo.listRecords';
 const PUT_RECORD_NSID = 'com.atproto.repo.putRecord';
-const UPLOAD_BLOB_NSID = 'com.atproto.repo.uploadBlob';
 const PDS_POPFEED_OVERRIDE_CACHE_TTL_MS = 1000 * 60 * 10;
-const IMAGE_FETCH_USER_AGENT = 'afterword-sveltekit-pds popfeed-cover sync';
-
 export type PopfeedImageOverrideStatus = 'approved' | 'pending' | 'hidden';
 
 type AtprotoSession = {
@@ -25,23 +21,10 @@ type CachedAtprotoSession = AtprotoSession & {
 	expiresAt: number;
 };
 
-type AtprotoBlob = {
-	ref: { $link: string };
-	mimeType: string;
-	size: number;
-	$type?: string;
-};
-
 type RawAtprotoRecord = {
 	uri?: string;
 	cid?: string;
 	value?: Record<string, unknown>;
-};
-
-type ImagePayload = {
-	blob: AtprotoBlob;
-	aspectRatio?: { width: number; height: number };
-	originalUrl: string;
 };
 
 type PopfeedOverrideCacheEntry = {
@@ -301,13 +284,6 @@ export function getOpenLibraryBookSearchUrl(identifiers: Record<string, string>)
 	return isbn ? `https://openlibrary.org/search?isbn=${encodeURIComponent(isbn)}` : null;
 }
 
-function getOpenLibraryCoverUrl(identifiers: Record<string, string>) {
-	const isbn = normalizeString(identifiers.isbn13 || identifiers.isbn10);
-	return isbn
-		? `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg?default=false`
-		: null;
-}
-
 async function fetchCollectionRecords(serviceUrl: string, did: string, collection: string) {
 	const records: RawAtprotoRecord[] = [];
 	let cursor = '';
@@ -515,34 +491,6 @@ async function createSession(): Promise<AtprotoSession> {
 	}
 }
 
-async function uploadBlob(
-	session: AtprotoSession,
-	buffer: ArrayBuffer,
-	mimeType: string
-): Promise<AtprotoBlob> {
-	const response = await fetch(`${session.serviceUrl}/xrpc/${UPLOAD_BLOB_NSID}`, {
-		method: 'POST',
-		headers: {
-			authorization: `Bearer ${session.accessJwt}`,
-			'content-type': mimeType
-		},
-		body: buffer
-	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(`ATProto uploadBlob failed: ${response.status} ${text}`);
-	}
-
-	const payload = (await response.json()) as { blob?: AtprotoBlob };
-
-	if (!payload?.blob?.ref?.$link) {
-		throw new Error('ATProto uploadBlob did not return a blob ref');
-	}
-
-	return payload.blob;
-}
-
 async function putRecord(
 	session: AtprotoSession,
 	collection: string,
@@ -574,89 +522,24 @@ async function putRecord(
 	return (await response.json()) as { uri?: string; cid?: string };
 }
 
-async function uploadRemoteImage(
-	session: AtprotoSession,
-	url: string,
-	imageCache: Map<string, ImagePayload | null>
-) {
-	const normalized = normalizeString(url);
-
-	if (!normalized) {
-		return null;
-	}
-
-	if (imageCache.has(normalized)) {
-		return imageCache.get(normalized) || null;
-	}
-
-	const response = await fetch(normalized, {
-		headers: {
-			accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-			'user-agent': IMAGE_FETCH_USER_AGENT
-		}
-	});
-
-	if (!response.ok) {
-		imageCache.set(normalized, null);
-		throw new Error(`Unable to fetch override image: ${response.status} ${normalized}`);
-	}
-
-	const mimeTypeHeader = normalizeString(response.headers.get('content-type')).split(';')[0] || '';
-	const mimeType =
-		mimeTypeHeader && mimeTypeHeader.startsWith('image/')
-			? mimeTypeHeader
-			: inferImageMimeType(normalized);
-	const buffer = await response.arrayBuffer();
-
-	if (!buffer.byteLength) {
-		imageCache.set(normalized, null);
-		return null;
-	}
-
-	const payload = {
-		blob: await uploadBlob(session, buffer, mimeType),
-		aspectRatio: inferImageDimensions(buffer, mimeType),
-		originalUrl: normalized
-	} satisfies ImagePayload;
-
-	imageCache.set(normalized, payload);
-	return payload;
-}
-
 function buildOverrideRecord(
 	item: PopfeedItem,
 	{
-		image,
-		provider,
 		status,
 		queueReason,
-		existing
+		existing,
+		clearImage = false
 	}: {
-		image?: ImagePayload | null;
-		provider?: string | null;
 		status: PopfeedImageOverrideStatus;
 		queueReason?: string | null;
 		existing?: Record<string, unknown> | null;
+		clearImage?: boolean;
 	}
 ): Record<string, unknown> {
 	const existingRecord = getObject(existing);
 	const existingImage = getObject(existingRecord.image);
 	const existingReview = getObject(existingRecord.review);
-	const nextImage =
-		image && provider
-			? {
-					image: {
-						...image.blob,
-						$type: image.blob.$type || 'blob'
-					},
-					...(image.aspectRatio ? { aspectRatio: image.aspectRatio } : {}),
-					originalUrl: image.originalUrl,
-					provider,
-					alt: item.mainCredit ? `${item.title} by ${item.mainCredit}` : item.title
-				}
-			: Object.keys(existingImage).length
-				? existingImage
-				: null;
+	const nextImage = !clearImage && Object.keys(existingImage).length ? existingImage : null;
 	const previousQueueReason = normalizeOptionalString(existingReview.queueReason);
 	const reviewQueueReason = normalizeOptionalString(queueReason) || previousQueueReason;
 	const now = new Date().toISOString();
@@ -686,12 +569,6 @@ function buildOverrideRecord(
 			...(status !== 'pending' ? { reviewedAt: now } : {})
 		}
 	};
-}
-
-function isMissingOverrideImageError(error: unknown) {
-	return (
-		error instanceof Error && /Unable to fetch override image:\s*(404|410)\b/.test(error.message)
-	);
 }
 
 export async function getPopfeedImageOverrides() {
@@ -747,11 +624,11 @@ export async function getPopfeedBookCoverReviewQueue({
 				candidateProvider: override?.status === 'pending' ? override.provider : null,
 				queueReason:
 					override?.queueReason ||
-					(override?.status === 'pending'
-						? 'Candidate cover is queued for manual approval.'
+					(override?.status === 'pending' && override.imageUrl
+						? 'Best fix: replace the poster in Popfeed. This queued fallback is only here if you need a temporary replacement.'
 						: item.posterImage
-							? 'Current cover source is untrusted, so the public site hides it until you approve a replacement.'
-							: 'No trusted cover is available yet.'),
+							? 'Current Popfeed cover is untrusted, so the site hides it until you replace the poster in Popfeed.'
+							: 'No trusted cover is available yet. Add a poster in Popfeed, then refresh this queue.'),
 				openLibraryUrl: getOpenLibraryBookSearchUrl(item.identifiers)
 			};
 		})
@@ -823,7 +700,6 @@ export async function syncPopfeedBookCoverOverrides({
 				: books;
 	const existingOverrides = await getPopfeedImageOverrides();
 	const session = await createSession();
-	const imageCache = new Map<string, ImagePayload | null>();
 	const repo = getConfiguredRepoIdentifier();
 	const result: PopfeedCoverSyncResult = {
 		ok: true,
@@ -851,7 +727,6 @@ export async function syncPopfeedBookCoverOverrides({
 
 	for (const item of selectedBooks) {
 		const sourceCoverUrl = normalizeString(item.sourcePosterImage || item.posterImage);
-		const openLibraryCoverUrl = getOpenLibraryCoverUrl(item.identifiers);
 		const existingOverride = existingOverrides.get(item.uri);
 		const hasLockedDecision =
 			existingOverride?.status === 'approved' || existingOverride?.status === 'hidden';
@@ -873,46 +748,30 @@ export async function syncPopfeedBookCoverOverrides({
 			continue;
 		}
 
-		if (!openLibraryCoverUrl) {
-			result.books.skipped += 1;
-			continue;
-		}
-
 		result.books.attempted += 1;
 
 		try {
-			const image = await uploadRemoteImage(session, openLibraryCoverUrl, imageCache);
-
-			if (!image) {
-				result.books.skipped += 1;
-				continue;
-			}
-
 			await putRecord(
 				session,
 				PDS_POPFEED_OVERRIDE_COLLECTION,
 				existingOverride?.rkey || getRecordKey(item.uri) || item.slug,
 				buildOverrideRecord(item, {
-					image,
-					provider: 'openlibrary',
 					status: 'pending',
-					queueReason: 'Open Library candidate queued for manual approval.',
-					existing: existingOverride?.record || null
+					queueReason: sourceCoverUrl
+						? 'Current Popfeed cover is untrusted. Replace the poster in Popfeed, then refresh this queue.'
+						: 'No trusted poster is available. Add one in Popfeed, then refresh this queue.',
+					existing: existingOverride?.record || null,
+					clearImage: true
 				})
 			);
 			result.books.imported += 1;
 		} catch (error) {
-			if (isMissingOverrideImageError(error)) {
-				result.books.skipped += 1;
-				continue;
-			}
-
 			result.ok = false;
 			result.books.failed += 1;
 			result.errors.push({
 				slug: item.slug,
 				title: item.title,
-				message: error instanceof Error ? error.message : 'Unable to import override image.'
+				message: error instanceof Error ? error.message : 'Unable to queue book cover review.'
 			});
 		}
 	}

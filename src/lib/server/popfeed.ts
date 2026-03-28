@@ -439,8 +439,16 @@ export async function getPopfeedItems(): Promise<PopfeedItem[]> {
 	const applyCoverRules = (overrides: Awaited<ReturnType<typeof getPopfeedImageOverrides>>) =>
 		items.map((item) => {
 			const override = overrides.get(item.uri);
+			const hasTrustedBookPoster =
+				item.type === 'book' &&
+				Boolean(item.posterImage) &&
+				!isUntrustedBookCoverUrl(item.posterImage);
 
 			if (override?.status === 'hidden') {
+				if (hasTrustedBookPoster) {
+					return item;
+				}
+
 				return item.posterImage
 					? {
 							...item,
