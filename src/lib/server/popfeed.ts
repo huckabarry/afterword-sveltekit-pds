@@ -413,8 +413,8 @@ function normalizeItem(
 	const posterRef = getBlobRefLink(value.poster);
 	const slug = `${slugify(title)}-${id}`;
 	const posterImage =
-		String(value.posterUrl || '').trim() ||
-		(posterRef ? getBlobUrl(serviceUrl, did, posterRef) : null);
+		(posterRef ? getBlobUrl(serviceUrl, did, posterRef) : null) ||
+		String(value.posterUrl || '').trim();
 
 	return {
 		id,
