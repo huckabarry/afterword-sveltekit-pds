@@ -51,6 +51,21 @@ function getDb(event: Pick<RequestEvent, 'platform'>) {
 	}
 }
 
+async function ensureActivityPubMoveStateTable(db: NonNullable<ReturnType<typeof getDb>>) {
+	await db
+		.prepare(
+			`CREATE TABLE IF NOT EXISTS activitypub_move_state (
+				id INTEGER PRIMARY KEY CHECK (id = 1),
+				target_handle TEXT,
+				target_actor_url TEXT,
+				move_started_at TEXT,
+				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`
+		)
+		.run();
+}
+
 function normalizeUrl(value: string, fallback: string | null = null) {
 	const trimmed = String(value || '').trim();
 	return trimmed || fallback;
@@ -196,6 +211,7 @@ export async function getSiteProfile(event: Pick<RequestEvent, 'platform'>): Pro
 	const db = getDb(event);
 	if (!db) return DEFAULT_PROFILE;
 
+	await ensureActivityPubMoveStateTable(db);
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN migration_aliases_json TEXT`).run().catch(() => {});
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_body TEXT`).run().catch(() => {});
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_interests_json TEXT`).run().catch(() => {});
@@ -212,8 +228,27 @@ export async function getSiteProfile(event: Pick<RequestEvent, 'platform'>): Pro
 			 LIMIT 1`
 		)
 		.first<ProfileRow>();
+	const moveRow = await db
+		.prepare(
+			`SELECT target_handle, target_actor_url, move_started_at
+			 FROM activitypub_move_state
+			 WHERE id = 1
+			 LIMIT 1`
+		)
+		.first<ProfileRow>();
 
-	return mapProfile(row);
+	const profile = mapProfile(row);
+
+	if (!moveRow) {
+		return profile;
+	}
+
+	return {
+		...profile,
+		moveTargetHandle: getString(moveRow.target_handle) ?? profile.moveTargetHandle,
+		moveTargetActorUrl: getString(moveRow.target_actor_url) ?? profile.moveTargetActorUrl,
+		moveStartedAt: getString(moveRow.move_started_at) ?? profile.moveStartedAt
+	};
 }
 
 export async function updateSiteProfile(
@@ -225,6 +260,7 @@ export async function updateSiteProfile(
 		throw new Error('D1 database is not configured');
 	}
 
+	await ensureActivityPubMoveStateTable(db);
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN migration_aliases_json TEXT`).run().catch(() => {});
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_body TEXT`).run().catch(() => {});
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_interests_json TEXT`).run().catch(() => {});
@@ -261,6 +297,24 @@ export async function updateSiteProfile(
 			serializeAboutInterests(input.aboutInterests),
 			serializeVerificationLinks(input.verificationLinks),
 			serializeMigrationAliases(input.migrationAliases),
+			getString(input.moveTargetHandle),
+			getString(input.moveTargetActorUrl),
+			getString(input.moveStartedAt)
+		)
+		.run();
+
+	await db
+		.prepare(
+			`INSERT INTO activitypub_move_state (
+				id, target_handle, target_actor_url, move_started_at
+			) VALUES (1, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				target_handle = excluded.target_handle,
+				target_actor_url = excluded.target_actor_url,
+				move_started_at = excluded.move_started_at,
+				updated_at = CURRENT_TIMESTAMP`
+		)
+		.bind(
 			getString(input.moveTargetHandle),
 			getString(input.moveTargetActorUrl),
 			getString(input.moveStartedAt)
