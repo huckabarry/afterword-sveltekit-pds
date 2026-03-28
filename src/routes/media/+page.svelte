@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { BlogPost } from '$lib/server/ghost';
-	import type { AlbumEntry, ListenLink, TrackEntry } from '$lib/server/music';
+	import type { AlbumEntry, TrackEntry } from '$lib/server/music';
+	import type { PopfeedItem } from '$lib/server/popfeed';
 
 	type TimelineLink = {
 		label: string;
@@ -10,7 +11,7 @@
 
 	type BaseTimelineItem = {
 		id: string;
-		kind: 'post' | 'track' | 'album';
+		kind: 'post' | 'track' | 'album' | 'popfeed';
 		label: string;
 		title: string;
 		href: string;
@@ -39,7 +40,17 @@
 		links: TimelineLink[];
 	};
 
-	type TimelineItem = PostTimelineItem | TrackTimelineItem | AlbumTimelineItem;
+	type PopfeedTimelineItem = BaseTimelineItem & {
+		kind: 'popfeed';
+		credit: string;
+		links: TimelineLink[];
+	};
+
+	type TimelineItem =
+		| PostTimelineItem
+		| TrackTimelineItem
+		| AlbumTimelineItem
+		| PopfeedTimelineItem;
 
 	const CLASSIFICATION_TAGS = new Set([
 		'books',
@@ -66,6 +77,7 @@
 			posts: BlogPost[];
 			albums: AlbumEntry[];
 			tracks: TrackEntry[];
+			popfeedItems: PopfeedItem[];
 		};
 	} = $props();
 
@@ -128,7 +140,10 @@
 		return 'Media Note';
 	}
 
-	function mapLinks(links: ListenLink[], limit = 3): TimelineLink[] {
+	function toTimelineLinks(
+		links: Array<{ label: string; url: string }>,
+		limit = 3
+	): TimelineLink[] {
 		return (links || []).slice(0, limit).map((link) => ({
 			label: link.label,
 			url: link.url,
@@ -167,7 +182,7 @@
 			tags: [],
 			artist: track.artist,
 			audioUrl: track.previewUrl || null,
-			links: mapLinks(track.listenLinks)
+			links: toTimelineLinks(track.listenLinks)
 		};
 	}
 
@@ -185,7 +200,36 @@
 			imageAlt: `${album.albumTitle} by ${album.artist}`,
 			tags: [],
 			artist: album.artist,
-			links: mapLinks(album.listenLinks)
+			links: toTimelineLinks(album.listenLinks)
+		};
+	}
+
+	function getPopfeedLabel(item: PopfeedItem) {
+		switch (item.type) {
+			case 'book':
+				return 'Book';
+			case 'tv_show':
+				return 'Show';
+			default:
+				return 'Movie';
+		}
+	}
+
+	function toPopfeedTimelineItem(item: PopfeedItem): PopfeedTimelineItem {
+		return {
+			id: `popfeed-${item.type}-${item.slug}`,
+			kind: 'popfeed',
+			label: getPopfeedLabel(item),
+			title: item.title,
+			href: item.localPath,
+			date: item.date,
+			dateLabel: formatTimelineDate(item.date),
+			summary: item.genres.slice(0, 4).join(', '),
+			imageUrl: item.posterImage,
+			imageAlt: item.mainCredit ? `${item.title} by ${item.mainCredit}` : item.title,
+			tags: item.listTypeLabel ? [item.listTypeLabel] : [],
+			credit: item.mainCredit,
+			links: toTimelineLinks(item.links)
 		};
 	}
 
@@ -197,7 +241,8 @@
 		getTimelineItems([
 			...data.posts.map(toPostTimelineItem),
 			...data.tracks.map(toTrackTimelineItem),
-			...data.albums.map(toAlbumTimelineItem)
+			...data.albums.map(toAlbumTimelineItem),
+			...data.popfeedItems.map(toPopfeedTimelineItem)
 		])
 	);
 </script>
@@ -253,7 +298,9 @@
 								</h2>
 								<a class="media-timeline__jump" href={item.href} aria-label={`Open ${item.title}`}>
 									<svg viewBox="0 0 32 32" aria-hidden="true">
-										<path d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"></path>
+										<path
+											d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"
+										></path>
 									</svg>
 								</a>
 							</div>
@@ -278,9 +325,15 @@
 										<h2 class="media-timeline__title media-timeline__title--media">
 											<a href={item.href}>{item.title}</a>
 										</h2>
-										<a class="media-timeline__jump" href={item.href} aria-label={`Open ${item.title}`}>
+										<a
+											class="media-timeline__jump"
+											href={item.href}
+											aria-label={`Open ${item.title}`}
+										>
 											<svg viewBox="0 0 32 32" aria-hidden="true">
-												<path d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"></path>
+												<path
+													d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"
+												></path>
 											</svg>
 										</a>
 									</div>
@@ -302,7 +355,12 @@
 
 								{#if item.audioUrl}
 									<div class="media-entry__audio">
-										<audio controls preload="none" src={item.audioUrl} aria-label={`Preview ${item.title}`}></audio>
+										<audio
+											controls
+											preload="none"
+											src={item.audioUrl}
+											aria-label={`Preview ${item.title}`}
+										></audio>
 									</div>
 								{/if}
 
@@ -321,6 +379,57 @@
 									</div>
 								{/if}
 							</div>
+						{:else if item.kind === 'popfeed'}
+							<div class="media-entry media-entry--popfeed">
+								<div class="media-entry__body">
+									<div class="media-entry__heading">
+										<h2 class="media-timeline__title media-timeline__title--media">
+											<a href={item.href}>{item.title}</a>
+										</h2>
+										<a
+											class="media-timeline__jump"
+											href={item.href}
+											aria-label={`Open ${item.title}`}
+										>
+											<svg viewBox="0 0 32 32" aria-hidden="true">
+												<path
+													d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"
+												></path>
+											</svg>
+										</a>
+									</div>
+
+									{#if item.credit}
+										<p class="media-timeline__meta media-timeline__meta--artist">{item.credit}</p>
+									{/if}
+								</div>
+
+								<a class="media-entry__cover media-entry__cover--full" href={item.href}>
+									{#if item.imageUrl}
+										<img class="media-entry__art" src={item.imageUrl} alt={item.imageAlt} />
+									{:else}
+										<div class="media-entry__fallback" aria-hidden="true">{item.label}</div>
+									{/if}
+								</a>
+
+								{#if item.summary}
+									<p class="media-timeline__lede media-timeline__lede--compact">{item.summary}</p>
+								{/if}
+
+								<div class="media-timeline__actions">
+									<a class="tag-pill media-timeline__action" href={item.href}>Open entry</a>
+									{#each item.links as link}
+										<a
+											class="tag-pill media-timeline__action"
+											href={link.url}
+											target={link.external ? '_blank' : undefined}
+											rel={link.external ? 'noreferrer' : undefined}
+										>
+											{link.label}
+										</a>
+									{/each}
+								</div>
+							</div>
 						{:else}
 							<div class="media-entry media-entry--album">
 								<div class="media-entry__body">
@@ -328,9 +437,15 @@
 										<h2 class="media-timeline__title media-timeline__title--media">
 											<a href={item.href}>{item.title}</a>
 										</h2>
-										<a class="media-timeline__jump" href={item.href} aria-label={`Open ${item.title}`}>
+										<a
+											class="media-timeline__jump"
+											href={item.href}
+											aria-label={`Open ${item.title}`}
+										>
 											<svg viewBox="0 0 32 32" aria-hidden="true">
-												<path d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"></path>
+												<path
+													d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"
+												></path>
 											</svg>
 										</a>
 									</div>
