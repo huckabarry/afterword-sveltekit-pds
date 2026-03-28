@@ -32,7 +32,10 @@ export async function PATCH(event) {
 		aboutBody: profile.aboutBody,
 		aboutInterests: profile.aboutInterests,
 		verificationLinks: profile.verificationLinks,
-		migrationAliases: profile.migrationAliases
+		migrationAliases: profile.migrationAliases,
+		moveTargetHandle: profile.moveTargetHandle,
+		moveTargetActorUrl: profile.moveTargetActorUrl,
+		moveStartedAt: profile.moveStartedAt
 	});
 
 	return json(await buildLocalAccount(event));

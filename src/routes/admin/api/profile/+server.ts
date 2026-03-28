@@ -31,6 +31,7 @@ export async function POST(event) {
 	await requireAdminAccess(event);
 
 	const body = await event.request.json().catch(() => null);
+	const currentProfile = await getSiteProfile(event);
 	const displayName = String(body?.displayName || '').trim();
 	const avatarUrl = String(body?.avatarUrl || '').trim();
 	const headerImageUrl = String(body?.headerImageUrl || '').trim();
@@ -52,7 +53,10 @@ export async function POST(event) {
 		verificationLinks,
 		migrationAliases: Array.isArray(body?.migrationAliases)
 			? body.migrationAliases.map((item: unknown) => String(item || '').trim()).filter(Boolean)
-			: []
+			: [],
+		moveTargetHandle: currentProfile.moveTargetHandle,
+		moveTargetActorUrl: currentProfile.moveTargetActorUrl,
+		moveStartedAt: currentProfile.moveStartedAt
 	});
 
 	return json({ ok: true, profile });

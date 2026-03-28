@@ -17,6 +17,9 @@ export type SiteProfile = {
 	aboutInterests: string[];
 	verificationLinks: VerificationLink[];
 	migrationAliases: string[];
+	moveTargetHandle: string | null;
+	moveTargetActorUrl: string | null;
+	moveStartedAt: string | null;
 };
 
 const DEFAULT_ABOUT_CONTENT = getAboutContent();
@@ -29,7 +32,10 @@ const DEFAULT_PROFILE: SiteProfile = {
 	aboutBody: DEFAULT_ABOUT_CONTENT.paragraphs.join('\n\n'),
 	aboutInterests: DEFAULT_ABOUT_CONTENT.interests,
 	verificationLinks: [{ label: 'Bluesky', url: 'https://bsky.app/profile/afterword.blog' }],
-	migrationAliases: []
+	migrationAliases: [],
+	moveTargetHandle: null,
+	moveTargetActorUrl: null,
+	moveStartedAt: null
 };
 
 function getDb(event: Pick<RequestEvent, 'platform'>) {
@@ -48,6 +54,10 @@ function getDb(event: Pick<RequestEvent, 'platform'>) {
 function normalizeUrl(value: string, fallback: string | null = null) {
 	const trimmed = String(value || '').trim();
 	return trimmed || fallback;
+}
+
+function getString(value: unknown) {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 function normalizeAliasUrl(value: string) {
@@ -175,7 +185,10 @@ function mapProfile(row: ProfileRow | null | undefined): SiteProfile {
 		aboutBody: String(row.about_body || DEFAULT_PROFILE.aboutBody),
 		aboutInterests: parseAboutInterests(row.about_interests_json),
 		verificationLinks: parseVerificationLinks(row.verification_links_json),
-		migrationAliases: parseMigrationAliases(row.migration_aliases_json)
+		migrationAliases: parseMigrationAliases(row.migration_aliases_json),
+		moveTargetHandle: getString(row.move_target_handle),
+		moveTargetActorUrl: getString(row.move_target_actor_url),
+		moveStartedAt: getString(row.move_started_at)
 	};
 }
 
@@ -186,10 +199,14 @@ export async function getSiteProfile(event: Pick<RequestEvent, 'platform'>): Pro
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN migration_aliases_json TEXT`).run().catch(() => {});
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_body TEXT`).run().catch(() => {});
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_interests_json TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_target_handle TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_target_actor_url TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_started_at TEXT`).run().catch(() => {});
 
 	const row = await db
 		.prepare(
-			`SELECT display_name, avatar_url, header_image_url, bio, about_body, about_interests_json, verification_links_json, migration_aliases_json
+			`SELECT display_name, avatar_url, header_image_url, bio, about_body, about_interests_json, verification_links_json, migration_aliases_json,
+			        move_target_handle, move_target_actor_url, move_started_at
 			 FROM site_profile
 			 WHERE id = 1
 			 LIMIT 1`
@@ -211,12 +228,16 @@ export async function updateSiteProfile(
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN migration_aliases_json TEXT`).run().catch(() => {});
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_body TEXT`).run().catch(() => {});
 	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_interests_json TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_target_handle TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_target_actor_url TEXT`).run().catch(() => {});
+	await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_started_at TEXT`).run().catch(() => {});
 
 	await db
 		.prepare(
 			`INSERT INTO site_profile (
-				id, display_name, avatar_url, header_image_url, bio, about_body, about_interests_json, verification_links_json, migration_aliases_json
-			) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+				id, display_name, avatar_url, header_image_url, bio, about_body, about_interests_json, verification_links_json, migration_aliases_json,
+				move_target_handle, move_target_actor_url, move_started_at
+			) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET
 				display_name = excluded.display_name,
 				avatar_url = excluded.avatar_url,
@@ -226,6 +247,9 @@ export async function updateSiteProfile(
 				about_interests_json = excluded.about_interests_json,
 				verification_links_json = excluded.verification_links_json,
 				migration_aliases_json = excluded.migration_aliases_json,
+				move_target_handle = excluded.move_target_handle,
+				move_target_actor_url = excluded.move_target_actor_url,
+				move_started_at = excluded.move_started_at,
 				updated_at = CURRENT_TIMESTAMP`
 		)
 		.bind(
@@ -236,7 +260,10 @@ export async function updateSiteProfile(
 			String(input.aboutBody || DEFAULT_PROFILE.aboutBody).trim(),
 			serializeAboutInterests(input.aboutInterests),
 			serializeVerificationLinks(input.verificationLinks),
-			serializeMigrationAliases(input.migrationAliases)
+			serializeMigrationAliases(input.migrationAliases),
+			getString(input.moveTargetHandle),
+			getString(input.moveTargetActorUrl),
+			getString(input.moveStartedAt)
 		)
 		.run();
 

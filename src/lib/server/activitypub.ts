@@ -100,12 +100,19 @@ export function createActor(origin: string, profile?: SiteProfile) {
 		headerImageUrl: null,
 		bio: 'Writer, photographer, and urban planner publishing from Afterword.',
 		verificationLinks: [],
-		migrationAliases: []
+		migrationAliases: [],
+		moveTargetHandle: null,
+		moveTargetActorUrl: null,
+		moveStartedAt: null
 	};
 	const alsoKnownAs = dedupeMigrationAliases([
 		...getAlsoKnownAs(),
 		...(actorProfile.migrationAliases || [])
 	]).filter(Boolean);
+	const movedTo =
+		actorProfile.moveStartedAt && actorProfile.moveTargetActorUrl
+			? actorProfile.moveTargetActorUrl
+			: null;
 
 	return {
 		'@context': [ACTIVITY_STREAMS_CONTEXT, 'https://w3id.org/security/v1'],
@@ -136,6 +143,11 @@ export function createActor(origin: string, profile?: SiteProfile) {
 		outbox: `${origin}${OUTBOX_PATH}`,
 		followers: `${origin}${FOLLOWERS_PATH}`,
 		following: `${origin}${FOLLOWING_PATH}`,
+		...(movedTo
+			? {
+					movedTo
+				}
+			: {}),
 		...(alsoKnownAs.length
 			? {
 					alsoKnownAs
