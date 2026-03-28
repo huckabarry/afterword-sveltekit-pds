@@ -618,8 +618,10 @@
 		left: calc(
 			var(--timeline-date-column) + var(--timeline-gap) + (var(--timeline-rail-column) / 2)
 		);
-		width: 2px;
-		background: color-mix(in srgb, var(--accent) 42%, var(--line) 58%);
+		width: 3px;
+		background: color-mix(in srgb, var(--accent) 78%, white 22%);
+		border-radius: 999px;
+		opacity: 0.92;
 		transform: translateX(-50%);
 		pointer-events: none;
 	}
@@ -721,11 +723,11 @@
 		position: absolute;
 		top: 0.42rem;
 		left: 50%;
-		width: 0.72rem;
-		height: 0.72rem;
+		width: 0.8rem;
+		height: 0.8rem;
 		border-radius: 999px;
 		background: var(--surface);
-		border: 2px solid color-mix(in srgb, var(--accent) 55%, var(--line) 45%);
+		border: 3px solid color-mix(in srgb, var(--accent) 82%, white 18%);
 		transform: translateX(-50%);
 	}
 
@@ -820,6 +822,11 @@
 		margin-top: 1rem;
 	}
 
+	.now-checkin-map :global(.checkin-map__frame--leaflet) {
+		height: clamp(14rem, 30vw, 18rem);
+		border-radius: 0.85rem;
+	}
+
 	.now-media-entry {
 		display: grid;
 		grid-template-columns: 8rem minmax(0, 1fr);
@@ -886,24 +893,62 @@
 		}
 
 		.now-timeline {
-			--timeline-date-column: 3.85rem;
-			--timeline-rail-column: 1rem;
-			--timeline-gap: 0.8rem;
+			padding-left: 0;
 		}
 
 		.now-timeline__entry {
-			grid-template-columns: var(--timeline-date-column) var(--timeline-rail-column) minmax(0, 1fr);
-			gap: var(--timeline-gap);
+			position: relative;
+			display: block;
+			padding-left: 1.7rem;
+		}
+
+		.now-timeline__entry + .now-timeline__entry {
+			margin-top: 2.4rem;
+		}
+
+		.now-timeline::before {
+			left: 0.38rem;
+			top: 0.4rem;
+			bottom: 0.25rem;
+			transform: none;
+		}
+
+		.now-timeline__meta-column {
+			margin-bottom: 0.45rem;
 		}
 
 		.now-timeline__date {
-			top: 4.75rem;
-			font-size: 0.76rem;
+			position: static;
+			padding-top: 0;
+			font-size: 0.78rem;
+		}
+
+		.now-timeline__rail {
+			position: absolute;
+			left: 0;
+			top: 0;
+			bottom: 0;
+			width: 0.9rem;
+			min-height: 0;
+		}
+
+		.now-timeline__dot {
+			left: 0.38rem;
+			top: 0.12rem;
+			transform: translateX(-50%);
 		}
 
 		.now-media-entry {
-			grid-template-columns: 5.5rem minmax(0, 1fr);
-			gap: 0.85rem;
+			grid-template-columns: 1fr;
+			gap: 0.95rem;
+		}
+
+		.now-media-entry__cover {
+			max-width: 8rem;
+		}
+
+		.now-checkin-map :global(.checkin-map__frame--leaflet) {
+			height: 14rem;
 		}
 	}
 </style>
