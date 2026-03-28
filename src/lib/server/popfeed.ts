@@ -5,6 +5,8 @@ const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 const POPFEED_ITEM_COLLECTION = 'social.popfeed.feed.listItem';
 const POPFEED_LIST_COLLECTION = 'social.popfeed.feed.list';
 const POPFEED_CACHE_TTL_MS = 1000 * 60 * 10;
+const BOOK_COVER_CACHE_TTL_MS = 1000 * 60 * 60 * 24;
+const ISBNDB_PLACEHOLDER_CONTENT_LENGTH = 3736;
 
 export type PopfeedItemType = 'book' | 'movie' | 'tv_show';
 
@@ -52,6 +54,11 @@ type PopfeedCacheEntry = {
 	items: PopfeedItem[];
 };
 
+type BookCoverCacheEntry = {
+	expiresAt: number;
+	available: boolean;
+};
+
 function getRepo() {
 	return (
 		(process.env.ATPROTO_REPOS || process.env.ATPROTO_REPO || env.ATPROTO_REPO || DEFAULT_REPO)
@@ -71,6 +78,18 @@ function getPopfeedCache() {
 	}
 
 	return scope.__afterwordPopfeedCache;
+}
+
+function getBookCoverCache() {
+	const scope = globalThis as typeof globalThis & {
+		__afterwordBookCoverCache?: Map<string, BookCoverCacheEntry>;
+	};
+
+	if (!scope.__afterwordBookCoverCache) {
+		scope.__afterwordBookCoverCache = new Map<string, BookCoverCacheEntry>();
+	}
+
+	return scope.__afterwordBookCoverCache;
 }
 
 function getRecordKey(uri: string | undefined | null) {
@@ -312,6 +331,47 @@ function normalizeLists(records: Array<Record<string, unknown>>) {
 	);
 }
 
+function looksLikeIsbnDbCover(url: string) {
+	return /^https:\/\/images\.isbndb\.com\/covers\//i.test(String(url || '').trim());
+}
+
+async function isAvailableBookCover(url: string) {
+	const normalized = String(url || '').trim();
+
+	if (!looksLikeIsbnDbCover(normalized)) {
+		return true;
+	}
+
+	const cache = getBookCoverCache();
+	const cached = cache.get(normalized);
+
+	if (cached && cached.expiresAt > Date.now()) {
+		return cached.available;
+	}
+
+	try {
+		const response = await fetch(normalized, {
+			method: 'HEAD',
+			redirect: 'follow'
+		});
+
+		const contentLength = Number.parseInt(response.headers.get('content-length') || '', 10);
+		const available =
+			response.ok &&
+			(!Number.isFinite(contentLength) || contentLength !== ISBNDB_PLACEHOLDER_CONTENT_LENGTH);
+
+		cache.set(normalized, {
+			expiresAt: Date.now() + BOOK_COVER_CACHE_TTL_MS,
+			available
+		});
+
+		return available;
+	} catch (error) {
+		console.warn('[popfeed] Unable to verify book cover availability:', error);
+		return true;
+	}
+}
+
 function normalizeItem(
 	record: Record<string, unknown>,
 	did: string,
@@ -413,12 +473,30 @@ export async function getPopfeedItems(): Promise<PopfeedItem[]> {
 			return true;
 		});
 
+		const verified = await Promise.all(
+			deduped.map(async (item) => {
+				if (
+					item.type === 'book' &&
+					item.posterImage &&
+					looksLikeIsbnDbCover(item.posterImage) &&
+					!(await isAvailableBookCover(item.posterImage))
+				) {
+					return {
+						...item,
+						posterImage: null
+					};
+				}
+
+				return item;
+			})
+		);
+
 		cache.set(repo, {
 			expiresAt: Date.now() + POPFEED_CACHE_TTL_MS,
-			items: deduped
+			items: verified
 		});
 
-		return deduped;
+		return verified;
 	} catch (error) {
 		console.warn('[popfeed] Unable to fetch records:', error);
 		return [];
