@@ -6,13 +6,16 @@
 		{ href: '/admin', label: 'Home' },
 		{ href: '/admin/profile', label: 'Profile' },
 		{ href: '/admin/posts', label: 'Posts' },
+		{ href: '/admin/media', label: 'Media' },
 		{ href: '/admin/photos', label: 'Images' },
 		{ href: '/admin/webmentions', label: 'Webmentions' },
 		{ href: '/admin/standard-site', label: 'Standard Site' }
 	];
 
 	function isActive(href: string) {
-		return href === '/admin' ? data.pathname === href : data.pathname === href || data.pathname.startsWith(`${href}/`);
+		return href === '/admin'
+			? data.pathname === href
+			: data.pathname === href || data.pathname.startsWith(`${href}/`);
 	}
 
 	function toggleMenu() {
@@ -40,12 +43,18 @@
 			<div class="admin-sidebar__brand">
 				<p class="admin-eyebrow">Afterword</p>
 				<h1 class="admin-title">Admin</h1>
-				<p class="admin-sidebar__tagline">A quieter publishing workspace for profile, posts, images, and site upkeep.</p>
+				<p class="admin-sidebar__tagline">
+					A quieter publishing workspace for profile, posts, images, and site upkeep.
+				</p>
 			</div>
 
 			<nav class="admin-sidebar__nav" aria-label="Admin">
 				{#each navItems as item}
-					<a class:admin-sidebar__link--active={isActive(item.href)} class="admin-sidebar__link" href={item.href}>
+					<a
+						class:admin-sidebar__link--active={isActive(item.href)}
+						class="admin-sidebar__link"
+						href={item.href}
+					>
 						<span>{item.label}</span>
 					</a>
 				{/each}
@@ -67,6 +76,8 @@
 							Profile
 						{:else if data.pathname.startsWith('/admin/posts')}
 							Posts
+						{:else if data.pathname === '/admin/media'}
+							Media
 						{:else if data.pathname === '/admin/photos'}
 							Images
 						{:else if data.pathname === '/admin/webmentions'}
