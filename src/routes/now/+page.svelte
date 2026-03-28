@@ -817,7 +817,17 @@
 	}
 
 	.now-media-entry--track {
-		grid-template-columns: 6.25rem minmax(0, 1fr);
+		grid-template-columns: minmax(0, 1fr) 6.25rem;
+	}
+
+	.now-media-entry--track .now-media-entry__body {
+		grid-column: 1;
+		grid-row: 1;
+	}
+
+	.now-media-entry--track .now-media-entry__cover {
+		grid-column: 2;
+		grid-row: 1;
 	}
 
 	.now-media-entry--album {
@@ -893,6 +903,12 @@
 		.now-media-entry {
 			grid-template-columns: 1fr;
 			gap: 0.95rem;
+		}
+
+		.now-media-entry--track .now-media-entry__body,
+		.now-media-entry--track .now-media-entry__cover {
+			grid-column: auto;
+			grid-row: auto;
 		}
 
 		.now-media-entry__cover {
