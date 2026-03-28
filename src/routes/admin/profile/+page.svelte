@@ -61,7 +61,13 @@
 			<p class="admin-form-success">Profile saved.</p>
 		{/if}
 
-		<form method="POST" enctype="multipart/form-data" class="admin-compose-form" use:enhance>
+		<form
+			method="POST"
+			action="/admin/profile"
+			enctype="multipart/form-data"
+			class="admin-compose-form"
+			use:enhance
+		>
 			<label class="admin-field">
 				<span>Display name</span>
 				<input name="displayName" type="text" value={form?.displayName || data.profile.displayName} />
@@ -260,7 +266,7 @@
 			<p class="admin-form-error">{form.moveError}</p>
 		{/if}
 
-		<form method="POST" action="?/moveFollowers" class="admin-compose-form" use:enhance>
+		<form method="POST" action="/admin/profile?/moveFollowers" class="admin-compose-form">
 			<div class="admin-form-actions">
 				<button class="admin-button" type="submit" disabled={!previewMoveTargetActorUrl}>
 					Move followers now
