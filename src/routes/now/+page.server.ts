@@ -1,26 +1,52 @@
 import { getCheckins } from '$lib/server/atproto';
 import { getNowIntroContent } from '$lib/server/content';
-import { getRecentTaggedPosts } from '$lib/server/ghost';
-import { getAlbums, getTracks } from '$lib/server/music';
+import { getPhotoItems, getRecentTaggedPosts, type BlogPost, type PhotoItem } from '$lib/server/ghost';
+
+const MEDIA_TAGS = new Set([
+	'books',
+	'book-reviews',
+	'movie',
+	'movies',
+	'film',
+	'films',
+	'show',
+	'shows',
+	'tv',
+	'watching'
+]);
+
+function isMediaTagged(post: BlogPost) {
+	return post.tags.some((tag) => MEDIA_TAGS.has(tag));
+}
+
+function getLatestPhoto(photos: PhotoItem[]) {
+	return photos
+		.slice()
+		.sort((a, b) => {
+			const dateDelta = b.postPublishedAt.getTime() - a.postPublishedAt.getTime();
+			if (dateDelta !== 0) return dateDelta;
+			return a.index - b.index;
+		})[0] || null;
+}
 
 export async function load() {
-	const [intro, nowPosts, bookPosts, checkins, albums, tracks] = await Promise.all([
+	const [intro, rawNowPosts, checkins, photos] = await Promise.all([
 		getNowIntroContent(),
 		getRecentTaggedPosts(['now'], 12),
-		getRecentTaggedPosts(['books', 'book-reviews'], 8),
 		getCheckins(),
-		getAlbums(),
-		getTracks()
+		getPhotoItems()
 	]);
 
-	const bookIds = new Set(bookPosts.map((post) => post.id));
+	const nowPosts = rawNowPosts.filter((post) => !isMediaTagged(post));
+	const latestCheckin =
+		checkins
+			.slice()
+			.sort((a, b) => b.visitedAt.getTime() - a.visitedAt.getTime())[0] || null;
 
 	return {
 		intro,
-		nowPosts: nowPosts.filter((post) => !bookIds.has(post.id)),
-		bookPosts,
-		checkins,
-		albums,
-		tracks
+		nowPosts,
+		latestCheckin,
+		latestPhoto: getLatestPhoto(photos)
 	};
 }

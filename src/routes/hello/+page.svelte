@@ -56,8 +56,8 @@
 						<a href="/now">Now</a> for a snapshot of what currently has my attention.
 					</li>
 					<li>
-						<a href="/listening">Listening Now</a> and <a href="/music">Music</a> if you want
-						the soundtrack, or the part of my brain that gets excited about guitar sounds.
+						<a href="/media">Media</a> for the soundtrack, the reading stack, and the part
+						of my brain that gets excited about guitar sounds.
 					</li>
 					<li>
 						<a href="/check-ins">Check-ins</a> if you like maps, places, and traces of where
