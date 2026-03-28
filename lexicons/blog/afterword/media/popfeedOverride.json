@@ -1,0 +1,121 @@
+{
+	"lexicon": 1,
+	"id": "blog.afterword.media.popfeedOverride",
+	"defs": {
+		"main": {
+			"type": "record",
+			"key": "any",
+			"description": "A companion override record for a Popfeed item. This lets Bryan keep Popfeed as the source while storing better cover art and metadata in his own PDS namespace.",
+			"record": {
+				"type": "object",
+				"required": ["sourceUri", "image"],
+				"properties": {
+					"sourceUri": {
+						"type": "string",
+						"format": "at-uri",
+						"description": "AT URI for the original Popfeed list item record."
+					},
+					"sourceCollection": {
+						"type": "string",
+						"maxLength": 300,
+						"description": "Collection name for the source record, normally social.popfeed.feed.listItem."
+					},
+					"creativeWorkType": {
+						"type": "string",
+						"maxLength": 100,
+						"description": "The Popfeed media type such as book, movie, or tv_show."
+					},
+					"title": {
+						"type": "string",
+						"maxLength": 300,
+						"description": "Title copied from the source item for easier inspection."
+					},
+					"identifiers": {
+						"type": "object",
+						"description": "Optional identifiers copied from Popfeed for lookups or later reprocessing.",
+						"properties": {
+							"isbn10": {
+								"type": "string",
+								"maxLength": 32
+							},
+							"isbn13": {
+								"type": "string",
+								"maxLength": 32
+							},
+							"imdbId": {
+								"type": "string",
+								"maxLength": 64
+							},
+							"tmdbId": {
+								"type": "string",
+								"maxLength": 64
+							},
+							"mbId": {
+								"type": "string",
+								"maxLength": 128
+							},
+							"mbReleaseId": {
+								"type": "string",
+								"maxLength": 128
+							}
+						}
+					},
+					"image": {
+						"type": "object",
+						"description": "Replacement artwork owned by Bryan and stored as a PDS blob.",
+						"required": ["image"],
+						"properties": {
+							"image": {
+								"type": "blob",
+								"accept": ["image/*"],
+								"maxSize": 5000000
+							},
+							"alt": {
+								"type": "string",
+								"maxLength": 1000
+							},
+							"originalUrl": {
+								"type": "string",
+								"format": "uri",
+								"description": "Remote source URL used when the override image was imported."
+							},
+							"provider": {
+								"type": "string",
+								"maxLength": 100,
+								"description": "Provider label for the imported image, for example openlibrary."
+							},
+							"aspectRatio": {
+								"type": "object",
+								"required": ["width", "height"],
+								"properties": {
+									"width": {
+										"type": "integer",
+										"minimum": 1
+									},
+									"height": {
+										"type": "integer",
+										"minimum": 1
+									}
+								}
+							}
+						}
+					},
+					"provenance": {
+						"type": "object",
+						"description": "Optional sync metadata for auditing or future refreshes.",
+						"properties": {
+							"syncedAt": {
+								"type": "string",
+								"format": "datetime"
+							},
+							"sourceImageUrl": {
+								"type": "string",
+								"format": "uri"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

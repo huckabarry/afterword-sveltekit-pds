@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { resolveAtprotoService } from '$lib/server/atproto-identity';
+import { getPopfeedImageOverrides } from '$lib/server/pds-popfeed-overrides';
 
 const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 const POPFEED_ITEM_COLLECTION = 'social.popfeed.feed.listItem';
@@ -38,6 +39,7 @@ export type PopfeedItem = {
 	date: Date;
 	displayDate: string;
 	posterImage: string | null;
+	sourcePosterImage: string | null;
 	backdropUrl: string | null;
 	identifiers: Record<string, string>;
 	links: PopfeedLink[];
@@ -437,13 +439,14 @@ function normalizeItem(
 		date,
 		displayDate: formatDisplayDate(date),
 		posterImage,
+		sourcePosterImage: posterImage,
 		backdropUrl: String(value.backdropUrl || '').trim() || null,
 		identifiers,
 		links: getPopfeedLinks(type, identifiers)
 	};
 }
 
-export async function getPopfeedItems(): Promise<PopfeedItem[]> {
+export async function getPopfeedBaseItems(): Promise<PopfeedItem[]> {
 	const repo = getRepo();
 	const cache = getPopfeedCache();
 	const cached = cache.get(repo);
@@ -526,6 +529,34 @@ export async function getPopfeedItems(): Promise<PopfeedItem[]> {
 	} catch (error) {
 		console.warn('[popfeed] Unable to fetch records:', error);
 		return [];
+	}
+}
+
+export async function getPopfeedItems(): Promise<PopfeedItem[]> {
+	const items = await getPopfeedBaseItems();
+
+	try {
+		const overrides = await getPopfeedImageOverrides();
+
+		if (!overrides.size) {
+			return items;
+		}
+
+		return items.map((item) => {
+			const override = overrides.get(item.uri);
+
+			if (!override?.imageUrl || override.imageUrl === item.posterImage) {
+				return item;
+			}
+
+			return {
+				...item,
+				posterImage: override.imageUrl
+			};
+		});
+	} catch (error) {
+		console.warn('[popfeed] Unable to apply override images:', error);
+		return items;
 	}
 }
 
