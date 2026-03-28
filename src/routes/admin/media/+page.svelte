@@ -58,8 +58,61 @@
 		overallErrors = [];
 	}
 
+	async function runMusicCollection(collection: 'tracks' | 'albums', batchSize: number) {
+		let nextOffset: number | null = 0;
+		let imported = 0;
+		let available = 0;
+		let ok = true;
+		const errors: string[] = [];
+
+		while (nextOffset !== null) {
+			const currentOffset = nextOffset;
+			const response = await fetch('/admin/api/music-import', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({
+					collections: [collection],
+					limit: batchSize,
+					offset: currentOffset
+				})
+			});
+			const payload: MusicImportPayload | null = await response.json().catch(() => null);
+
+			if (!response.ok || !payload) {
+				throw new Error(payload?.error || `Music import failed with ${response.status}`);
+			}
+
+			const stats = collection === 'tracks' ? payload.tracks : payload.albums;
+			imported += stats?.imported ?? 0;
+			available = Math.max(available, stats?.available ?? 0);
+			errors.push(
+				...(payload.errors || []).map(
+					(entry) =>
+						`${entry.collection || 'music'}:${entry.slug || 'item'} ${entry.message || 'Unknown error'}`
+				)
+			);
+			ok = ok && payload.ok;
+
+			const upcomingOffset = typeof payload.nextOffset === 'number' ? payload.nextOffset : null;
+
+			if (upcomingOffset !== null && upcomingOffset <= currentOffset) {
+				throw new Error(`Music import for ${collection} did not advance to the next batch.`);
+			}
+
+			nextOffset = upcomingOffset;
+		}
+
+		return {
+			ok,
+			imported,
+			available,
+			errors
+		};
+	}
+
 	async function runMusicImport() {
-		const batchSize = 4;
 		musicState = {
 			running: true,
 			message: '',
@@ -67,61 +120,17 @@
 		};
 
 		try {
-			let nextOffset: number | null = 0;
-			let trackImported = 0;
-			let albumImported = 0;
-			let trackAvailable = 0;
-			let albumAvailable = 0;
-			let ok = true;
-			const errors: string[] = [];
-
-			while (nextOffset !== null) {
-				const currentOffset = nextOffset;
-				const response = await fetch('/admin/api/music-import', {
-					method: 'POST',
-					headers: {
-						'content-type': 'application/json'
-					},
-					body: JSON.stringify({
-						collections: ['tracks', 'albums'],
-						limit: batchSize,
-						offset: currentOffset
-					})
-				});
-				const payload: MusicImportPayload | null = await response.json().catch(() => null);
-
-				if (!response.ok || !payload) {
-					throw new Error(payload?.error || `Music import failed with ${response.status}`);
-				}
-
-				trackImported += payload.tracks?.imported ?? 0;
-				albumImported += payload.albums?.imported ?? 0;
-				trackAvailable = Math.max(trackAvailable, payload.tracks?.available ?? 0);
-				albumAvailable = Math.max(albumAvailable, payload.albums?.available ?? 0);
-				errors.push(
-					...(payload.errors || []).map(
-						(entry) =>
-							`${entry.collection || 'music'}:${entry.slug || 'item'} ${entry.message || 'Unknown error'}`
-					)
-				);
-				ok = ok && payload.ok;
-
-				const upcomingOffset = typeof payload.nextOffset === 'number' ? payload.nextOffset : null;
-
-				if (upcomingOffset !== null && upcomingOffset <= currentOffset) {
-					throw new Error('Music import did not advance to the next batch.');
-				}
-
-				nextOffset = upcomingOffset;
-			}
+			const trackResult = await runMusicCollection('tracks', 2);
+			const albumResult = await runMusicCollection('albums', 1);
+			const errors = [...trackResult.errors, ...albumResult.errors];
 
 			musicState = {
 				running: false,
-				message: `Imported ${trackImported} of ${trackAvailable} tracks and ${albumImported} of ${albumAvailable} albums into your PDS.`,
+				message: `Imported ${trackResult.imported} of ${trackResult.available} tracks and ${albumResult.imported} of ${albumResult.available} albums into your PDS.`,
 				errors
 			};
 
-			return ok && errors.length === 0;
+			return trackResult.ok && albumResult.ok && errors.length === 0;
 		} catch (error) {
 			musicState = {
 				running: false,

@@ -646,29 +646,40 @@ async function putRecord(
 	rkey: string,
 	record: Record<string, unknown>
 ) {
-	const response = await fetch(`${session.serviceUrl}/xrpc/${PUT_RECORD_NSID}`, {
-		method: 'POST',
-		headers: {
-			authorization: `Bearer ${session.accessJwt}`,
-			'content-type': 'application/json'
-		},
-		body: JSON.stringify({
-			repo: session.did,
-			collection,
-			rkey,
-			record,
-			validate: false
-		})
-	});
+	let attempt = 0;
 
-	if (!response.ok) {
+	for (;;) {
+		const response = await fetch(`${session.serviceUrl}/xrpc/${PUT_RECORD_NSID}`, {
+			method: 'POST',
+			headers: {
+				authorization: `Bearer ${session.accessJwt}`,
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({
+				repo: session.did,
+				collection,
+				rkey,
+				record,
+				validate: false
+			})
+		});
+
+		if (response.ok) {
+			return (await response.json()) as { uri?: string; cid?: string };
+		}
+
 		const text = await response.text();
-		throw new Error(
-			`ATProto putRecord failed for ${collection}/${rkey}: ${response.status} ${text}`
-		);
-	}
+		const shouldRetry = (response.status === 429 || response.status >= 500) && attempt < 2;
 
-	return (await response.json()) as { uri?: string; cid?: string };
+		if (!shouldRetry) {
+			throw new Error(
+				`ATProto putRecord failed for ${collection}/${rkey}: ${response.status} ${text}`
+			);
+		}
+
+		attempt += 1;
+		await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+	}
 }
 
 async function uploadRemoteImage(
