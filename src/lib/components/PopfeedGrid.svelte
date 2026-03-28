@@ -16,6 +16,10 @@
 	function getCaption(item: PopfeedItem) {
 		return [item.mainCredit, item.listTypeLabel].filter(Boolean).join(' · ');
 	}
+
+	function usesPosterRatio(item: PopfeedItem) {
+		return item.type === 'movie' || item.type === 'tv_show';
+	}
 </script>
 
 <section class="stream-head">
@@ -26,11 +30,18 @@
 <section class="media-grid">
 	{#each items as item}
 		<article class="media-card">
-			<a class="media-card__cover media-card__cover--poster" href={item.localPath}>
+			<a
+				class={`media-card__cover ${usesPosterRatio(item) ? 'media-card__cover--poster' : 'media-card__cover--natural'}`}
+				href={item.localPath}
+			>
 				{#if item.posterImage}
 					<img src={item.posterImage} alt={item.title} />
 				{:else}
-					<span class="media-card__fallback media-card__fallback--poster">{item.title}</span>
+					<span
+						class={`media-card__fallback ${usesPosterRatio(item) ? 'media-card__fallback--poster' : 'media-card__fallback--natural'}`}
+					>
+						{item.title}
+					</span>
 				{/if}
 			</a>
 			<div class="media-card__caption">

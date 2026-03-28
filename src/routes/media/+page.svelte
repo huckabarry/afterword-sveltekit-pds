@@ -44,6 +44,7 @@
 		kind: 'popfeed';
 		credit: string;
 		links: TimelineLink[];
+		mediaType: PopfeedItem['type'];
 	};
 
 	type TimelineItem =
@@ -229,8 +230,13 @@
 			imageAlt: item.mainCredit ? `${item.title} by ${item.mainCredit}` : item.title,
 			tags: item.listTypeLabel ? [item.listTypeLabel] : [],
 			credit: item.mainCredit,
-			links: toTimelineLinks(item.links)
+			links: toTimelineLinks(item.links),
+			mediaType: item.type
 		};
+	}
+
+	function usesPosterRatio(item: PopfeedTimelineItem) {
+		return item.mediaType === 'movie' || item.mediaType === 'tv_show';
 	}
 
 	function getTimelineItems(items: TimelineItem[]) {
@@ -405,18 +411,18 @@
 								</div>
 
 								<a
-									class="media-entry__cover media-entry__cover--full media-entry__cover--poster"
+									class={`media-entry__cover media-entry__cover--full ${usesPosterRatio(item) ? 'media-entry__cover--poster' : 'media-entry__cover--natural'}`}
 									href={item.href}
 								>
 									{#if item.imageUrl}
 										<img
-											class="media-entry__art media-entry__art--poster"
+											class={`media-entry__art ${usesPosterRatio(item) ? 'media-entry__art--poster' : 'media-entry__art--natural'}`}
 											src={item.imageUrl}
 											alt={item.imageAlt}
 										/>
 									{:else}
 										<div
-											class="media-entry__fallback media-entry__fallback--poster"
+											class={`media-entry__fallback ${usesPosterRatio(item) ? 'media-entry__fallback--poster' : 'media-entry__fallback--natural'}`}
 											aria-hidden="true"
 										>
 											{item.label}
@@ -697,6 +703,12 @@
 		aspect-ratio: 2 / 3;
 	}
 
+	.media-entry__art--natural {
+		aspect-ratio: auto;
+		height: auto;
+		object-fit: contain;
+	}
+
 	.media-entry__fallback {
 		display: flex;
 		align-items: center;
@@ -714,6 +726,11 @@
 
 	.media-entry__fallback--poster {
 		aspect-ratio: 2 / 3;
+	}
+
+	.media-entry__fallback--natural {
+		aspect-ratio: auto;
+		min-height: 14rem;
 	}
 
 	.media-entry__audio {

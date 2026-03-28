@@ -1408,6 +1408,17 @@ p:last-child {
 	aspect-ratio: 2 / 3;
 }
 
+.media-card__cover--natural img {
+	aspect-ratio: auto;
+	height: auto;
+	object-fit: contain;
+}
+
+.media-card__fallback--natural {
+	aspect-ratio: auto;
+	min-height: 14rem;
+}
+
 .media-card__caption {
 	margin-top: 0.5rem;
 }
