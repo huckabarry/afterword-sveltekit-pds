@@ -455,10 +455,6 @@
 									</div>
 
 									<p class="now-timeline__meta now-timeline__meta--artist">{item.artist}</p>
-
-									{#if item.summary}
-										<p class="now-timeline__lede now-timeline__lede--compact">{item.summary}</p>
-									{/if}
 								</div>
 
 								<div class="now-media-entry__cover now-media-entry__cover--full">
@@ -468,6 +464,10 @@
 										<div class="now-media-entry__fallback" aria-hidden="true">Track</div>
 									{/if}
 								</div>
+
+								{#if item.summary}
+									<p class="now-timeline__lede now-timeline__lede--compact">{item.summary}</p>
+								{/if}
 
 								{#if item.audioUrl}
 									<div class="now-media-entry__audio">
@@ -510,10 +510,6 @@
 									</div>
 
 									<p class="now-timeline__meta now-timeline__meta--artist">{item.artist}</p>
-
-									{#if item.summary}
-										<p class="now-timeline__lede now-timeline__lede--compact">{item.summary}</p>
-									{/if}
 								</div>
 
 								<a class="now-media-entry__cover now-media-entry__cover--full" href={item.href}>
@@ -523,6 +519,10 @@
 										<div class="now-media-entry__fallback" aria-hidden="true">Album</div>
 									{/if}
 								</a>
+
+								{#if item.summary}
+									<p class="now-timeline__lede now-timeline__lede--compact">{item.summary}</p>
+								{/if}
 
 								{#if item.links.length}
 									<div class="now-timeline__actions">
