@@ -524,7 +524,7 @@
 	.now-index-row {
 		display: grid;
 		grid-template-columns: max-content minmax(0, 1fr) auto;
-		gap: 0.8rem;
+		gap: 0.95rem;
 		align-items: center;
 		padding: 0.9rem 0;
 		text-decoration: none;
@@ -542,9 +542,18 @@
 
 	.now-index-row__leader {
 		display: block;
-		height: 1px;
-		border-bottom: 1px dotted color-mix(in srgb, var(--line) 78%, var(--muted) 22%);
-		transform: translateY(0.18rem);
+		min-width: 1.5rem;
+		height: 2px;
+		align-self: center;
+		background-image: radial-gradient(
+			circle,
+			color-mix(in srgb, var(--muted) 78%, var(--line) 22%) 1px,
+			transparent 1.2px
+		);
+		background-size: 6px 2px;
+		background-repeat: repeat-x;
+		background-position: center;
+		opacity: 0.8;
 	}
 
 	.now-index-row__date {
@@ -753,12 +762,8 @@
 
 	@media (max-width: 640px) {
 		.now-index-row {
-			grid-template-columns: minmax(0, 1fr) auto;
+			grid-template-columns: max-content minmax(0, 1fr) auto;
 			gap: 0.7rem;
-		}
-
-		.now-index-row__leader {
-			display: none;
 		}
 
 		.now-timeline {
