@@ -96,6 +96,14 @@
 		return `${clipped}…`;
 	}
 
+	function normalizeComparableText(value: string) {
+		return stripHtml(value)
+			.toLowerCase()
+			.replace(/[.!?,;:'"()[\]{}]+/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
+	}
+
 	function formatTimelineDate(value: Date) {
 		const date = value instanceof Date ? value : new Date(value);
 		const currentYear = new Date().getFullYear();
@@ -183,6 +191,25 @@
 		}
 
 		return 'Read post';
+	}
+
+	function getCheckinLede(item: CheckinTimelineItem) {
+		return stripHtml(item.summary);
+	}
+
+	function getCheckinBody(item: CheckinTimelineItem) {
+		const note = stripHtml(item.note);
+		const lede = getCheckinLede(item);
+
+		if (!note) {
+			return '';
+		}
+
+		if (normalizeComparableText(note) === normalizeComparableText(lede)) {
+			return '';
+		}
+
+		return note;
 	}
 
 	function toCheckinTimelineItem(checkin: Checkin): CheckinTimelineItem {
@@ -349,8 +376,8 @@
 								<p class="now-timeline__meta">{item.meta}</p>
 							{/if}
 
-							{#if item.summary}
-								<p class="now-timeline__lede">{item.summary}</p>
+							{#if getCheckinLede(item)}
+								<p class="now-timeline__lede">{getCheckinLede(item)}</p>
 							{/if}
 
 							{#if item.imageUrl}
@@ -359,8 +386,8 @@
 								</figure>
 							{/if}
 
-							{#if item.note && item.note !== item.summary}
-								<p class="now-timeline__body-text">{item.note}</p>
+							{#if getCheckinBody(item)}
+								<p class="now-timeline__body-text">{getCheckinBody(item)}</p>
 							{/if}
 
 							{#if item.latitude !== null && item.longitude !== null}
