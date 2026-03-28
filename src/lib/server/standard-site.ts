@@ -9,8 +9,8 @@ import {
 	inferImageMimeType
 } from '$lib/server/image-metadata';
 import type { SiteProfile } from '$lib/server/profile';
+import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-identity';
 
-const RESOLVE_HANDLE_URL = 'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle';
 const CREATE_SESSION_NSID = 'com.atproto.server.createSession';
 const CREATE_RECORD_NSID = 'com.atproto.repo.createRecord';
 const PUT_RECORD_NSID = 'com.atproto.repo.putRecord';
@@ -146,42 +146,39 @@ function toExcerpt(value: string, maxLength = 280) {
 	return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1).trim()}…` : normalized;
 }
 
-async function resolveDid(identifier: string) {
-	const normalized = String(identifier || '').trim();
+async function getStandardSiteIdentity() {
+	const identifier = getStandardSiteIdentifier();
+	const configuredServiceUrl = getStandardSiteServiceUrl();
 
-	if (!normalized) {
+	if (!identifier) {
 		throw new Error('Standard Site identifier is not configured');
 	}
 
-	if (normalized.startsWith('did:')) {
-		return normalized;
+	try {
+		return await resolveAtprotoService(identifier);
+	} catch (error) {
+		if (!configuredServiceUrl) {
+			throw error;
+		}
+
+		return {
+			did: await resolveAtprotoDid(identifier),
+			serviceUrl: configuredServiceUrl
+		};
 	}
-
-	const response = await fetch(`${RESOLVE_HANDLE_URL}?handle=${encodeURIComponent(normalized)}`);
-	if (!response.ok) {
-		throw new Error(`Unable to resolve ATProto handle ${normalized}: ${response.status}`);
-	}
-
-	const payload = (await response.json()) as { did?: string };
-	const did = String(payload?.did || '').trim();
-
-	if (!did) {
-		throw new Error(`ATProto handle ${normalized} did not resolve to a DID`);
-	}
-
-	return did;
 }
 
 async function createSession(): Promise<AtprotoSession> {
-	const serviceUrl = getStandardSiteServiceUrl();
 	const identifier = getStandardSiteIdentifier();
 	const password = getStandardSiteAppPassword();
 
-	if (!serviceUrl || !identifier || !password) {
+	if (!identifier || !password) {
 		throw new Error(
-			'Standard Site credentials are incomplete. Set STANDARD_SITE_PDS_URL, STANDARD_SITE_IDENTIFIER, and STANDARD_SITE_APP_PASSWORD.'
+			'Standard Site credentials are incomplete. Set STANDARD_SITE_IDENTIFIER and STANDARD_SITE_APP_PASSWORD.'
 		);
 	}
+
+	const { did: resolvedDid, serviceUrl } = await getStandardSiteIdentity();
 
 	if (
 		standardSiteSessionCache &&
@@ -213,7 +210,7 @@ async function createSession(): Promise<AtprotoSession> {
 		}
 
 		const payload = (await response.json()) as { did?: string; accessJwt?: string };
-		const did = String(payload?.did || '').trim();
+		const did = String(payload?.did || resolvedDid).trim();
 		const accessJwt = String(payload?.accessJwt || '').trim();
 
 		if (!did || !accessJwt) {
@@ -449,7 +446,7 @@ export async function getStandardSiteDid() {
 	if (!identifier) return null;
 
 	try {
-		return await resolveDid(identifier);
+		return await resolveAtprotoDid(identifier);
 	} catch {
 		return null;
 	}

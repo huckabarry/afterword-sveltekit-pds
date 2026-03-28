@@ -1,6 +1,5 @@
-const PLC_DIRECTORY_URL = 'https://plc.directory';
-const RESOLVE_HANDLE_URL = 'https://bsky.social/xrpc/com.atproto.identity.resolveHandle';
 const AUTHOR_FEED_URL = 'https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed';
+import { resolveAtprotoService } from '$lib/server/atproto-identity';
 const CHECKIN_COLLECTION = 'blog.afterword.checkin';
 const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 const FEED_LIMIT = 20;
@@ -114,60 +113,8 @@ function getStatusCache() {
 	return scope.__afterwordStatusCache;
 }
 
-function getPdsCache() {
-	const scope = globalThis as typeof globalThis & {
-		__afterwordPdsCache?: Map<string, string>;
-	};
-	if (!scope.__afterwordPdsCache) {
-		scope.__afterwordPdsCache = new Map<string, string>();
-	}
-	return scope.__afterwordPdsCache;
-}
-
 function getRecordKey(uri: string | undefined | null) {
 	return String(uri || '').split('/').pop() || '';
-}
-
-async function resolveDid(repo: string) {
-	if (repo.startsWith('did:')) {
-		return repo;
-	}
-
-	const response = await fetch(`${RESOLVE_HANDLE_URL}?handle=${encodeURIComponent(repo)}`);
-	if (!response.ok) {
-		throw new Error(`Unable to resolve handle ${repo}: ${response.status}`);
-	}
-
-	const data = await response.json();
-	return data.did as string;
-}
-
-async function resolvePdsServiceUrl(repo: string) {
-	const did = await resolveDid(repo);
-	const cache = getPdsCache();
-	const cached = cache.get(did);
-	if (cached) {
-		return { did, serviceUrl: cached };
-	}
-
-	const response = await fetch(`${PLC_DIRECTORY_URL}/${encodeURIComponent(did)}`);
-	if (!response.ok) {
-		throw new Error(`Unable to resolve DID document for ${did}: ${response.status}`);
-	}
-
-	const payload = (await response.json()) as {
-		service?: Array<{ id?: string; type?: string; serviceEndpoint?: string }>;
-	};
-	const serviceUrl =
-		payload.service?.find((service) => service.type === 'AtprotoPersonalDataServer')
-			?.serviceEndpoint || '';
-
-	if (!serviceUrl) {
-		throw new Error(`DID document for ${did} did not include a PDS service endpoint`);
-	}
-
-	cache.set(did, serviceUrl.replace(/\/+$/, ''));
-	return { did, serviceUrl: serviceUrl.replace(/\/+$/, '') };
 }
 
 function getBlobUrl(serviceUrl: string, did: string, cid: string) {
@@ -608,7 +555,7 @@ export async function getCheckins() {
 		const allRecords: Checkin[] = [];
 
 		for (const repo of getRepos()) {
-			const { did, serviceUrl } = await resolvePdsServiceUrl(repo);
+			const { did, serviceUrl } = await resolveAtprotoService(repo);
 			const response = await fetch(
 				`${serviceUrl}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(CHECKIN_COLLECTION)}&limit=100`,
 				{
