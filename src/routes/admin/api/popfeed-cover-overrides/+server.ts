@@ -41,10 +41,7 @@ export async function POST(event) {
 			force
 		});
 
-		return json({
-			ok: result.ok,
-			...result
-		});
+		return json(result);
 	} catch (error) {
 		return json(
 			{

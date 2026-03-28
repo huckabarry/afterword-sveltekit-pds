@@ -1,6 +1,10 @@
 import { env } from '$env/dynamic/private';
 import { resolveAtprotoService } from '$lib/server/atproto-identity';
-import { getPopfeedImageOverrides } from '$lib/server/pds-popfeed-overrides';
+import {
+	getOpenLibraryBookSearchUrl,
+	getPopfeedImageOverrides,
+	isUntrustedBookCoverUrl
+} from '$lib/server/pds-popfeed-overrides';
 
 const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 const POPFEED_ITEM_COLLECTION = 'social.popfeed.feed.listItem';
@@ -191,12 +195,12 @@ function getPopfeedLinks(type: PopfeedItemType, identifiers: Record<string, stri
 	const links: PopfeedLink[] = [];
 
 	if (type === 'book') {
-		const isbn = identifiers.isbn13 || identifiers.isbn10;
+		const openLibraryUrl = getOpenLibraryBookSearchUrl(identifiers);
 
-		if (isbn) {
+		if (openLibraryUrl) {
 			links.push({
 				label: 'Open Library',
-				url: `https://openlibrary.org/isbn/${encodeURIComponent(isbn)}`
+				url: openLibraryUrl
 			});
 		}
 
@@ -314,17 +318,6 @@ function normalizeLists(records: Array<Record<string, unknown>>) {
 	);
 }
 
-function looksLikeIsbnDbCover(url: string) {
-	return /^https:\/\/images\.isbndb\.com\/covers\//i.test(String(url || '').trim());
-}
-
-function getOpenLibraryCoverUrl(identifiers: Record<string, string>) {
-	const isbn = String(identifiers.isbn13 || identifiers.isbn10 || '').trim();
-	return isbn
-		? `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg?default=false`
-		: null;
-}
-
 function normalizeItem(
 	record: Record<string, unknown>,
 	did: string,
@@ -428,31 +421,12 @@ export async function getPopfeedBaseItems(): Promise<PopfeedItem[]> {
 			return true;
 		});
 
-		const verified = deduped.map((item) => {
-			if (item.type !== 'book') {
-				return item;
-			}
-
-			const openLibraryCoverUrl = getOpenLibraryCoverUrl(item.identifiers);
-			const posterImage =
-				openLibraryCoverUrl && (!item.posterImage || looksLikeIsbnDbCover(item.posterImage))
-					? openLibraryCoverUrl
-					: item.posterImage;
-
-			return posterImage === item.posterImage
-				? item
-				: {
-						...item,
-						posterImage
-					};
-		});
-
 		cache.set(repo, {
 			expiresAt: Date.now() + POPFEED_CACHE_TTL_MS,
-			items: verified
+			items: deduped
 		});
 
-		return verified;
+		return deduped;
 	} catch (error) {
 		console.warn('[popfeed] Unable to fetch records:', error);
 		return [];
@@ -462,28 +436,45 @@ export async function getPopfeedBaseItems(): Promise<PopfeedItem[]> {
 export async function getPopfeedItems(): Promise<PopfeedItem[]> {
 	const items = await getPopfeedBaseItems();
 
+	const applyCoverRules = (overrides: Awaited<ReturnType<typeof getPopfeedImageOverrides>>) =>
+		items.map((item) => {
+			const override = overrides.get(item.uri);
+
+			if (override?.status === 'hidden') {
+				return item.posterImage
+					? {
+							...item,
+							posterImage: null
+						}
+					: item;
+			}
+
+			if (override?.status === 'approved' && override.imageUrl) {
+				return override.imageUrl === item.posterImage
+					? item
+					: {
+							...item,
+							posterImage: override.imageUrl
+						};
+			}
+
+			if (item.type === 'book' && isUntrustedBookCoverUrl(item.posterImage)) {
+				return {
+					...item,
+					posterImage: null
+				};
+			}
+
+			return item;
+		});
+
 	try {
 		const overrides = await getPopfeedImageOverrides();
 
-		if (!overrides.size) {
-			return items;
-		}
-
-		return items.map((item) => {
-			const override = overrides.get(item.uri);
-
-			if (!override?.imageUrl || override.imageUrl === item.posterImage) {
-				return item;
-			}
-
-			return {
-				...item,
-				posterImage: override.imageUrl
-			};
-		});
+		return applyCoverRules(overrides);
 	} catch (error) {
 		console.warn('[popfeed] Unable to apply override images:', error);
-		return items;
+		return applyCoverRules(new Map());
 	}
 }
 

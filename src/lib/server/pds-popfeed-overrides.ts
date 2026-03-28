@@ -12,6 +12,8 @@ const UPLOAD_BLOB_NSID = 'com.atproto.repo.uploadBlob';
 const PDS_POPFEED_OVERRIDE_CACHE_TTL_MS = 1000 * 60 * 10;
 const IMAGE_FETCH_USER_AGENT = 'afterword-sveltekit-pds popfeed-cover sync';
 
+export type PopfeedImageOverrideStatus = 'approved' | 'pending' | 'hidden';
+
 type AtprotoSession = {
 	serviceUrl: string;
 	did: string;
@@ -48,11 +50,37 @@ type PopfeedOverrideCacheEntry = {
 };
 
 export type PopfeedImageOverride = {
+	uri: string;
+	rkey: string;
+	record: Record<string, unknown>;
 	sourceUri: string;
 	imageUrl: string | null;
 	originalUrl: string | null;
 	provider: string | null;
 	syncedAt: string | null;
+	status: PopfeedImageOverrideStatus;
+	title: string | null;
+	creativeWorkType: string | null;
+	sourceImageUrl: string | null;
+	queueReason: string | null;
+};
+
+export type PopfeedBookCoverReviewItem = {
+	sourceUri: string;
+	title: string;
+	author: string | null;
+	localPath: string;
+	isbn: string | null;
+	sourceImageUrl: string | null;
+	candidateImageUrl: string | null;
+	candidateProvider: string | null;
+	queueReason: string;
+	openLibraryUrl: string | null;
+};
+
+export type PopfeedBookCoverReviewQueue = {
+	total: number;
+	items: PopfeedBookCoverReviewItem[];
 };
 
 type PopfeedCoverSyncOptions = {
@@ -82,6 +110,8 @@ export type PopfeedCoverSyncResult = {
 	books: PopfeedCoverSyncStats;
 	errors: Array<{ slug: string; title: string; message: string }>;
 };
+
+type PopfeedCoverReviewAction = 'approve' | 'hide';
 
 let popfeedOverrideSessionCache: CachedAtprotoSession | null = null;
 let popfeedOverrideSessionPromise: Promise<AtprotoSession> | null = null;
@@ -255,6 +285,22 @@ function looksLikeIsbnDbCover(url: string) {
 	return /^https:\/\/images\.isbndb\.com\/covers\//i.test(normalizeString(url));
 }
 
+function isOpenLibraryCoverUrl(url: string) {
+	return /^https:\/\/covers\.openlibrary\.org\//i.test(normalizeString(url));
+}
+
+export function isUntrustedBookCoverUrl(url: string | null | undefined) {
+	const normalized = normalizeString(url);
+	return (
+		Boolean(normalized) && (looksLikeIsbnDbCover(normalized) || isOpenLibraryCoverUrl(normalized))
+	);
+}
+
+export function getOpenLibraryBookSearchUrl(identifiers: Record<string, string>) {
+	const isbn = normalizeString(identifiers.isbn13 || identifiers.isbn10);
+	return isbn ? `https://openlibrary.org/search?isbn=${encodeURIComponent(isbn)}` : null;
+}
+
 function getOpenLibraryCoverUrl(identifiers: Record<string, string>) {
 	const isbn = normalizeString(identifiers.isbn13 || identifiers.isbn10);
 	return isbn
@@ -313,18 +359,36 @@ function normalizeOverrideRecord(
 		return null;
 	}
 
+	const creativeWorkType = normalizeOptionalString(value.creativeWorkType);
+	const image = getObject(value.image);
+	const provider = normalizeOptionalString(image.provider);
+	const explicitStatus = normalizeString(value.status).toLowerCase();
+	const status =
+		explicitStatus === 'approved' || explicitStatus === 'pending' || explicitStatus === 'hidden'
+			? (explicitStatus as PopfeedImageOverrideStatus)
+			: creativeWorkType === 'book' && provider === 'openlibrary'
+				? 'pending'
+				: 'approved';
 	const imageUrl = resolveBlobImageUrl(value.image, serviceUrl, did);
 
-	if (!imageUrl) {
+	if (!imageUrl && status !== 'hidden') {
 		return null;
 	}
 
 	return {
+		uri: normalizeString(record.uri),
+		rkey: getRecordKey(record.uri),
+		record: value,
 		sourceUri,
-		imageUrl,
-		originalUrl: normalizeOptionalString(getObject(value.image).originalUrl),
-		provider: normalizeOptionalString(getObject(value.image).provider),
-		syncedAt: normalizeOptionalString(getObject(value.provenance).syncedAt)
+		imageUrl: imageUrl || null,
+		originalUrl: normalizeOptionalString(image.originalUrl),
+		provider,
+		syncedAt: normalizeOptionalString(getObject(value.provenance).syncedAt),
+		status,
+		title: normalizeOptionalString(value.title),
+		creativeWorkType,
+		sourceImageUrl: normalizeOptionalString(getObject(value.provenance).sourceImageUrl),
+		queueReason: normalizeOptionalString(getObject(value.review).queueReason)
 	};
 }
 
@@ -561,33 +625,65 @@ async function uploadRemoteImage(
 
 function buildOverrideRecord(
 	item: PopfeedItem,
-	image: ImagePayload,
-	provider: string
+	{
+		image,
+		provider,
+		status,
+		queueReason,
+		existing
+	}: {
+		image?: ImagePayload | null;
+		provider?: string | null;
+		status: PopfeedImageOverrideStatus;
+		queueReason?: string | null;
+		existing?: Record<string, unknown> | null;
+	}
 ): Record<string, unknown> {
+	const existingRecord = getObject(existing);
+	const existingImage = getObject(existingRecord.image);
+	const existingReview = getObject(existingRecord.review);
+	const nextImage =
+		image && provider
+			? {
+					image: {
+						...image.blob,
+						$type: image.blob.$type || 'blob'
+					},
+					...(image.aspectRatio ? { aspectRatio: image.aspectRatio } : {}),
+					originalUrl: image.originalUrl,
+					provider,
+					alt: item.mainCredit ? `${item.title} by ${item.mainCredit}` : item.title
+				}
+			: Object.keys(existingImage).length
+				? existingImage
+				: null;
+	const previousQueueReason = normalizeOptionalString(existingReview.queueReason);
+	const reviewQueueReason = normalizeOptionalString(queueReason) || previousQueueReason;
+	const now = new Date().toISOString();
+
 	return {
 		$type: PDS_POPFEED_OVERRIDE_COLLECTION,
 		sourceUri: item.uri,
 		sourceCollection: 'social.popfeed.feed.listItem',
 		creativeWorkType: item.type,
 		title: item.title,
+		status,
 		...(Object.keys(normalizeIdentifiers(item.identifiers)).length
 			? { identifiers: normalizeIdentifiers(item.identifiers) }
 			: {}),
-		image: {
-			image: {
-				...image.blob,
-				$type: image.blob.$type || 'blob'
-			},
-			...(image.aspectRatio ? { aspectRatio: image.aspectRatio } : {}),
-			originalUrl: image.originalUrl,
-			provider,
-			alt: item.mainCredit ? `${item.title} by ${item.mainCredit}` : item.title
-		},
+		...(nextImage ? { image: nextImage } : {}),
 		provenance: {
-			syncedAt: new Date().toISOString(),
+			syncedAt: now,
 			...(item.sourcePosterImage || item.posterImage
 				? { sourceImageUrl: item.sourcePosterImage || item.posterImage }
 				: {})
+		},
+		review: {
+			...(reviewQueueReason ? { queueReason: reviewQueueReason } : {}),
+			...(status === 'pending'
+				? { queuedAt: normalizeOptionalString(existingReview.queuedAt) || now }
+				: {}),
+			...(status !== 'pending' ? { reviewedAt: now } : {})
 		}
 	};
 }
@@ -604,6 +700,108 @@ export async function getPopfeedImageOverrides() {
 
 export function clearPopfeedImageOverrideCache(repo = getConfiguredRepoIdentifier()) {
 	getOverrideCache().delete(repo);
+}
+
+export async function getPopfeedBookCoverReviewQueue({
+	items = [],
+	limit = null
+}: {
+	items?: PopfeedItem[];
+	limit?: number | null;
+}): Promise<PopfeedBookCoverReviewQueue> {
+	const books = items.filter((item) => item.type === 'book');
+	const normalizedLimit =
+		typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? limit : null;
+	const overrides = await getPopfeedImageOverrides();
+	const queued = books.filter((item) => {
+		const override = overrides.get(item.uri);
+		if (override?.status === 'approved' && override.imageUrl) {
+			return false;
+		}
+		if (override?.status === 'hidden') {
+			return false;
+		}
+
+		const sourceImageUrl = normalizeOptionalString(item.sourcePosterImage || item.posterImage);
+		return Boolean(
+			(override?.status === 'pending' && override.imageUrl) ||
+			isUntrustedBookCoverUrl(sourceImageUrl) ||
+			!sourceImageUrl
+		);
+	});
+	const slice = typeof normalizedLimit === 'number' ? queued.slice(0, normalizedLimit) : queued;
+
+	return {
+		total: queued.length,
+		items: slice.map((item) => {
+			const override = overrides.get(item.uri);
+			const isbn = normalizeOptionalString(item.identifiers.isbn13 || item.identifiers.isbn10);
+			return {
+				sourceUri: item.uri,
+				title: item.title,
+				author: normalizeOptionalString(item.mainCredit),
+				localPath: item.localPath,
+				isbn,
+				sourceImageUrl: normalizeOptionalString(item.sourcePosterImage || item.posterImage),
+				candidateImageUrl: override?.status === 'pending' ? override.imageUrl : null,
+				candidateProvider: override?.status === 'pending' ? override.provider : null,
+				queueReason:
+					override?.queueReason ||
+					(override?.status === 'pending'
+						? 'Candidate cover is queued for manual approval.'
+						: item.posterImage
+							? 'Current cover source is untrusted, so the public site hides it until you approve a replacement.'
+							: 'No trusted cover is available yet.'),
+				openLibraryUrl: getOpenLibraryBookSearchUrl(item.identifiers)
+			};
+		})
+	};
+}
+
+export async function reviewPopfeedBookCoverOverride({
+	sourceUri,
+	action,
+	items = []
+}: {
+	sourceUri: string;
+	action: PopfeedCoverReviewAction;
+	items?: PopfeedItem[];
+}) {
+	const normalizedSourceUri = normalizeString(sourceUri);
+
+	if (!normalizedSourceUri) {
+		throw new Error('A Popfeed source URI is required.');
+	}
+
+	if (action !== 'approve' && action !== 'hide') {
+		throw new Error('Unsupported cover review action.');
+	}
+
+	const item = items.find((entry) => entry.uri === normalizedSourceUri);
+
+	if (!item) {
+		throw new Error('Unable to find the matching Popfeed item for this cover review.');
+	}
+
+	const overrides = await getPopfeedImageOverrides();
+	const existing = overrides.get(normalizedSourceUri);
+
+	if (action === 'approve' && !existing?.imageUrl) {
+		throw new Error('There is no queued candidate image to approve for this book.');
+	}
+
+	const session = await createSession();
+	await putRecord(
+		session,
+		PDS_POPFEED_OVERRIDE_COLLECTION,
+		existing?.rkey || getRecordKey(item.uri) || item.slug,
+		buildOverrideRecord(item, {
+			status: action === 'approve' ? 'approved' : 'hidden',
+			existing: existing?.record || null
+		})
+	);
+
+	clearPopfeedImageOverrideCache();
 }
 
 export async function syncPopfeedBookCoverOverrides({
@@ -654,15 +852,23 @@ export async function syncPopfeedBookCoverOverrides({
 	for (const item of selectedBooks) {
 		const sourceCoverUrl = normalizeString(item.sourcePosterImage || item.posterImage);
 		const openLibraryCoverUrl = getOpenLibraryCoverUrl(item.identifiers);
-		const hasExistingOverride = existingOverrides.has(item.uri);
-		const needsReplacement = !sourceCoverUrl || looksLikeIsbnDbCover(sourceCoverUrl);
+		const existingOverride = existingOverrides.get(item.uri);
+		const hasLockedDecision =
+			existingOverride?.status === 'approved' || existingOverride?.status === 'hidden';
+		const hasPendingCandidate = existingOverride?.status === 'pending';
+		const needsReplacement = !sourceCoverUrl || isUntrustedBookCoverUrl(sourceCoverUrl);
 
-		if (!force && hasExistingOverride) {
+		if (hasLockedDecision) {
 			result.books.skipped += 1;
 			continue;
 		}
 
-		if (!force && !needsReplacement) {
+		if (!force && hasPendingCandidate) {
+			result.books.skipped += 1;
+			continue;
+		}
+
+		if (!needsReplacement) {
 			result.books.skipped += 1;
 			continue;
 		}
@@ -685,8 +891,14 @@ export async function syncPopfeedBookCoverOverrides({
 			await putRecord(
 				session,
 				PDS_POPFEED_OVERRIDE_COLLECTION,
-				getRecordKey(item.uri) || item.slug,
-				buildOverrideRecord(item, image, 'openlibrary')
+				existingOverride?.rkey || getRecordKey(item.uri) || item.slug,
+				buildOverrideRecord(item, {
+					image,
+					provider: 'openlibrary',
+					status: 'pending',
+					queueReason: 'Open Library candidate queued for manual approval.',
+					existing: existingOverride?.record || null
+				})
 			);
 			result.books.imported += 1;
 		} catch (error) {

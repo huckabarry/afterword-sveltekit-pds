@@ -14,15 +14,26 @@
 		};
 	} = $props();
 
-	let timelineItems = $state(data.timeline.items);
-	let nextOffset = $state(data.timeline.nextOffset);
+	let timelineItems = $state<MediaTimelineItem[]>([]);
+	let nextOffset = $state<number | null>(null);
 	let isLoadingMore = $state(false);
 	let loadError = $state('');
 	let imageOverrides = $state<Record<string, string | null>>({});
 	let hiddenImages = $state<Record<string, boolean>>({});
+	let seededTimeline = $state(false);
 
-	const totalItems = data.timeline.total;
-	const pageSize = data.timeline.limit;
+	const totalItems = $derived(data.timeline.total);
+	const pageSize = $derived(data.timeline.limit);
+
+	$effect(() => {
+		if (seededTimeline) {
+			return;
+		}
+
+		timelineItems = data.timeline.items;
+		nextOffset = data.timeline.nextOffset;
+		seededTimeline = true;
+	});
 
 	function usesPosterRatio(item: MediaTimelineItem) {
 		return item.kind === 'popfeed' && (item.mediaType === 'movie' || item.mediaType === 'tv_show');

@@ -3,7 +3,7 @@ import { requireAdminAccess } from '$lib/server/admin';
 import { getArchiveAlbums, getArchiveTracks } from '$lib/server/music';
 import { importMusicToPds } from '$lib/server/pds-music';
 
-function normalizeCollections(value: unknown) {
+function normalizeCollections(value: unknown): Array<'tracks' | 'albums'> {
 	const values = Array.isArray(value) ? value : [value];
 	const collections = values
 		.map((entry) =>
@@ -13,7 +13,9 @@ function normalizeCollections(value: unknown) {
 		)
 		.filter((entry): entry is 'tracks' | 'albums' => entry === 'tracks' || entry === 'albums');
 
-	return collections.length ? [...new Set(collections)] : ['tracks', 'albums'];
+	return collections.length
+		? (Array.from(new Set(collections)) as Array<'tracks' | 'albums'>)
+		: ['tracks', 'albums'];
 }
 
 function normalizeLimit(value: unknown) {
@@ -50,10 +52,7 @@ export async function POST(event) {
 			offset
 		});
 
-		return json({
-			ok: result.ok,
-			...result
-		});
+		return json(result);
 	} catch (error) {
 		return json(
 			{

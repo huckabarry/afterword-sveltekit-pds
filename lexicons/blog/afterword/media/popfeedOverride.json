@@ -8,7 +8,7 @@
 			"description": "A companion override record for a Popfeed item. This lets Bryan keep Popfeed as the source while storing better cover art and metadata in his own PDS namespace.",
 			"record": {
 				"type": "object",
-				"required": ["sourceUri", "image"],
+				"required": ["sourceUri"],
 				"properties": {
 					"sourceUri": {
 						"type": "string",
@@ -29,6 +29,11 @@
 						"type": "string",
 						"maxLength": 300,
 						"description": "Title copied from the source item for easier inspection."
+					},
+					"status": {
+						"type": "string",
+						"maxLength": 32,
+						"description": "Override state. Approved covers are public, pending covers stay in review, and hidden suppresses the public image."
 					},
 					"identifiers": {
 						"type": "object",
@@ -111,6 +116,24 @@
 							"sourceImageUrl": {
 								"type": "string",
 								"format": "uri"
+							}
+						}
+					},
+					"review": {
+						"type": "object",
+						"description": "Optional review metadata for queued or manually approved cover decisions.",
+						"properties": {
+							"queueReason": {
+								"type": "string",
+								"maxLength": 500
+							},
+							"queuedAt": {
+								"type": "string",
+								"format": "datetime"
+							},
+							"reviewedAt": {
+								"type": "string",
+								"format": "datetime"
 							}
 						}
 					}

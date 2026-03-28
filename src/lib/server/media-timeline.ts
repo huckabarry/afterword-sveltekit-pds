@@ -118,17 +118,6 @@ function toTimelineLinks(links: Array<{ label: string; url: string }>, limit = 3
 	}));
 }
 
-function looksLikeIsbnDbCover(url: string) {
-	return /^https:\/\/images\.isbndb\.com\/covers\//i.test(String(url || '').trim());
-}
-
-function getOpenLibraryCoverUrl(identifiers: Record<string, string>) {
-	const isbn = String(identifiers.isbn13 || identifiers.isbn10 || '').trim();
-	return isbn
-		? `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg?default=false`
-		: null;
-}
-
 function toPostTimelineItem(post: BlogPost): PostTimelineItem {
 	return {
 		id: `post-${post.slug}`,
@@ -200,13 +189,6 @@ function getPopfeedLabel(item: Awaited<ReturnType<typeof getPopfeedItems>>[numbe
 function toPopfeedTimelineItem(
 	item: Awaited<ReturnType<typeof getPopfeedItems>>[number]
 ): PopfeedTimelineItem {
-	const openLibraryCoverUrl =
-		item.type === 'book' ? getOpenLibraryCoverUrl(item.identifiers) : null;
-	const prefersOpenLibrary =
-		item.type === 'book' &&
-		openLibraryCoverUrl &&
-		(!item.posterImage || looksLikeIsbnDbCover(item.posterImage));
-
 	return {
 		id: `popfeed-${item.type}-${item.slug}`,
 		kind: 'popfeed',
@@ -216,8 +198,8 @@ function toPopfeedTimelineItem(
 		dateIso: item.date.toISOString(),
 		dateLabel: formatTimelineDate(item.date),
 		summary: item.genres.slice(0, 4).join(', '),
-		imageUrl: prefersOpenLibrary ? openLibraryCoverUrl : item.posterImage,
-		fallbackImageUrl: prefersOpenLibrary ? item.posterImage : null,
+		imageUrl: item.posterImage,
+		fallbackImageUrl: null,
 		imageAlt: item.mainCredit ? `${item.title} by ${item.mainCredit}` : item.title,
 		tags: item.listTypeLabel ? [item.listTypeLabel] : [],
 		credit: item.mainCredit,

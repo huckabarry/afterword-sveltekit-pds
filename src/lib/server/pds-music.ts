@@ -267,26 +267,29 @@ function getBlobRefLink(value: unknown) {
 	return '';
 }
 
-function normalizeLinkRecords(value: unknown) {
+function normalizeLinkRecords(value: unknown): MusicLinkRecord[] {
 	return Array.isArray(value)
-		? value
-				.map((entry) => {
-					const link = getObject(entry);
-					const label = normalizeString(link.label);
-					const url = normalizeString(link.url);
+		? value.flatMap((entry) => {
+				const link = getObject(entry);
+				const label = normalizeString(link.label);
+				const url = normalizeString(link.url);
 
-					if (!label || !url) {
-						return null;
-					}
+				if (!label || !url) {
+					return [];
+				}
 
-					return {
+				const kind = normalizeOptionalString(link.kind) || undefined;
+				const provider = normalizeOptionalString(link.provider) || undefined;
+
+				return [
+					{
 						label,
 						url,
-						kind: normalizeOptionalString(link.kind),
-						provider: normalizeOptionalString(link.provider)
-					} satisfies MusicLinkRecord;
-				})
-				.filter((entry): entry is MusicLinkRecord => Boolean(entry))
+						...(kind ? { kind } : {}),
+						...(provider ? { provider } : {})
+					} satisfies MusicLinkRecord
+				];
+			})
 		: [];
 }
 
