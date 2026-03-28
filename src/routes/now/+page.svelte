@@ -56,6 +56,8 @@
 		| TrackTimelineItem
 		| AlbumTimelineItem;
 
+	type TimelineFamily = 'authored' | 'place' | 'music';
+
 	let {
 		data
 	}: {
@@ -193,6 +195,18 @@
 		return 'Read post';
 	}
 
+	function getTimelineFamily(item: TimelineItem): TimelineFamily {
+		if (item.kind === 'post') {
+			return 'authored';
+		}
+
+		if (item.kind === 'checkin') {
+			return 'place';
+		}
+
+		return 'music';
+	}
+
 	function getCheckinLede(item: CheckinTimelineItem) {
 		const lede = stripHtml(item.summary);
 		const meta = stripHtml(item.meta);
@@ -281,16 +295,91 @@
 		};
 	}
 
+	function getBalancedTimelineItems(items: TimelineItem[], limit = 10) {
+		const ordered = items
+			.slice()
+			.sort((a, b) => b.date.getTime() - a.date.getTime())
+			.map((item, rawIndex) => ({
+				item,
+				rawIndex,
+				family: getTimelineFamily(item)
+			}));
+
+		const selected: typeof ordered = [];
+		const remaining = [...ordered];
+		const totalAuthored = ordered.filter((entry) => entry.family === 'authored').length;
+
+		while (remaining.length && selected.length < limit) {
+			const slot = selected.length;
+			let bestIndex = 0;
+			let bestScore = -Infinity;
+
+			for (let index = 0; index < remaining.length; index += 1) {
+				const candidate = remaining[index];
+				const lastFamily = selected.at(-1)?.family;
+				const previousFamily = selected.at(-2)?.family;
+				const authoredCount = selected.filter((entry) => entry.family === 'authored').length;
+				const placeCount = selected.filter((entry) => entry.family === 'place').length;
+				const musicCount = selected.filter((entry) => entry.family === 'music').length;
+
+				let score = 100 - candidate.rawIndex * 4;
+
+				if (candidate.family === lastFamily) {
+					score -= 12;
+				}
+
+				if (candidate.family === lastFamily && candidate.family === previousFamily) {
+					score -= 36;
+				}
+
+				if (totalAuthored > 0) {
+					const desiredAuthoredCount = slot < 3 ? Math.min(totalAuthored, 1) : Math.min(totalAuthored, 2);
+
+					if (candidate.family === 'authored' && authoredCount < desiredAuthoredCount) {
+						score += slot < 3 ? 18 : 14;
+					}
+
+					if (candidate.family !== 'authored' && authoredCount < desiredAuthoredCount) {
+						score -= slot < 3 ? 10 : 6;
+					}
+				}
+
+				if (slot < 6 && candidate.family === 'music' && musicCount >= 2) {
+					score -= 8;
+				}
+
+				if (slot < 6 && candidate.family === 'place' && placeCount >= 2) {
+					score -= 8;
+				}
+
+				if (candidate.item.kind === 'post') {
+					score += 3;
+				}
+
+				if (candidate.item.label === 'Book') {
+					score += 5;
+				}
+
+				if (score > bestScore) {
+					bestScore = score;
+					bestIndex = index;
+				}
+			}
+
+			selected.push(remaining.splice(bestIndex, 1)[0]);
+		}
+
+		return selected.map((entry) => entry.item);
+	}
+
 	function getTimelineItems() {
-		return [
+		return getBalancedTimelineItems([
 			...data.nowPosts.map(toPostTimelineItem),
 			...data.bookPosts.map(toPostTimelineItem),
 			...data.checkins.map(toCheckinTimelineItem),
 			...data.tracks.map(toTrackTimelineItem),
 			...data.albums.map(toAlbumTimelineItem)
-		]
-			.sort((a, b) => b.date.getTime() - a.date.getTime())
-			.slice(0, 10);
+		]);
 	}
 
 	let timelineItems = $derived.by(() => getTimelineItems());
@@ -576,15 +665,14 @@
 		min-width: 1.5rem;
 		height: 2px;
 		align-self: center;
-		background-image: radial-gradient(
-			circle,
-			color-mix(in srgb, var(--muted) 78%, var(--line) 22%) 1px,
-			transparent 1.2px
+		background-image: repeating-linear-gradient(
+			to right,
+			color-mix(in srgb, var(--accent) 72%, white 28%) 0 2px,
+			transparent 2px 7px
 		);
-		background-size: 6px 2px;
 		background-repeat: repeat-x;
 		background-position: center;
-		opacity: 0.8;
+		opacity: 0.95;
 	}
 
 	.now-index-row__date {
