@@ -111,6 +111,12 @@ function getConfiguredServiceUrl() {
 
 function getConfiguredLoginIdentifiers(repoIdentifier = getConfiguredRepoIdentifier()) {
 	return [
+		env.STANDARD_SITE_LOGIN_IDENTIFIER,
+		env.ATPROTO_LOGIN_IDENTIFIER,
+		env.ATP_LOGIN_IDENTIFIER,
+		env.STANDARD_SITE_EMAIL,
+		env.ATPROTO_EMAIL,
+		env.ATP_EMAIL,
 		env.STANDARD_SITE_IDENTIFIER,
 		env.ATPROTO_IDENTIFIER,
 		env.ATP_IDENTIFIER,
@@ -122,6 +128,24 @@ function getConfiguredLoginIdentifiers(repoIdentifier = getConfiguredRepoIdentif
 		.map((value) => String(value || '').trim())
 		.filter(Boolean)
 		.filter((value, index, values) => values.indexOf(value) === index);
+}
+
+function formatSessionCreationError(
+	identifiers: string[],
+	lastStatus: number | null,
+	lastIdentifier: string | null
+) {
+	const tried = identifiers.join(', ');
+
+	if (lastStatus === 401) {
+		return `ATProto session creation failed with 401 for ${lastIdentifier || 'the configured identifiers'}. Tried: ${tried}. If this app password authenticates with an email, set STANDARD_SITE_LOGIN_IDENTIFIER to that login value.`;
+	}
+
+	if (lastStatus) {
+		return `ATProto session creation failed with ${lastStatus} for ${lastIdentifier || 'the configured identifiers'}. Tried: ${tried}.`;
+	}
+
+	return `ATProto session creation failed for the configured identifiers. Tried: ${tried}.`;
 }
 
 function getConfiguredAppPassword() {
@@ -368,6 +392,8 @@ async function createSession(): Promise<AtprotoSession> {
 
 	popfeedOverrideSessionPromise = (async () => {
 		let lastError: Error | null = null;
+		let lastStatus: number | null = null;
+		let lastIdentifier: string | null = null;
 
 		for (const identifier of identifiers) {
 			try {
@@ -383,8 +409,10 @@ async function createSession(): Promise<AtprotoSession> {
 				});
 
 				if (!response.ok) {
+					lastStatus = response.status;
+					lastIdentifier = identifier;
 					lastError = new Error(
-						`ATProto session creation failed with ${response.status} for ${identifier}`
+						formatSessionCreationError(identifiers, lastStatus, lastIdentifier)
 					);
 					continue;
 				}
@@ -411,7 +439,9 @@ async function createSession(): Promise<AtprotoSession> {
 			}
 		}
 
-		throw lastError || new Error('ATProto session creation failed');
+		throw (
+			lastError || new Error(formatSessionCreationError(identifiers, lastStatus, lastIdentifier))
+		);
 	})();
 
 	try {

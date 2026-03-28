@@ -1,13 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
-import {
-	stripImagesFromHtml,
-	type BlogPost
-} from '$lib/server/ghost';
-import {
-	inferImageDimensions,
-	inferImageMimeType
-} from '$lib/server/image-metadata';
+import { stripImagesFromHtml, type BlogPost } from '$lib/server/ghost';
+import { inferImageDimensions, inferImageMimeType } from '$lib/server/image-metadata';
 import type { SiteProfile } from '$lib/server/profile';
 import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-identity';
 
@@ -52,20 +46,19 @@ type UploadedLeafletImage = {
 	aspectRatio?: LeafletAspectRatio;
 };
 
-type LeafletBlock =
-	| {
-			$type: 'pub.leaflet.pages.linearDocument#block';
-			block:
-				| { $type: 'pub.leaflet.blocks.text'; plaintext: string }
-				| { $type: 'pub.leaflet.blocks.header'; level: number; plaintext: string }
-				| { $type: 'pub.leaflet.blocks.blockquote'; plaintext: string }
-				| { $type: 'pub.leaflet.blocks.horizontalRule' }
-				| {
-						$type: 'pub.leaflet.blocks.image';
-						image: AtprotoBlob;
-						aspectRatio?: LeafletAspectRatio;
-				  };
-	  };
+type LeafletBlock = {
+	$type: 'pub.leaflet.pages.linearDocument#block';
+	block:
+		| { $type: 'pub.leaflet.blocks.text'; plaintext: string }
+		| { $type: 'pub.leaflet.blocks.header'; level: number; plaintext: string }
+		| { $type: 'pub.leaflet.blocks.blockquote'; plaintext: string }
+		| { $type: 'pub.leaflet.blocks.horizontalRule' }
+		| {
+				$type: 'pub.leaflet.blocks.image';
+				image: AtprotoBlob;
+				aspectRatio?: LeafletAspectRatio;
+		  };
+};
 
 let standardSiteSessionCache: CachedAtprotoSession | null = null;
 let standardSiteSessionPromise: Promise<AtprotoSession> | null = null;
@@ -84,10 +77,45 @@ function getStandardSiteIdentifier() {
 	).trim();
 }
 
+function getStandardSiteLoginIdentifiers() {
+	return [
+		env.STANDARD_SITE_LOGIN_IDENTIFIER,
+		env.ATPROTO_LOGIN_IDENTIFIER,
+		env.ATP_LOGIN_IDENTIFIER,
+		env.STANDARD_SITE_EMAIL,
+		env.ATPROTO_EMAIL,
+		env.ATP_EMAIL,
+		env.STANDARD_SITE_IDENTIFIER,
+		env.ATPROTO_IDENTIFIER,
+		env.ATP_IDENTIFIER
+	]
+		.map((value) => String(value || '').trim())
+		.filter(Boolean)
+		.filter((value, index, values) => values.indexOf(value) === index);
+}
+
 function getStandardSiteAppPassword() {
 	return String(
 		env.STANDARD_SITE_APP_PASSWORD || env.ATPROTO_APP_PASSWORD || env.ATP_APP_PASSWORD || ''
 	).trim();
+}
+
+function formatStandardSiteSessionError(
+	identifiers: string[],
+	lastStatus: number | null,
+	lastIdentifier: string | null
+) {
+	const tried = identifiers.join(', ');
+
+	if (lastStatus === 401) {
+		return `ATProto session creation failed with 401 for ${lastIdentifier || 'the configured identifiers'}. Tried: ${tried}. If this app password authenticates with an email, set STANDARD_SITE_LOGIN_IDENTIFIER to that login value.`;
+	}
+
+	if (lastStatus) {
+		return `ATProto session creation failed with ${lastStatus} for ${lastIdentifier || 'the configured identifiers'}. Tried: ${tried}.`;
+	}
+
+	return `ATProto session creation failed for the configured identifiers. Tried: ${tried}.`;
 }
 
 function getOrigin(event: Pick<RequestEvent, 'url'>) {
@@ -125,12 +153,7 @@ function decodeHtml(value: string) {
 		.replace(/&gt;/g, '>');
 }
 
-function firstMatch(
-	text: string,
-	pattern: string,
-	captureGroup = 1,
-	options: string = 'gis'
-) {
+function firstMatch(text: string, pattern: string, captureGroup = 1, options: string = 'gis') {
 	const regex = new RegExp(pattern, options);
 	const match = regex.exec(text);
 	return match?.[captureGroup] || null;
@@ -143,7 +166,9 @@ function allMatches(text: string, pattern: string, captureGroup = 1, options: st
 
 function toExcerpt(value: string, maxLength = 280) {
 	const normalized = stripHtml(value);
-	return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1).trim()}…` : normalized;
+	return normalized.length > maxLength
+		? `${normalized.slice(0, maxLength - 1).trim()}…`
+		: normalized;
 }
 
 async function getStandardSiteIdentity() {
@@ -170,11 +195,12 @@ async function getStandardSiteIdentity() {
 
 async function createSession(): Promise<AtprotoSession> {
 	const identifier = getStandardSiteIdentifier();
+	const loginIdentifiers = getStandardSiteLoginIdentifiers();
 	const password = getStandardSiteAppPassword();
 
-	if (!identifier || !password) {
+	if (!identifier || !password || !loginIdentifiers.length) {
 		throw new Error(
-			'Standard Site credentials are incomplete. Set STANDARD_SITE_IDENTIFIER and STANDARD_SITE_APP_PASSWORD.'
+			'Standard Site credentials are incomplete. Set STANDARD_SITE_APP_PASSWORD plus a repo or login identifier.'
 		);
 	}
 
@@ -184,7 +210,7 @@ async function createSession(): Promise<AtprotoSession> {
 		standardSiteSessionCache &&
 		standardSiteSessionCache.expiresAt > Date.now() &&
 		standardSiteSessionCache.serviceUrl === serviceUrl &&
-		standardSiteSessionCache.identifier === identifier
+		loginIdentifiers.includes(standardSiteSessionCache.identifier)
 	) {
 		return standardSiteSessionCache;
 	}
@@ -194,38 +220,59 @@ async function createSession(): Promise<AtprotoSession> {
 	}
 
 	standardSiteSessionPromise = (async () => {
-		const response = await fetch(`${serviceUrl}/xrpc/${CREATE_SESSION_NSID}`, {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json'
-			},
-			body: JSON.stringify({
-				identifier,
-				password
-			})
-		});
+		let lastError: Error | null = null;
+		let lastStatus: number | null = null;
+		let lastIdentifier: string | null = null;
 
-		if (!response.ok) {
-			throw new Error(`ATProto session creation failed with ${response.status}`);
+		for (const loginIdentifier of loginIdentifiers) {
+			try {
+				const response = await fetch(`${serviceUrl}/xrpc/${CREATE_SESSION_NSID}`, {
+					method: 'POST',
+					headers: {
+						'content-type': 'application/json'
+					},
+					body: JSON.stringify({
+						identifier: loginIdentifier,
+						password
+					})
+				});
+
+				if (!response.ok) {
+					lastStatus = response.status;
+					lastIdentifier = loginIdentifier;
+					lastError = new Error(
+						formatStandardSiteSessionError(loginIdentifiers, lastStatus, lastIdentifier)
+					);
+					continue;
+				}
+
+				const payload = (await response.json()) as { did?: string; accessJwt?: string };
+				const did = String(payload?.did || resolvedDid).trim();
+				const accessJwt = String(payload?.accessJwt || '').trim();
+
+				if (!did || !accessJwt) {
+					lastError = new Error('ATProto session did not return a DID and access token');
+					continue;
+				}
+
+				const session: CachedAtprotoSession = {
+					serviceUrl,
+					did,
+					accessJwt,
+					identifier: loginIdentifier,
+					expiresAt: Date.now() + SESSION_CACHE_TTL_MS
+				};
+				standardSiteSessionCache = session;
+				return session;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error('ATProto session creation failed');
+			}
 		}
 
-		const payload = (await response.json()) as { did?: string; accessJwt?: string };
-		const did = String(payload?.did || resolvedDid).trim();
-		const accessJwt = String(payload?.accessJwt || '').trim();
-
-		if (!did || !accessJwt) {
-			throw new Error('ATProto session did not return a DID and access token');
-		}
-
-		const session: CachedAtprotoSession = {
-			serviceUrl,
-			did,
-			accessJwt,
-			identifier,
-			expiresAt: Date.now() + SESSION_CACHE_TTL_MS
-		};
-		standardSiteSessionCache = session;
-		return session;
+		throw (
+			lastError ||
+			new Error(formatStandardSiteSessionError(loginIdentifiers, lastStatus, lastIdentifier))
+		);
 	})();
 
 	try {
@@ -253,7 +300,9 @@ async function putRecord<T>(session: AtprotoSession, collection: string, rkey: s
 
 	if (!response.ok) {
 		const text = await response.text();
-		throw new Error(`ATProto putRecord failed for ${collection}/${rkey}: ${response.status} ${text}`);
+		throw new Error(
+			`ATProto putRecord failed for ${collection}/${rkey}: ${response.status} ${text}`
+		);
 	}
 
 	return (await response.json()) as { uri?: string; cid?: string };
@@ -298,7 +347,9 @@ async function deleteRecord(session: AtprotoSession, collection: string, rkey: s
 
 	if (!response.ok) {
 		const text = await response.text();
-		throw new Error(`ATProto deleteRecord failed for ${collection}/${rkey}: ${response.status} ${text}`);
+		throw new Error(
+			`ATProto deleteRecord failed for ${collection}/${rkey}: ${response.status} ${text}`
+		);
 	}
 }
 
@@ -347,12 +398,16 @@ async function getRecord(session: AtprotoSession, collection: string, rkey: stri
 		collection,
 		rkey
 	});
-	const response = await fetch(`${session.serviceUrl}/xrpc/${GET_RECORD_NSID}?${params.toString()}`);
+	const response = await fetch(
+		`${session.serviceUrl}/xrpc/${GET_RECORD_NSID}?${params.toString()}`
+	);
 
 	if (response.status === 404) return null;
 	if (!response.ok) {
 		const text = await response.text();
-		throw new Error(`ATProto getRecord failed for ${collection}/${rkey}: ${response.status} ${text}`);
+		throw new Error(
+			`ATProto getRecord failed for ${collection}/${rkey}: ${response.status} ${text}`
+		);
 	}
 
 	return (await response.json()) as { uri?: string; cid?: string; value?: Record<string, unknown> };
@@ -364,7 +419,9 @@ async function listRecords(session: AtprotoSession, collection: string, limit = 
 		collection,
 		limit: String(limit)
 	});
-	const response = await fetch(`${session.serviceUrl}/xrpc/${LIST_RECORDS_NSID}?${params.toString()}`);
+	const response = await fetch(
+		`${session.serviceUrl}/xrpc/${LIST_RECORDS_NSID}?${params.toString()}`
+	);
 
 	if (!response.ok) {
 		const text = await response.text();
@@ -377,7 +434,11 @@ async function listRecords(session: AtprotoSession, collection: string, limit = 
 }
 
 function getRecordKey(uri: string) {
-	return String(uri || '').split('/').pop() || '';
+	return (
+		String(uri || '')
+			.split('/')
+			.pop() || ''
+	);
 }
 
 async function findPreferredPublicationRecord(event: Pick<RequestEvent, 'url'>) {
@@ -401,7 +462,10 @@ async function findPreferredLeafletPublicationRecord(session: AtprotoSession) {
 
 	return (
 		records.find(
-			(record) => String(record.value?.base_path || '').trim().toLowerCase() === LEGACY_LEAFLET_BASE_PATH
+			(record) =>
+				String(record.value?.base_path || '')
+					.trim()
+					.toLowerCase() === LEGACY_LEAFLET_BASE_PATH
 		) || null
 	);
 }
@@ -661,7 +725,9 @@ async function buildLeafletBlocksFromHtml(
 		}
 
 		if (/^<(ul|ol)\b/i.test(chunk)) {
-			const items = allMatches(chunk, '<li[^>]*>([\\s\\S]*?)<\\/li>').map(normalizeLeafletText).filter(Boolean);
+			const items = allMatches(chunk, '<li[^>]*>([\\s\\S]*?)<\\/li>')
+				.map(normalizeLeafletText)
+				.filter(Boolean);
 			for (const item of items) blocks.push(textBlock(`• ${item}`));
 			continue;
 		}
@@ -688,7 +754,10 @@ export function createPublicationRecord(event: Pick<RequestEvent, 'url'>, profil
 	};
 }
 
-export async function ensurePublicationRecord(event: Pick<RequestEvent, 'url'>, profile: SiteProfile) {
+export async function ensurePublicationRecord(
+	event: Pick<RequestEvent, 'url'>,
+	profile: SiteProfile
+) {
 	const { session, record } = await findPreferredPublicationRecord(event);
 	const publicationRecord = createPublicationRecord(event, profile);
 	const rkey = record?.uri ? getRecordKey(record.uri) : STANDARD_SITE_PUBLICATION_RKEY;
@@ -819,7 +888,9 @@ export async function syncGhostPostToStandardSite(
 	const origin = getOrigin(event);
 	const allDocumentsPayload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
 	const allDocuments = allDocumentsPayload.records || [];
-	const matchingExistingRecords = allDocuments.filter((record) => matchesGhostPostRecord(record, post, origin));
+	const matchingExistingRecords = allDocuments.filter((record) =>
+		matchesGhostPostRecord(record, post, origin)
+	);
 	const matchingLeafletRecord =
 		matchingExistingRecords.find((record) =>
 			isLeafletPublicationAtUri(String(record.value?.site || ''))
@@ -918,7 +989,11 @@ export async function syncGhostPostToStandardSite(
 			undefined,
 			leafletBlocks
 		);
-		const created = await createRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, provisionalRecord);
+		const created = await createRecord(
+			session,
+			STANDARD_SITE_DOCUMENT_COLLECTION,
+			provisionalRecord
+		);
 		const createdRkey = getRecordKey(created.uri || '');
 		if (!createdRkey) {
 			throw new Error('ATProto createRecord did not return a document URI');
@@ -959,7 +1034,10 @@ export async function syncGhostPostToStandardSite(
 	};
 }
 
-export async function getStandardSiteDocumentStatus(event: Pick<RequestEvent, 'url'>, post: BlogPost) {
+export async function getStandardSiteDocumentStatus(
+	event: Pick<RequestEvent, 'url'>,
+	post: BlogPost
+) {
 	if (!post?.slug) return null;
 
 	try {
@@ -989,7 +1067,11 @@ export async function getStandardSiteDocumentStatuses(
 	posts: BlogPost[]
 ) {
 	const relevantPosts = posts.filter((post) => post?.slug);
-	if (!relevantPosts.length) return new Map<string, { uri?: string; cid?: string; value?: Record<string, unknown> } | null>();
+	if (!relevantPosts.length)
+		return new Map<
+			string,
+			{ uri?: string; cid?: string; value?: Record<string, unknown> } | null
+		>();
 
 	try {
 		const session = await createSession();
@@ -1018,6 +1100,9 @@ export async function getStandardSiteDocumentStatuses(
 
 		return results;
 	} catch {
-		return new Map<string, { uri?: string; cid?: string; value?: Record<string, unknown> } | null>();
+		return new Map<
+			string,
+			{ uri?: string; cid?: string; value?: Record<string, unknown> } | null
+		>();
 	}
 }
