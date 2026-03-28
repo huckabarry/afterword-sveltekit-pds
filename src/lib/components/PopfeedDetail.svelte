@@ -25,8 +25,8 @@
 		<time datetime={item.date.toISOString()}>{item.displayDate}</time>
 	</div>
 
-	<div class="media-entry">
-		{#if item.posterImage}
+	<div class={`media-entry ${item.type === 'book' ? 'media-entry--text-only' : ''}`}>
+		{#if item.type !== 'book' && item.posterImage}
 			<figure class="media-entry__cover">
 				<img src={item.posterImage} alt={item.title} />
 			</figure>

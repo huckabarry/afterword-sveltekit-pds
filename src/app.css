@@ -1446,6 +1446,10 @@ p:last-child {
 	align-items: start;
 }
 
+.media-entry--text-only {
+	grid-template-columns: minmax(0, 1fr);
+}
+
 .media-entry__cover {
 	margin: 0;
 }

@@ -21,6 +21,10 @@
 		return item.type === 'movie' || item.type === 'tv_show';
 	}
 
+	function showsCover(item: PopfeedItem) {
+		return item.type !== 'book';
+	}
+
 	function showsFallback(item: PopfeedItem) {
 		return item.type !== 'book';
 	}
@@ -34,9 +38,9 @@
 <section class="media-grid">
 	{#each items as item}
 		<article
-			class={`media-card ${!item.posterImage && !showsFallback(item) ? 'media-card--text-only' : ''}`}
+			class={`media-card ${!showsCover(item) || (!item.posterImage && !showsFallback(item)) ? 'media-card--text-only' : ''}`}
 		>
-			{#if item.posterImage || showsFallback(item)}
+			{#if showsCover(item) && (item.posterImage || showsFallback(item))}
 				<a
 					class={`media-card__cover ${usesPosterRatio(item) ? 'media-card__cover--poster' : 'media-card__cover--natural'}`}
 					href={item.localPath}

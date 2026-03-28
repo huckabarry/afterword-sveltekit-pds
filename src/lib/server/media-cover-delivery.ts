@@ -64,8 +64,9 @@ function getMediaCoverPreset(item: MediaTimelineItem): MediaCoverPreset | null {
 		case 'track':
 			return 'mini';
 		case 'album':
-		case 'popfeed':
 			return 'cover';
+		case 'popfeed':
+			return item.mediaType === 'book' ? null : 'cover';
 		default:
 			return null;
 	}

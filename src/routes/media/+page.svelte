@@ -298,7 +298,7 @@
 									{/if}
 								</div>
 
-								{#if getItemImageUrl(item) && !hiddenImages[item.id]}
+								{#if !isBookPopfeed(item) && getItemImageUrl(item) && !hiddenImages[item.id]}
 									<a
 										class={`media-entry__cover media-entry__cover--full ${usesPosterRatio(item) ? 'media-entry__cover--poster' : 'media-entry__cover--natural'}`}
 										href={item.href}
