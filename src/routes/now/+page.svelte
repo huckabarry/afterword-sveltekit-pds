@@ -442,14 +442,6 @@
 							</div>
 						{:else if item.kind === 'track'}
 							<div class="now-media-entry now-media-entry--track">
-								<div class="now-media-entry__cover">
-									{#if item.imageUrl}
-										<img class="now-media-entry__art" src={item.imageUrl} alt={item.imageAlt} />
-									{:else}
-										<div class="now-media-entry__fallback" aria-hidden="true">Track</div>
-									{/if}
-								</div>
-
 								<div class="now-media-entry__body">
 									<div class="now-media-entry__heading">
 										<h2 class="now-timeline__title now-timeline__title--media">
@@ -467,36 +459,63 @@
 									{#if item.summary}
 										<p class="now-timeline__lede now-timeline__lede--compact">{item.summary}</p>
 									{/if}
+								</div>
 
-									{#if item.audioUrl}
-										<div class="now-media-entry__audio">
-											<audio
-												controls
-												preload="none"
-												src={item.audioUrl}
-												aria-label={`Preview ${item.title}`}
-											></audio>
-										</div>
-									{/if}
-
-									{#if item.links.length}
-										<div class="now-timeline__actions">
-											{#each item.links as link}
-												<a
-													class="tag-pill now-timeline__action"
-													href={link.url}
-													target={link.external ? '_blank' : undefined}
-													rel={link.external ? 'noreferrer' : undefined}
-												>
-													{link.label}
-												</a>
-											{/each}
-										</div>
+								<div class="now-media-entry__cover now-media-entry__cover--full">
+									{#if item.imageUrl}
+										<img class="now-media-entry__art" src={item.imageUrl} alt={item.imageAlt} />
+									{:else}
+										<div class="now-media-entry__fallback" aria-hidden="true">Track</div>
 									{/if}
 								</div>
+
+								{#if item.audioUrl}
+									<div class="now-media-entry__audio">
+										<audio
+											controls
+											preload="none"
+											src={item.audioUrl}
+											aria-label={`Preview ${item.title}`}
+										></audio>
+									</div>
+								{/if}
+
+								{#if item.links.length}
+									<div class="now-timeline__actions">
+										{#each item.links as link}
+											<a
+												class="tag-pill now-timeline__action"
+												href={link.url}
+												target={link.external ? '_blank' : undefined}
+												rel={link.external ? 'noreferrer' : undefined}
+											>
+												{link.label}
+											</a>
+										{/each}
+									</div>
+								{/if}
 							</div>
 						{:else}
 							<div class="now-media-entry now-media-entry--album">
+								<div class="now-media-entry__body">
+									<div class="now-media-entry__heading">
+										<h2 class="now-timeline__title now-timeline__title--media">
+											<a href={item.href}>{item.title}</a>
+										</h2>
+										<a class="now-timeline__jump" href={item.href} aria-label={`Open ${item.title}`}>
+											<svg viewBox="0 0 32 32" aria-hidden="true">
+												<path d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"></path>
+											</svg>
+										</a>
+									</div>
+
+									<p class="now-timeline__meta now-timeline__meta--artist">{item.artist}</p>
+
+									{#if item.summary}
+										<p class="now-timeline__lede now-timeline__lede--compact">{item.summary}</p>
+									{/if}
+								</div>
+
 								<div class="now-media-entry__cover now-media-entry__cover--full">
 									{#if item.imageUrl}
 										<img class="now-media-entry__art" src={item.imageUrl} alt={item.imageAlt} />
@@ -505,39 +524,20 @@
 									{/if}
 								</div>
 
-								<div class="now-media-entry__body">
-									<div class="now-media-entry__heading">
-										<h2 class="now-timeline__title now-timeline__title--media">
-											<a href={item.href}>{item.title}</a>
-										</h2>
-										<a class="now-timeline__jump" href={item.href} aria-label={`Open ${item.title}`}>
-											<svg viewBox="0 0 32 32" aria-hidden="true">
-												<path d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"></path>
-											</svg>
-										</a>
+								{#if item.links.length}
+									<div class="now-timeline__actions">
+										{#each item.links as link}
+											<a
+												class="tag-pill now-timeline__action"
+												href={link.url}
+												target={link.external ? '_blank' : undefined}
+												rel={link.external ? 'noreferrer' : undefined}
+											>
+												{link.label}
+											</a>
+										{/each}
 									</div>
-
-									<p class="now-timeline__meta now-timeline__meta--artist">{item.artist}</p>
-
-									{#if item.summary}
-										<p class="now-timeline__lede now-timeline__lede--compact">{item.summary}</p>
-									{/if}
-
-									{#if item.links.length}
-										<div class="now-timeline__actions">
-											{#each item.links as link}
-												<a
-													class="tag-pill now-timeline__action"
-													href={link.url}
-													target={link.external ? '_blank' : undefined}
-													rel={link.external ? 'noreferrer' : undefined}
-												>
-													{link.label}
-												</a>
-											{/each}
-										</div>
-									{/if}
-								</div>
+								{/if}
 							</div>
 						{/if}
 					</div>
@@ -817,17 +817,7 @@
 	}
 
 	.now-media-entry--track {
-		grid-template-columns: minmax(0, 1fr) 6.25rem;
-	}
-
-	.now-media-entry--track .now-media-entry__body {
-		grid-column: 1;
-		grid-row: 1;
-	}
-
-	.now-media-entry--track .now-media-entry__cover {
-		grid-column: 2;
-		grid-row: 1;
+		grid-template-columns: 1fr;
 	}
 
 	.now-media-entry--album {
@@ -903,12 +893,6 @@
 		.now-media-entry {
 			grid-template-columns: 1fr;
 			gap: 0.95rem;
-		}
-
-		.now-media-entry--track .now-media-entry__body,
-		.now-media-entry--track .now-media-entry__cover {
-			grid-column: auto;
-			grid-row: auto;
 		}
 
 		.now-media-entry__cover {
