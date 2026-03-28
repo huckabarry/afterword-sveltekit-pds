@@ -194,7 +194,18 @@
 	}
 
 	function getCheckinLede(item: CheckinTimelineItem) {
-		return stripHtml(item.summary);
+		const lede = stripHtml(item.summary);
+		const meta = stripHtml(item.meta);
+
+		if (!lede) {
+			return '';
+		}
+
+		if (meta && normalizeComparableText(lede) === normalizeComparableText(meta)) {
+			return '';
+		}
+
+		return lede;
 	}
 
 	function getCheckinBody(item: CheckinTimelineItem) {
