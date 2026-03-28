@@ -516,13 +516,13 @@
 									{/if}
 								</div>
 
-								<div class="now-media-entry__cover now-media-entry__cover--full">
+								<a class="now-media-entry__cover now-media-entry__cover--full" href={item.href}>
 									{#if item.imageUrl}
 										<img class="now-media-entry__art" src={item.imageUrl} alt={item.imageAlt} />
 									{:else}
 										<div class="now-media-entry__fallback" aria-hidden="true">Album</div>
 									{/if}
-								</div>
+								</a>
 
 								{#if item.links.length}
 									<div class="now-timeline__actions">
@@ -775,7 +775,10 @@
 	}
 
 	.now-media-entry__cover {
+		display: block;
 		min-width: 0;
+		text-decoration: none;
+		color: inherit;
 	}
 
 	.now-media-entry__art {
