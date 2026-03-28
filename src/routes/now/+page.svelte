@@ -892,14 +892,9 @@
 			gap: 0.7rem;
 		}
 
-		.now-timeline {
-			padding-left: 0;
-		}
-
 		.now-timeline__entry {
-			position: relative;
 			display: block;
-			padding-left: 1.7rem;
+			padding-left: 0;
 		}
 
 		.now-timeline__entry + .now-timeline__entry {
@@ -907,10 +902,7 @@
 		}
 
 		.now-timeline::before {
-			left: 0.38rem;
-			top: 0.4rem;
-			bottom: 0.25rem;
-			transform: none;
+			display: none;
 		}
 
 		.now-timeline__meta-column {
@@ -924,18 +916,11 @@
 		}
 
 		.now-timeline__rail {
-			position: absolute;
-			left: 0;
-			top: 0;
-			bottom: 0;
-			width: 0.9rem;
-			min-height: 0;
+			display: none;
 		}
 
 		.now-timeline__dot {
-			left: 0.38rem;
-			top: 0.12rem;
-			transform: translateX(-50%);
+			display: none;
 		}
 
 		.now-media-entry {
@@ -944,11 +929,18 @@
 		}
 
 		.now-media-entry__cover {
-			max-width: 8rem;
+			max-width: none;
+			width: 100%;
+		}
+
+		.now-media-entry__art,
+		.now-media-entry__fallback {
+			width: 100%;
+			max-width: none;
 		}
 
 		.now-checkin-map :global(.checkin-map__frame--leaflet) {
-			height: 14rem;
+			height: 12.5rem;
 		}
 	}
 </style>

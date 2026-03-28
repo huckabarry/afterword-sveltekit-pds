@@ -1644,12 +1644,22 @@ p:last-child {
 	}
 
 	.status-row__reply-pills {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		width: 100%;
+		display: flex;
+		flex-wrap: wrap;
+		width: auto;
 		margin-top: 0.25rem;
 		margin-left: 0;
 		gap: 0.45rem;
+		justify-content: flex-start;
+	}
+
+	.status-row__reply-pill {
+		width: fit-content;
+		max-width: 100%;
+	}
+
+	.status-row__reply-pill span:last-child {
+		white-space: nowrap;
 	}
 
 	.post-navigation {
