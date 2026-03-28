@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
+	type LeafletWindow = Window & {
+		L?: any;
+		__afterwordLeafletStylePromise?: Promise<void>;
+		__afterwordLeafletScriptPromise?: Promise<void>;
+	};
+
 	let {
 		latitude,
 		longitude,
@@ -63,46 +69,102 @@
 
 	async function loadLeaflet() {
 		if (typeof window === 'undefined') return null;
-		const existing = (window as Window & { L?: any }).L;
+		const scope = window as LeafletWindow;
+		const existing = scope.L;
 		if (existing) return existing;
 
-		await ensureStyle('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'leaflet-css');
-		await ensureScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', 'leaflet-js');
+		scope.__afterwordLeafletStylePromise ||= ensureStyle(
+			'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+			'leaflet-css'
+		);
+		scope.__afterwordLeafletScriptPromise ||= ensureScript(
+			'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+			'leaflet-js'
+		);
 
-		return (window as Window & { L?: any }).L || null;
+		await scope.__afterwordLeafletStylePromise;
+		await scope.__afterwordLeafletScriptPromise;
+
+		return scope.L || null;
 	}
 
 	function ensureStyle(href: string, id: string) {
 		return new Promise<void>((resolve, reject) => {
-			if (document.getElementById(id)) {
-				resolve();
-				return;
+			const existing = document.getElementById(id) as HTMLLinkElement | null;
+			if (existing) {
+				if (existing.dataset.loaded === 'true' || hasLoadedStylesheet(href)) {
+					existing.dataset.loaded = 'true';
+					resolve();
+					return;
+				}
+
+				const cleanup = attachLoadListeners(existing, resolve, reject, href);
+				return cleanup;
 			}
 
 			const link = document.createElement('link');
 			link.id = id;
 			link.rel = 'stylesheet';
 			link.href = href;
-			link.onload = () => resolve();
-			link.onerror = () => reject(new Error(`Unable to load ${href}`));
+			const cleanup = attachLoadListeners(link, resolve, reject, href);
 			document.head.appendChild(link);
+			return cleanup;
 		});
 	}
 
 	function ensureScript(src: string, id: string) {
 		return new Promise<void>((resolve, reject) => {
-			if (document.getElementById(id)) {
-				resolve();
-				return;
+			const existing = document.getElementById(id) as HTMLScriptElement | null;
+			if (existing) {
+				if (existing.dataset.loaded === 'true') {
+					resolve();
+					return;
+				}
+
+				const cleanup = attachLoadListeners(existing, resolve, reject, src);
+				return cleanup;
 			}
 
 			const script = document.createElement('script');
 			script.id = id;
 			script.src = src;
 			script.async = true;
-			script.onload = () => resolve();
-			script.onerror = () => reject(new Error(`Unable to load ${src}`));
+			const cleanup = attachLoadListeners(script, resolve, reject, src);
 			document.head.appendChild(script);
+			return cleanup;
+		});
+	}
+
+	function attachLoadListeners(
+		node: HTMLLinkElement | HTMLScriptElement,
+		resolve: () => void,
+		reject: (error: Error) => void,
+		resource: string
+	) {
+		const handleLoad = () => {
+			node.dataset.loaded = 'true';
+			node.removeEventListener('load', handleLoad);
+			node.removeEventListener('error', handleError);
+			resolve();
+		};
+		const handleError = () => {
+			node.removeEventListener('load', handleLoad);
+			node.removeEventListener('error', handleError);
+			reject(new Error(`Unable to load ${resource}`));
+		};
+
+		node.addEventListener('load', handleLoad, { once: true });
+		node.addEventListener('error', handleError, { once: true });
+	}
+
+	function hasLoadedStylesheet(href: string) {
+		const resolvedHref = new URL(href, document.baseURI).href;
+		return Array.from(document.styleSheets).some((sheet) => {
+			try {
+				return sheet.href === resolvedHref;
+			} catch {
+				return false;
+			}
 		});
 	}
 </script>

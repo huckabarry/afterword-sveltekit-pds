@@ -26,7 +26,6 @@
 
 	type PostTimelineItem = BaseTimelineItem & {
 		kind: 'post';
-		contentHtml: string;
 	};
 
 	type CheckinTimelineItem = BaseTimelineItem & {
@@ -170,9 +169,20 @@
 			summary: post.excerpt || summarize(post.html),
 			imageUrl: post.coverImage || null,
 			imageAlt: post.title,
-			tags: getPostTags(post),
-			contentHtml: post.html
+			tags: getPostTags(post)
 		};
+	}
+
+	function getPostActionLabel(item: PostTimelineItem) {
+		if (item.label === 'Book') {
+			return 'Read note';
+		}
+
+		if (item.label === 'Photo Note') {
+			return 'View post';
+		}
+
+		return 'Read post';
 	}
 
 	function toCheckinTimelineItem(checkin: Checkin): CheckinTimelineItem {
@@ -242,11 +252,11 @@
 			...data.albums.map(toAlbumTimelineItem)
 		]
 			.sort((a, b) => b.date.getTime() - a.date.getTime())
-			.slice(0, 12);
+			.slice(0, 10);
 	}
 
 	let timelineItems = $derived.by(() => getTimelineItems());
-	let indexItems = $derived.by(() => timelineItems.slice(0, 8));
+	let indexItems = $derived.by(() => timelineItems.slice(0, 6));
 </script>
 
 <svelte:head>
@@ -269,34 +279,12 @@
 		<h2 class="section-title">On This Page</h2>
 		<div class="now-index-list" aria-label="Current threads">
 			{#each indexItems as item}
-				<a
-					class:now-index-card--has-image={Boolean(item.imageUrl)}
-					class="now-index-card"
-					href={`#${item.id}`}
-				>
-					{#if item.imageUrl}
-						<div class="now-index-card__image-wrap">
-							<img class="now-index-card__image" src={item.imageUrl} alt={item.imageAlt} />
-						</div>
-					{/if}
-
-					<div class="now-index-card__body">
-						<h3 class="now-index-card__title">{item.title}</h3>
-						{#if item.summary}
-							<p class="now-index-card__summary">{item.summary}</p>
-						{/if}
-					</div>
-
-					<div class="now-index-card__right">
-						<time class="now-index-card__date" datetime={item.date.toISOString()}>
-							{item.dateLabel}
-						</time>
-						<span class="now-index-card__arrow" aria-hidden="true">
-							<svg viewBox="0 0 24 24">
-								<path d="M12.067 21.47a.896.896 0 0 1-.654-.303L4.94 14.683c-.186-.196-.274-.4-.274-.635 0-.479.352-.86.84-.86.234 0 .469.088.615.245l2.227 2.187 3.525 3.867-.478.205-.196-3.144V4.194c0-.507.362-.859.87-.859.507 0 .869.352.869.86v12.353l-.196 3.144-.488-.205 3.535-3.867 2.227-2.187a.872.872 0 0 1 .615-.245c.488 0 .84.381.84.86 0 .234-.078.44-.293.654l-6.455 6.465a.895.895 0 0 1-.655.303Z"></path>
-							</svg>
-						</span>
-					</div>
+				<a class="now-index-row" href={`#${item.id}`}>
+					<h3 class="now-index-row__title">{item.title}</h3>
+					<span class="now-index-row__leader" aria-hidden="true"></span>
+					<time class="now-index-row__date" datetime={item.date.toISOString()}>
+						{item.dateLabel}
+					</time>
 				</a>
 			{/each}
 		</div>
@@ -319,6 +307,8 @@
 					</div>
 
 					<div class="now-timeline__content">
+						<p class="now-timeline__kicker">{item.label}</p>
+
 						{#if item.tags.length}
 							<div class="now-timeline__tags">
 								{#each item.tags as tag}
@@ -349,8 +339,10 @@
 								</figure>
 							{/if}
 
-							<div class="now-timeline__body">
-								{@html item.contentHtml}
+							<div class="now-timeline__actions">
+								<a class="tag-pill now-timeline__action" href={item.href}>
+									{getPostActionLabel(item)}
+								</a>
 							</div>
 						{:else if item.kind === 'checkin'}
 							{#if item.meta}
@@ -396,69 +388,77 @@
 								<a class="tag-pill now-timeline__action" href="/check-ins">All check-ins</a>
 							</div>
 						{:else if item.kind === 'track'}
-							<p class="now-timeline__meta">{item.artist}</p>
-
-							{#if item.summary}
-								<p class="now-timeline__lede">{item.summary}</p>
-							{/if}
-
-							{#if item.imageUrl}
-								<figure class="now-timeline__artwork">
-									<img src={item.imageUrl} alt={item.imageAlt} />
-								</figure>
-							{:else}
-								<div class="now-timeline__artwork-fallback" aria-hidden="true">Track</div>
-							{/if}
-
-							{#if item.audioUrl}
-								<div class="now-timeline__audio">
-									<audio
-										controls
-										preload="none"
-										src={item.audioUrl}
-										aria-label={`Preview ${item.title}`}
-									></audio>
+							<div class="now-media-entry">
+								<div class="now-media-entry__cover">
+									{#if item.imageUrl}
+										<img class="now-media-entry__art" src={item.imageUrl} alt={item.imageAlt} />
+									{:else}
+										<div class="now-media-entry__fallback" aria-hidden="true">Track</div>
+									{/if}
 								</div>
-							{/if}
 
-							<div class="now-timeline__actions">
-								{#each item.links as link}
-									<a
-										class="tag-pill now-timeline__action"
-										href={link.url}
-										target={link.external ? '_blank' : undefined}
-										rel={link.external ? 'noreferrer' : undefined}
-									>
-										{link.label}
-									</a>
-								{/each}
+								<div class="now-media-entry__body">
+									<p class="now-timeline__meta">{item.artist}</p>
+
+									{#if item.summary}
+										<p class="now-timeline__lede now-timeline__lede--compact">{item.summary}</p>
+									{/if}
+
+									{#if item.audioUrl}
+										<div class="now-media-entry__audio">
+											<audio
+												controls
+												preload="none"
+												src={item.audioUrl}
+												aria-label={`Preview ${item.title}`}
+											></audio>
+										</div>
+									{/if}
+
+									<div class="now-timeline__actions">
+										{#each item.links as link}
+											<a
+												class="tag-pill now-timeline__action"
+												href={link.url}
+												target={link.external ? '_blank' : undefined}
+												rel={link.external ? 'noreferrer' : undefined}
+											>
+												{link.label}
+											</a>
+										{/each}
+									</div>
+								</div>
 							</div>
 						{:else}
-							<p class="now-timeline__meta">{item.artist}</p>
+							<div class="now-media-entry">
+								<div class="now-media-entry__cover">
+									{#if item.imageUrl}
+										<img class="now-media-entry__art" src={item.imageUrl} alt={item.imageAlt} />
+									{:else}
+										<div class="now-media-entry__fallback" aria-hidden="true">Album</div>
+									{/if}
+								</div>
 
-							{#if item.summary}
-								<p class="now-timeline__lede">{item.summary}</p>
-							{/if}
+								<div class="now-media-entry__body">
+									<p class="now-timeline__meta">{item.artist}</p>
 
-							{#if item.imageUrl}
-								<figure class="now-timeline__artwork">
-									<img src={item.imageUrl} alt={item.imageAlt} />
-								</figure>
-							{:else}
-								<div class="now-timeline__artwork-fallback" aria-hidden="true">Album</div>
-							{/if}
+									{#if item.summary}
+										<p class="now-timeline__lede now-timeline__lede--compact">{item.summary}</p>
+									{/if}
 
-							<div class="now-timeline__actions">
-								{#each item.links as link}
-									<a
-										class="tag-pill now-timeline__action"
-										href={link.url}
-										target={link.external ? '_blank' : undefined}
-										rel={link.external ? 'noreferrer' : undefined}
-									>
-										{link.label}
-									</a>
-								{/each}
+									<div class="now-timeline__actions">
+										{#each item.links as link}
+											<a
+												class="tag-pill now-timeline__action"
+												href={link.url}
+												target={link.external ? '_blank' : undefined}
+												rel={link.external ? 'noreferrer' : undefined}
+											>
+												{link.label}
+											</a>
+										{/each}
+									</div>
+								</div>
 							</div>
 						{/if}
 					</div>
@@ -473,84 +473,65 @@
 		border-top: 1px solid color-mix(in srgb, var(--line) 85%, transparent 15%);
 	}
 
-	.now-index-card {
+	.now-timeline {
+		--timeline-date-column: 4.5rem;
+		--timeline-rail-column: 1.4rem;
+		--timeline-gap: 1rem;
+		position: relative;
+	}
+
+	.now-timeline::before {
+		content: '';
+		position: absolute;
+		top: 0.55rem;
+		bottom: 0.35rem;
+		left: calc(
+			var(--timeline-date-column) + var(--timeline-gap) + (var(--timeline-rail-column) / 2)
+		);
+		width: 2px;
+		background: color-mix(in srgb, var(--accent) 42%, var(--line) 58%);
+		transform: translateX(-50%);
+		pointer-events: none;
+	}
+
+	.now-index-row {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		gap: 0.95rem;
+		grid-template-columns: max-content minmax(0, 1fr) auto;
+		gap: 0.8rem;
 		align-items: center;
-		padding: 1rem 0;
-		border-bottom: 1px solid color-mix(in srgb, var(--line) 85%, transparent 15%);
+		padding: 0.9rem 0;
 		text-decoration: none;
 		color: inherit;
 	}
 
-	.now-index-card--has-image {
-		grid-template-columns: 5.35rem minmax(0, 1fr) auto;
-	}
-
-	.now-index-card__image-wrap {
-		overflow: hidden;
-		border-radius: 0.7rem;
-		aspect-ratio: 4 / 5;
-		background: color-mix(in srgb, var(--surface) 86%, white 14%);
-	}
-
-	.now-index-card__image {
-		display: block;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
-	.now-index-card__body {
-		min-width: 0;
-	}
-
-	.now-index-card__title {
+	.now-index-row__title {
 		margin: 0;
 		font-family: 'Fira Sans', sans-serif;
-		font-size: 1rem;
-		line-height: 1.35;
+		font-size: 1.02rem;
+		line-height: 1.3;
 		color: inherit;
+		max-width: 100%;
 	}
 
-	.now-index-card__summary {
-		margin: 0.25rem 0 0;
+	.now-index-row__leader {
+		display: block;
+		height: 1px;
+		border-bottom: 1px dotted color-mix(in srgb, var(--line) 78%, var(--muted) 22%);
+		transform: translateY(0.18rem);
+	}
+
+	.now-index-row__date {
 		color: var(--muted);
-		font-size: 0.92rem;
-		line-height: 1.45;
-		line-clamp: 2;
-		display: -webkit-box;
-		-webkit-box-orient: vertical;
-		-webkit-line-clamp: 2;
-		overflow: hidden;
-	}
-
-	.now-index-card__right {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		gap: 0.25rem;
-		color: var(--muted);
-	}
-
-	.now-index-card__date {
 		font-size: 0.82rem;
 		line-height: 1.2;
 		white-space: nowrap;
-	}
-
-	.now-index-card__arrow svg {
-		display: block;
-		width: 1rem;
-		height: 1rem;
-		fill: currentColor;
+		padding-left: 0.75rem;
 	}
 
 	.now-timeline__entry {
 		display: grid;
-		grid-template-columns: 4.5rem 1.4rem minmax(0, 1fr);
-		gap: 1rem;
+		grid-template-columns: var(--timeline-date-column) var(--timeline-rail-column) minmax(0, 1fr);
+		gap: var(--timeline-gap);
 		align-items: start;
 	}
 
@@ -578,18 +559,7 @@
 	}
 
 	.now-timeline__rail::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		bottom: -3rem;
-		left: 50%;
-		width: 2px;
-		background: color-mix(in srgb, var(--accent) 28%, var(--line) 72%);
-		transform: translateX(-50%);
-	}
-
-	.now-timeline__entry:last-child .now-timeline__rail::before {
-		bottom: 0.25rem;
+		display: none;
 	}
 
 	.now-timeline__dot {
@@ -606,6 +576,15 @@
 
 	.now-timeline__content {
 		min-width: 0;
+	}
+
+	.now-timeline__kicker {
+		margin: 0 0 0.55rem;
+		font-size: 0.76rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--accent);
 	}
 
 	.now-timeline__tags {
@@ -667,6 +646,10 @@
 		color: var(--muted);
 	}
 
+	.now-timeline__lede--compact {
+		margin-top: 0.55rem;
+	}
+
 	.now-timeline__feature {
 		margin: 1rem 0 0;
 	}
@@ -678,51 +661,23 @@
 		border-radius: 0.85rem;
 	}
 
-	.now-timeline__body {
-		margin-top: 1rem;
-		font-size: 0.98rem;
-		line-height: 1.72;
-	}
-
-	.now-timeline__body :global(*:first-child) {
-		margin-top: 0;
-	}
-
-	.now-timeline__body :global(img),
-	.now-timeline__body :global(video),
-	.now-timeline__body :global(iframe) {
-		max-width: 100%;
-	}
-
-	.now-timeline__body :global(img) {
-		display: block;
-		width: 100%;
-		height: auto;
-	}
-
-	.now-timeline__body :global(figure),
-	.now-timeline__body :global(.kg-card) {
-		margin-top: 0.8rem;
-	}
-
-	.now-timeline__body :global(blockquote) {
-		padding-left: 1rem;
-		border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent 55%);
-		color: var(--muted);
-	}
-
 	.now-checkin-map {
 		margin-top: 1rem;
 	}
 
-	.now-timeline__artwork,
-	.now-timeline__artwork-fallback,
-	.now-timeline__audio {
+	.now-media-entry {
+		display: grid;
+		grid-template-columns: 8rem minmax(0, 1fr);
+		gap: 1rem;
 		margin-top: 1rem;
-		width: min(100%, 19rem);
+		align-items: start;
 	}
 
-	.now-timeline__artwork img {
+	.now-media-entry__cover {
+		min-width: 0;
+	}
+
+	.now-media-entry__art {
 		display: block;
 		width: 100%;
 		aspect-ratio: 1 / 1;
@@ -730,7 +685,7 @@
 		border-radius: 0.85rem;
 	}
 
-	.now-timeline__artwork-fallback {
+	.now-media-entry__fallback {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -745,7 +700,15 @@
 		text-transform: uppercase;
 	}
 
-	.now-timeline__audio audio {
+	.now-media-entry__body {
+		min-width: 0;
+	}
+
+	.now-media-entry__audio {
+		margin-top: 0.85rem;
+	}
+
+	.now-media-entry__audio audio {
 		display: block;
 		width: 100%;
 	}
@@ -762,23 +725,34 @@
 	}
 
 	@media (max-width: 640px) {
-		.now-index-card,
-		.now-index-card--has-image {
+		.now-index-row {
 			grid-template-columns: minmax(0, 1fr) auto;
+			gap: 0.7rem;
 		}
 
-		.now-index-card__image-wrap {
+		.now-index-row__leader {
 			display: none;
 		}
 
+		.now-timeline {
+			--timeline-date-column: 3.85rem;
+			--timeline-rail-column: 1rem;
+			--timeline-gap: 0.8rem;
+		}
+
 		.now-timeline__entry {
-			grid-template-columns: 3.85rem 1rem minmax(0, 1fr);
-			gap: 0.8rem;
+			grid-template-columns: var(--timeline-date-column) var(--timeline-rail-column) minmax(0, 1fr);
+			gap: var(--timeline-gap);
 		}
 
 		.now-timeline__date {
 			top: 4.75rem;
 			font-size: 0.76rem;
+		}
+
+		.now-media-entry {
+			grid-template-columns: 5.5rem minmax(0, 1fr);
+			gap: 0.85rem;
 		}
 	}
 </style>
