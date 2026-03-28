@@ -307,7 +307,10 @@
 		<div class="now-index-list" aria-label="Current threads">
 			{#each indexItems as item}
 				<a class="now-index-row" href={`#${item.id}`}>
-					<h3 class="now-index-row__title">{item.title}</h3>
+					<div class="now-index-row__main">
+						<span class="now-index-row__kind">{item.label}</span>
+						<h3 class="now-index-row__title">{item.title}</h3>
+					</div>
 					<span class="now-index-row__leader" aria-hidden="true"></span>
 					<time class="now-index-row__date" datetime={item.date.toISOString()}>
 						{item.dateLabel}
@@ -529,6 +532,23 @@
 		padding: 0.9rem 0;
 		text-decoration: none;
 		color: inherit;
+	}
+
+	.now-index-row__main {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.55rem;
+		min-width: 0;
+	}
+
+	.now-index-row__kind {
+		color: var(--accent);
+		font-size: 0.76rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		white-space: nowrap;
 	}
 
 	.now-index-row__title {
