@@ -1,18 +1,23 @@
 import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
-import { getBlogPostBySlug, getBlogPosts, type BlogPost } from '$lib/server/ghost';
-import { getStatusBySlug, type StatusPost } from '$lib/server/atproto';
-import { dedupeMigrationAliases, type SiteProfile } from '$lib/server/profile';
+import type { SiteProfile } from '$lib/server/profile';
 
 const ACTIVITY_STREAMS_CONTEXT = 'https://www.w3.org/ns/activitystreams';
-const PUBLIC_COLLECTION = 'https://www.w3.org/ns/activitystreams#Public';
-const ACTOR_PATH = '/ap/actor';
-const OUTBOX_PATH = '/ap/outbox';
-const INBOX_PATH = '/ap/inbox';
-const FOLLOWERS_PATH = '/ap/followers';
-const FOLLOWING_PATH = '/ap/following';
+const SECURITY_CONTEXT = 'https://w3id.org/security/v1';
 const DEFAULT_USERNAME = 'bryan';
 const ALT_USERNAME = 'afterword';
+const DEFAULT_MOVE_TARGET = 'https://micro.blog/activitypub/bryan';
+
+export const ACTOR_PATH = '/ap/actor';
+export const INBOX_PATH = '/ap/inbox';
+export const OUTBOX_PATH = '/ap/outbox';
+export const FOLLOWERS_PATH = '/ap/followers';
+export const FOLLOWING_PATH = '/ap/following';
+
+function toAbsoluteUrl(origin: string, value: string | null | undefined) {
+	if (!value) return null;
+	return value.startsWith('http') ? value : `${origin}${value}`;
+}
 
 export function getActivityPubOrigin(event: Pick<RequestEvent, 'url'>) {
 	return event.url.origin;
@@ -26,18 +31,21 @@ export function getInboxId(origin: string) {
 	return `${origin}${INBOX_PATH}`;
 }
 
+export function getOutboxId(origin: string) {
+	return `${origin}${OUTBOX_PATH}`;
+}
+
 export function getFollowersId(origin: string) {
 	return `${origin}${FOLLOWERS_PATH}`;
+}
+
+export function getFollowingId(origin: string) {
+	return `${origin}${FOLLOWING_PATH}`;
 }
 
 export function getActorAliases(origin: string) {
 	const host = new URL(origin).host;
 	return [`acct:${DEFAULT_USERNAME}@${host}`, `acct:${ALT_USERNAME}@${host}`];
-}
-
-export function getActivityPubHandle(origin: string) {
-	const host = new URL(origin).host;
-	return `${DEFAULT_USERNAME}@${host}`;
 }
 
 export function getPreferredUsername() {
@@ -52,23 +60,8 @@ export function getActivityPubPublicKeyPem() {
 	return String(env.ACTIVITYPUB_PUBLIC_KEY_PEM || '').trim() || null;
 }
 
-export function getActivityPubPrivateKeyPem() {
-	return String(env.ACTIVITYPUB_PRIVATE_KEY_PEM || '').trim() || null;
-}
-
-export function getAlsoKnownAs() {
-	return String(env.ACTIVITYPUB_ALSO_KNOWN_AS || '')
-		.split(',')
-		.map((value) => value.trim())
-		.filter(Boolean);
-}
-
-export function getNoteObjectId(origin: string, slug: string) {
-	return `${origin}/ap/posts/${slug}`;
-}
-
-export function getStatusObjectId(origin: string, slug: string) {
-	return `${origin}/ap/status/${slug}`;
+export function getMovedToActorUrl() {
+	return DEFAULT_MOVE_TARGET;
 }
 
 export function activityJson(body: unknown, init?: ResponseInit) {
@@ -91,68 +84,62 @@ export function jrdJson(body: unknown, init?: ResponseInit) {
 	});
 }
 
+export function createEmptyOrderedCollection(id: string) {
+	return {
+		'@context': ACTIVITY_STREAMS_CONTEXT,
+		id,
+		type: 'OrderedCollection',
+		totalItems: 0,
+		orderedItems: []
+	};
+}
+
 export function createActor(origin: string, profile?: SiteProfile) {
 	const actorId = getActorId(origin);
-	const publicKeyPem = getActivityPubPublicKeyPem();
 	const actorProfile = profile ?? {
 		displayName: 'Bryan Robb',
 		avatarUrl: '/assets/images/status-avatar.jpg',
 		headerImageUrl: null,
 		bio: 'Writer, photographer, and urban planner publishing from Afterword.',
+		aboutBody: '',
+		aboutInterests: [],
 		verificationLinks: [],
 		migrationAliases: [],
 		moveTargetHandle: null,
 		moveTargetActorUrl: null,
 		moveStartedAt: null
 	};
-	const alsoKnownAs = dedupeMigrationAliases([
-		...getAlsoKnownAs(),
-		...(actorProfile.migrationAliases || [])
-	]).filter(Boolean);
-	const movedTo =
-		actorProfile.moveStartedAt && actorProfile.moveTargetActorUrl
-			? actorProfile.moveTargetActorUrl
-			: null;
+	const publicKeyPem = getActivityPubPublicKeyPem();
+	const movedSummary = actorProfile.bio.includes('micro.blog')
+		? actorProfile.bio
+		: `${actorProfile.bio} This ActivityPub account has moved to bryan@micro.blog.`;
 
 	return {
-		'@context': [ACTIVITY_STREAMS_CONTEXT, 'https://w3id.org/security/v1'],
+		'@context': [ACTIVITY_STREAMS_CONTEXT, SECURITY_CONTEXT],
 		id: actorId,
 		type: 'Person',
 		preferredUsername: DEFAULT_USERNAME,
 		name: actorProfile.displayName,
-		summary: actorProfile.bio,
-		url: `${origin}/`,
+		summary: movedSummary,
+		url: `${origin}/about`,
 		icon: {
 			type: 'Image',
 			mediaType: 'image/jpeg',
-			url: actorProfile.avatarUrl.startsWith('http')
-				? actorProfile.avatarUrl
-				: `${origin}${actorProfile.avatarUrl}`
+			url: toAbsoluteUrl(origin, actorProfile.avatarUrl)
 		},
 		...(actorProfile.headerImageUrl
 			? {
 					image: {
 						type: 'Image',
-						url: actorProfile.headerImageUrl.startsWith('http')
-							? actorProfile.headerImageUrl
-							: `${origin}${actorProfile.headerImageUrl}`
+						url: toAbsoluteUrl(origin, actorProfile.headerImageUrl)
 					}
 				}
 			: {}),
-		inbox: `${origin}${INBOX_PATH}`,
-		outbox: `${origin}${OUTBOX_PATH}`,
-		followers: `${origin}${FOLLOWERS_PATH}`,
-		following: `${origin}${FOLLOWING_PATH}`,
-		...(movedTo
-			? {
-					movedTo
-				}
-			: {}),
-		...(alsoKnownAs.length
-			? {
-					alsoKnownAs
-				}
-			: {}),
+		inbox: getInboxId(origin),
+		outbox: getOutboxId(origin),
+		followers: getFollowersId(origin),
+		following: getFollowingId(origin),
+		movedTo: getMovedToActorUrl(),
 		...(publicKeyPem
 			? {
 					publicKey: {
@@ -163,213 +150,4 @@ export function createActor(origin: string, profile?: SiteProfile) {
 				}
 			: {})
 	};
-}
-
-export function createAcceptActivity(origin: string, followActivity: Record<string, unknown>) {
-	const actorId = getActorId(origin);
-	const objectId = String(followActivity.id || '').trim() || `${actorId}#follow`;
-
-	return {
-		'@context': ACTIVITY_STREAMS_CONTEXT,
-		id: `${objectId}#accept`,
-		type: 'Accept',
-		actor: actorId,
-		object: followActivity
-	};
-}
-
-function stripHtmlToText(html: string) {
-	return String(html || '')
-		.replace(/<script[\s\S]*?<\/script>/gi, ' ')
-		.replace(/<style[\s\S]*?<\/style>/gi, ' ')
-		.replace(/<[^>]+>/g, ' ')
-		.replace(/&nbsp;/g, ' ')
-		.replace(/&amp;/g, '&')
-		.replace(/&quot;/g, '"')
-		.replace(/&#39;/g, "'")
-		.replace(/&lt;/g, '<')
-		.replace(/&gt;/g, '>')
-		.replace(/\s+/g, ' ')
-		.trim();
-}
-
-export function blogPostToArticle(post: BlogPost, origin: string) {
-	const actorId = getActorId(origin);
-	const objectId = getNoteObjectId(origin, post.slug);
-
-	return {
-		'@context': ACTIVITY_STREAMS_CONTEXT,
-		id: objectId,
-		type: 'Article',
-		attributedTo: actorId,
-		published: post.publishedAt.toISOString(),
-		updated: post.updatedAt.toISOString(),
-		url: `${origin}${post.path}`,
-		to: [PUBLIC_COLLECTION],
-		cc: [`${origin}${FOLLOWERS_PATH}`],
-		name: post.title,
-		summary: post.excerpt,
-		content: post.html,
-		contentMap: {
-			en: post.html
-		},
-		mediaType: 'text/html',
-		tag: post.publicTags.map((tag) => ({
-			type: 'Hashtag',
-			name: `#${tag.label.replace(/\s+/g, '')}`,
-			href: `${origin}${tag.path}`
-		})),
-		attachment: post.coverImage
-			? [
-					{
-						type: 'Image',
-						url: post.coverImage,
-						name: post.title
-					}
-				]
-			: [],
-		source: {
-			content: stripHtmlToText(post.html),
-			mediaType: 'text/plain'
-		}
-	};
-}
-
-export function blogPostToCreateActivity(post: BlogPost, origin: string) {
-	const actorId = getActorId(origin);
-	const object = blogPostToArticle(post, origin);
-
-	return {
-		'@context': ACTIVITY_STREAMS_CONTEXT,
-		id: `${object.id}#create`,
-		type: 'Create',
-		actor: actorId,
-		published: post.publishedAt.toISOString(),
-		to: [PUBLIC_COLLECTION],
-		cc: [`${origin}${FOLLOWERS_PATH}`],
-		object
-	};
-}
-
-function escapeHtml(value: string) {
-	return String(value || '')
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#39;');
-}
-
-function getStatusNoteHtml(post: StatusPost) {
-	const baseHtml = String(post.html || '').trim();
-
-	if (!post.external?.uri) {
-		return baseHtml;
-	}
-
-	if (baseHtml.includes(post.external.uri)) {
-		return baseHtml;
-	}
-
-	const linkLabel = post.external.title || post.external.domain || post.external.uri;
-	const externalHtml = `<p><a href="${escapeHtml(post.external.uri)}">${escapeHtml(linkLabel)}</a></p>`;
-
-	return `${baseHtml}${externalHtml}`;
-}
-
-function getStatusSourceText(post: StatusPost) {
-	const baseText = String(post.text || '').trim();
-
-	if (!post.external?.uri || baseText.includes(post.external.uri)) {
-		return baseText;
-	}
-
-	return baseText ? `${baseText}\n\n${post.external.uri}` : post.external.uri;
-}
-
-export function statusPostToNote(post: StatusPost, origin: string) {
-	const actorId = getActorId(origin);
-	const objectId = getStatusObjectId(origin, post.slug);
-	const noteHtml = getStatusNoteHtml(post);
-	const sourceText = getStatusSourceText(post);
-
-	return {
-		'@context': ACTIVITY_STREAMS_CONTEXT,
-		id: objectId,
-		type: 'Note',
-		attributedTo: actorId,
-		published: post.date.toISOString(),
-		url: `${origin}/status/${post.slug}`,
-		to: [PUBLIC_COLLECTION],
-		cc: [`${origin}${FOLLOWERS_PATH}`],
-		content: noteHtml,
-		contentMap: {
-			en: noteHtml
-		},
-		mediaType: 'text/html',
-		inReplyTo: post.replyTo?.uri ? post.replyTo.blueskyUrl : undefined,
-		attachment: [
-			...post.images.map((image) => ({
-				type: 'Image',
-				url: image.fullsize || image.thumb,
-				name: image.alt || post.displayName
-			})),
-			...(post.external
-				? [
-						{
-							type: 'Link',
-							href: post.external.uri,
-							name: post.external.title,
-							summary: post.external.description
-						}
-					]
-				: [])
-		],
-		source: {
-			content: sourceText,
-			mediaType: 'text/plain'
-		}
-	};
-}
-
-export function statusPostToCreateActivity(post: StatusPost, origin: string) {
-	const actorId = getActorId(origin);
-	const object = statusPostToNote(post, origin);
-
-	return {
-		'@context': ACTIVITY_STREAMS_CONTEXT,
-		id: `${object.id}#create`,
-		type: 'Create',
-		actor: actorId,
-		published: post.date.toISOString(),
-		to: [PUBLIC_COLLECTION],
-		cc: [`${origin}${FOLLOWERS_PATH}`],
-		object
-	};
-}
-
-export async function getOutboxPage(origin: string, pageNumber = 1, pageSize = 10) {
-	const posts = await getBlogPosts();
-	const start = Math.max(0, (pageNumber - 1) * pageSize);
-	const items = posts.slice(start, start + pageSize).map((post) => blogPostToCreateActivity(post, origin));
-	const totalItems = posts.length;
-	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-
-	return {
-		totalItems,
-		totalPages,
-		items
-	};
-}
-
-export async function getActivityObjectBySlug(slug: string, origin: string) {
-	const post = await getBlogPostBySlug(slug);
-	if (!post) return null;
-	return blogPostToArticle(post, origin);
-}
-
-export async function getStatusActivityObjectBySlug(slug: string, origin: string) {
-	const post = await getStatusBySlug(slug);
-	if (!post) return null;
-	return statusPostToNote(post, origin);
 }

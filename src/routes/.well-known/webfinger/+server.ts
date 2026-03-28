@@ -23,7 +23,7 @@ export function GET(event) {
 
 	return jrdJson({
 		subject: aliases[0],
-		aliases: [`${origin}/`],
+		aliases: [`${origin}/about`],
 		links: [
 			{
 				rel: 'self',
@@ -33,12 +33,12 @@ export function GET(event) {
 			{
 				rel: 'http://webfinger.net/rel/profile-page',
 				type: 'text/html',
-				href: `${origin}/`
+				href: `${origin}/about`
 			},
 			{
 				rel: 'alternate',
 				type: 'text/html',
-				href: `${origin}/`
+				href: `${origin}/about`
 			}
 		],
 		properties: {

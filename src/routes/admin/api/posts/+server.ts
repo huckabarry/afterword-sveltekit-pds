@@ -6,9 +6,6 @@ export async function GET(event) {
 	await requireAdminAccess(event);
 
 	return json({
-		posts: await buildAdminPostFeed(event, {
-			localLimit: 200,
-			mirroredLimit: 50
-		})
+		posts: await buildAdminPostFeed()
 	});
 }

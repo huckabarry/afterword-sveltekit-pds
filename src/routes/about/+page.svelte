@@ -15,7 +15,6 @@
 				aboutBody: string;
 				aboutInterests: string[];
 				verificationLinks: { label: string; url: string }[];
-				migrationAliases: string[];
 			};
 		};
 	} = $props();
@@ -59,16 +58,6 @@
 						{/if}
 					{/each}
 				</div>
-
-				{#if data.profile.migrationAliases?.length}
-					<h2>Moved from</h2>
-					<p>This account also replaces older ActivityPub identities I previously used.</p>
-					<ul>
-						{#each data.profile.migrationAliases as alias}
-							<li><a href={alias} target="_blank" rel="noreferrer">{alias}</a></li>
-						{/each}
-					</ul>
-				{/if}
 			</section>
 		</div>
 	</article>

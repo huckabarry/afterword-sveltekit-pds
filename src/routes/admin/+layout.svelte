@@ -3,17 +3,12 @@
 	let menuOpen = $state(false);
 
 	const navItems = [
-		{ href: '/admin', label: 'Home', shortLabel: 'Home' },
-		{ href: '/admin/following', label: 'Feed', shortLabel: 'Feed' },
-		{ href: '/admin/profile', label: 'Profile', shortLabel: 'Profile' },
-		{ href: '/admin/followers', label: 'Followers', shortLabel: 'Followers' },
-		{ href: '/admin/following/accounts', label: 'Following', shortLabel: 'Following' },
-		{ href: '/admin/posts', label: 'Posts', shortLabel: 'Posts' },
-		{ href: '/admin/photos', label: 'Images', shortLabel: 'Images' },
-		{ href: '/admin/messages', label: 'Messages', shortLabel: 'Messages' },
-		{ href: '/admin/replies', label: 'Replies', shortLabel: 'Replies' },
-		{ href: '/admin/webmentions', label: 'Webmentions', shortLabel: 'Mentions' },
-		{ href: '/admin/standard-site', label: 'Standard Site', shortLabel: 'Standard' }
+		{ href: '/admin', label: 'Home' },
+		{ href: '/admin/profile', label: 'Profile' },
+		{ href: '/admin/posts', label: 'Posts' },
+		{ href: '/admin/photos', label: 'Images' },
+		{ href: '/admin/webmentions', label: 'Webmentions' },
+		{ href: '/admin/standard-site', label: 'Standard Site' }
 	];
 
 	function isActive(href: string) {
@@ -45,7 +40,7 @@
 			<div class="admin-sidebar__brand">
 				<p class="admin-eyebrow">Afterword</p>
 				<h1 class="admin-title">Admin</h1>
-				<p class="admin-sidebar__tagline">A small social back room for replies, notes, and moderation.</p>
+				<p class="admin-sidebar__tagline">A quieter publishing workspace for profile, posts, images, and site upkeep.</p>
 			</div>
 
 			<nav class="admin-sidebar__nav" aria-label="Admin">
@@ -69,25 +64,11 @@
 						{#if data.pathname === '/admin'}
 							Home
 						{:else if data.pathname === '/admin/profile'}
-							Edit profile
-						{:else if data.pathname === '/admin/followers'}
-							Followers
-						{:else if data.pathname === '/admin/following'}
-							Feed
-						{:else if data.pathname === '/admin/following/accounts'}
-							Following
-						{:else if data.pathname === '/admin/people'}
 							Profile
-						{:else if data.pathname === '/admin/compose'}
-							Reply
 						{:else if data.pathname.startsWith('/admin/posts')}
 							Posts
 						{:else if data.pathname === '/admin/photos'}
 							Images
-						{:else if data.pathname === '/admin/messages'}
-							Messages
-						{:else if data.pathname === '/admin/replies'}
-							Replies
 						{:else if data.pathname === '/admin/webmentions'}
 							Webmentions
 						{:else if data.pathname === '/admin/standard-site'}
@@ -111,16 +92,16 @@
 						</button>
 						{#if menuOpen}
 							<nav class="admin-mobile-nav" id="admin-mobile-nav" aria-label="Admin">
-							{#each navItems as item}
-								<a
-									class:admin-mobile-nav__link--active={isActive(item.href)}
-									class="admin-mobile-nav__link"
-									href={item.href}
-									onclick={closeMenu}
-								>
-									<span>{item.label}</span>
-								</a>
-							{/each}
+								{#each navItems as item}
+									<a
+										class:admin-mobile-nav__link--active={isActive(item.href)}
+										class="admin-mobile-nav__link"
+										href={item.href}
+										onclick={closeMenu}
+									>
+										<span>{item.label}</span>
+									</a>
+								{/each}
 							</nav>
 						{/if}
 					</div>
