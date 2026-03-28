@@ -1,5 +1,4 @@
-const CHECKINS_BASE_URL = 'https://bsky.social/xrpc/com.atproto.repo.listRecords';
-const BLOB_URL = 'https://bsky.social/xrpc/com.atproto.sync.getBlob';
+const PLC_DIRECTORY_URL = 'https://plc.directory';
 const RESOLVE_HANDLE_URL = 'https://bsky.social/xrpc/com.atproto.identity.resolveHandle';
 const AUTHOR_FEED_URL = 'https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed';
 const CHECKIN_COLLECTION = 'blog.afterword.checkin';
@@ -115,6 +114,16 @@ function getStatusCache() {
 	return scope.__afterwordStatusCache;
 }
 
+function getPdsCache() {
+	const scope = globalThis as typeof globalThis & {
+		__afterwordPdsCache?: Map<string, string>;
+	};
+	if (!scope.__afterwordPdsCache) {
+		scope.__afterwordPdsCache = new Map<string, string>();
+	}
+	return scope.__afterwordPdsCache;
+}
+
 function getRecordKey(uri: string | undefined | null) {
 	return String(uri || '').split('/').pop() || '';
 }
@@ -133,8 +142,36 @@ async function resolveDid(repo: string) {
 	return data.did as string;
 }
 
-function getBlobUrl(did: string, cid: string) {
-	return `${BLOB_URL}?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
+async function resolvePdsServiceUrl(repo: string) {
+	const did = await resolveDid(repo);
+	const cache = getPdsCache();
+	const cached = cache.get(did);
+	if (cached) {
+		return { did, serviceUrl: cached };
+	}
+
+	const response = await fetch(`${PLC_DIRECTORY_URL}/${encodeURIComponent(did)}`);
+	if (!response.ok) {
+		throw new Error(`Unable to resolve DID document for ${did}: ${response.status}`);
+	}
+
+	const payload = (await response.json()) as {
+		service?: Array<{ id?: string; type?: string; serviceEndpoint?: string }>;
+	};
+	const serviceUrl =
+		payload.service?.find((service) => service.type === 'AtprotoPersonalDataServer')
+			?.serviceEndpoint || '';
+
+	if (!serviceUrl) {
+		throw new Error(`DID document for ${did} did not include a PDS service endpoint`);
+	}
+
+	cache.set(did, serviceUrl.replace(/\/+$/, ''));
+	return { did, serviceUrl: serviceUrl.replace(/\/+$/, '') };
+}
+
+function getBlobUrl(serviceUrl: string, did: string, cid: string) {
+	return `${serviceUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
 }
 
 function toCoordinate(value: unknown) {
@@ -244,7 +281,8 @@ function normalizeCheckin(
 		cid?: string;
 		value?: Record<string, unknown>;
 	},
-	did: string
+	did: string,
+	serviceUrl: string
 ): Checkin {
 	const value = record.value || {};
 	const coverCid = getPhotoRefLink(value.photo);
@@ -253,7 +291,7 @@ function normalizeCheckin(
 	const photoUrls = photos
 		.map((item) => getPhotoRefLink(item))
 		.filter(Boolean)
-		.map((cid) => getBlobUrl(did, cid as string));
+		.map((cid) => getBlobUrl(serviceUrl, did, cid as string));
 
 	const visitedAt = new Date(
 		String(value.visitedAt || value.createdAt || new Date().toISOString())
@@ -297,7 +335,7 @@ function normalizeCheckin(
 		tags: Array.isArray(value.tags) ? value.tags.map((tag) => String(tag)) : [],
 		createdAt: new Date(String(value.createdAt || new Date().toISOString())),
 		visitedAt,
-		coverImage: coverCid ? getBlobUrl(did, coverCid) : null,
+		coverImage: coverCid ? getBlobUrl(serviceUrl, did, coverCid) : null,
 		photoUrls,
 		mapEmbedUrl: getMapEmbedUrl(displayCoordinates.latitude, displayCoordinates.longitude),
 		appleMapsUrl: getAppleMapsUrl({
@@ -570,9 +608,9 @@ export async function getCheckins() {
 		const allRecords: Checkin[] = [];
 
 		for (const repo of getRepos()) {
-			const did = await resolveDid(repo);
+			const { did, serviceUrl } = await resolvePdsServiceUrl(repo);
 			const response = await fetch(
-				`${CHECKINS_BASE_URL}?repo=${encodeURIComponent(repo)}&collection=${encodeURIComponent(CHECKIN_COLLECTION)}&limit=100`,
+				`${serviceUrl}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(CHECKIN_COLLECTION)}&limit=100`,
 				{
 					headers: { accept: 'application/json' }
 				}
@@ -583,7 +621,9 @@ export async function getCheckins() {
 			}
 
 			const data = (await response.json()) as { records?: Array<Record<string, unknown>> };
-			allRecords.push(...(data.records || []).map((record) => normalizeCheckin(record, did)));
+			allRecords.push(
+				...(data.records || []).map((record) => normalizeCheckin(record, did, serviceUrl))
+			);
 		}
 
 		const seenPaths = new Set<string>();
