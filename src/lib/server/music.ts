@@ -454,8 +454,14 @@ async function getAlbumWhaleListenLinks(): Promise<Map<string, ListenLink[]>> {
 	return albumWhaleLinksPromise;
 }
 
-export async function getArchiveAlbums(): Promise<AlbumEntry[]> {
-	const listenLinksByAlbumId = await getAlbumWhaleListenLinks();
+export async function getArchiveAlbums({
+	includeListenLinks = true
+}: {
+	includeListenLinks?: boolean;
+} = {}): Promise<AlbumEntry[]> {
+	const listenLinksByAlbumId = includeListenLinks
+		? await getAlbumWhaleListenLinks()
+		: new Map<string, ListenLink[]>();
 
 	return walkMarkdownFiles('albumwhale')
 		.map((filePath) => {

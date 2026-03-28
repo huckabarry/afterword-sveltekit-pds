@@ -36,7 +36,9 @@ export async function POST(event) {
 
 	const [tracks, albums] = await Promise.all([
 		collections.includes('tracks') ? getArchiveTracks() : Promise.resolve([]),
-		collections.includes('albums') ? getArchiveAlbums() : Promise.resolve([])
+		collections.includes('albums')
+			? getArchiveAlbums({ includeListenLinks: false })
+			: Promise.resolve([])
 	]);
 
 	try {
