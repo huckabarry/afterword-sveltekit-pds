@@ -8,6 +8,11 @@ function normalizeLimit(value: unknown) {
 	return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+function normalizeOffset(value: unknown) {
+	const parsed = Number.parseInt(String(value || ''), 10);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
 function normalizeBoolean(value: unknown) {
 	if (typeof value === 'boolean') {
 		return value;
@@ -24,6 +29,7 @@ export async function POST(event) {
 
 	const body = await event.request.json().catch(() => ({}));
 	const limit = normalizeLimit(body?.limit);
+	const offset = normalizeOffset(body?.offset);
 	const force = normalizeBoolean(body?.force);
 
 	try {
@@ -31,6 +37,7 @@ export async function POST(event) {
 		const result = await syncPopfeedBookCoverOverrides({
 			items,
 			limit,
+			offset,
 			force
 		});
 
@@ -43,6 +50,7 @@ export async function POST(event) {
 			{
 				ok: false,
 				limit,
+				offset,
 				force,
 				error:
 					error instanceof Error ? error.message : 'Unable to sync Popfeed book cover overrides.'

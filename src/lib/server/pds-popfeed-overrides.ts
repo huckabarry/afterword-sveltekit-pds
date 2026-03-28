@@ -58,6 +58,7 @@ export type PopfeedImageOverride = {
 type PopfeedCoverSyncOptions = {
 	items?: PopfeedItem[];
 	limit?: number | null;
+	offset?: number | null;
 	force?: boolean;
 };
 
@@ -75,6 +76,8 @@ export type PopfeedCoverSyncResult = {
 	did: string;
 	serviceUrl: string;
 	limit: number | null;
+	offset: number;
+	nextOffset: number | null;
 	force: boolean;
 	books: PopfeedCoverSyncStats;
 	errors: Array<{ slug: string; title: string; message: string }>;
@@ -86,10 +89,11 @@ let popfeedOverrideSessionPromise: Promise<AtprotoSession> | null = null;
 function getConfiguredRepoIdentifier() {
 	return (
 		String(
-			env.STANDARD_SITE_IDENTIFIER ||
-				env.ATPROTO_IDENTIFIER ||
-				env.ATPROTO_REPO ||
+			env.ATPROTO_REPO ||
 				process.env.ATPROTO_REPO ||
+				env.STANDARD_SITE_IDENTIFIER ||
+				env.ATPROTO_IDENTIFIER ||
+				env.ATP_IDENTIFIER ||
 				DEFAULT_REPO
 		)
 			.trim()
@@ -97,10 +101,55 @@ function getConfiguredRepoIdentifier() {
 	);
 }
 
+function getConfiguredServiceUrl() {
+	return String(
+		env.STANDARD_SITE_PDS_URL || env.ATPROTO_PDS_URL || env.PDS_URL || env.ATP_BASE_URL || ''
+	)
+		.trim()
+		.replace(/\/+$/, '');
+}
+
+function getConfiguredLoginIdentifiers(repoIdentifier = getConfiguredRepoIdentifier()) {
+	return [
+		env.STANDARD_SITE_IDENTIFIER,
+		env.ATPROTO_IDENTIFIER,
+		env.ATP_IDENTIFIER,
+		env.ATPROTO_REPO,
+		process.env.ATPROTO_REPO,
+		repoIdentifier,
+		DEFAULT_REPO
+	]
+		.map((value) => String(value || '').trim())
+		.filter(Boolean)
+		.filter((value, index, values) => values.indexOf(value) === index);
+}
+
 function getConfiguredAppPassword() {
 	return String(
 		env.STANDARD_SITE_APP_PASSWORD || env.ATPROTO_APP_PASSWORD || env.ATP_APP_PASSWORD || ''
 	).trim();
+}
+
+async function getConfiguredRepoIdentity() {
+	const repoIdentifier = getConfiguredRepoIdentifier();
+	const configuredServiceUrl = getConfiguredServiceUrl();
+
+	try {
+		return {
+			repoIdentifier,
+			...(await resolveAtprotoService(repoIdentifier))
+		};
+	} catch (error) {
+		if (!configuredServiceUrl) {
+			throw error;
+		}
+
+		return {
+			repoIdentifier,
+			did: await resolveAtprotoDid(repoIdentifier),
+			serviceUrl: configuredServiceUrl
+		};
+	}
 }
 
 function getOverrideCache() {
@@ -292,22 +341,23 @@ async function getOverrideSnapshot() {
 }
 
 async function createSession(): Promise<AtprotoSession> {
-	const identifier = getConfiguredRepoIdentifier();
+	const repoIdentifier = getConfiguredRepoIdentifier();
+	const identifiers = getConfiguredLoginIdentifiers(repoIdentifier);
 	const password = getConfiguredAppPassword();
 
-	if (!identifier || !password) {
+	if (!repoIdentifier || !identifiers.length || !password) {
 		throw new Error(
-			'Popfeed override credentials are incomplete. Set STANDARD_SITE_IDENTIFIER and STANDARD_SITE_APP_PASSWORD.'
+			'Popfeed override credentials are incomplete. Set STANDARD_SITE_APP_PASSWORD plus a repo or login identifier.'
 		);
 	}
 
-	const { did: resolvedDid, serviceUrl } = await resolveAtprotoService(identifier);
+	const { did: resolvedDid, serviceUrl } = await getConfiguredRepoIdentity();
 
 	if (
 		popfeedOverrideSessionCache &&
 		popfeedOverrideSessionCache.expiresAt > Date.now() &&
 		popfeedOverrideSessionCache.serviceUrl === serviceUrl &&
-		popfeedOverrideSessionCache.identifier === identifier
+		identifiers.includes(popfeedOverrideSessionCache.identifier)
 	) {
 		return popfeedOverrideSessionCache;
 	}
@@ -317,38 +367,51 @@ async function createSession(): Promise<AtprotoSession> {
 	}
 
 	popfeedOverrideSessionPromise = (async () => {
-		const response = await fetch(`${serviceUrl}/xrpc/${CREATE_SESSION_NSID}`, {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json'
-			},
-			body: JSON.stringify({
-				identifier,
-				password
-			})
-		});
+		let lastError: Error | null = null;
 
-		if (!response.ok) {
-			throw new Error(`ATProto session creation failed with ${response.status}`);
+		for (const identifier of identifiers) {
+			try {
+				const response = await fetch(`${serviceUrl}/xrpc/${CREATE_SESSION_NSID}`, {
+					method: 'POST',
+					headers: {
+						'content-type': 'application/json'
+					},
+					body: JSON.stringify({
+						identifier,
+						password
+					})
+				});
+
+				if (!response.ok) {
+					lastError = new Error(
+						`ATProto session creation failed with ${response.status} for ${identifier}`
+					);
+					continue;
+				}
+
+				const payload = (await response.json()) as { did?: string; accessJwt?: string };
+				const did = normalizeString(payload.did) || resolvedDid;
+				const accessJwt = normalizeString(payload.accessJwt);
+
+				if (!did || !accessJwt) {
+					throw new Error('ATProto session did not return a DID and access token');
+				}
+
+				const session: CachedAtprotoSession = {
+					serviceUrl,
+					did,
+					accessJwt,
+					identifier,
+					expiresAt: Date.now() + 1000 * 60 * 20
+				};
+				popfeedOverrideSessionCache = session;
+				return session;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error('ATProto session creation failed');
+			}
 		}
 
-		const payload = (await response.json()) as { did?: string; accessJwt?: string };
-		const did = normalizeString(payload.did) || resolvedDid;
-		const accessJwt = normalizeString(payload.accessJwt);
-
-		if (!did || !accessJwt) {
-			throw new Error('ATProto session did not return a DID and access token');
-		}
-
-		const session: CachedAtprotoSession = {
-			serviceUrl,
-			did,
-			accessJwt,
-			identifier,
-			expiresAt: Date.now() + 1000 * 60 * 20
-		};
-		popfeedOverrideSessionCache = session;
-		return session;
+		throw lastError || new Error('ATProto session creation failed');
 	})();
 
 	try {
@@ -516,13 +579,20 @@ export function clearPopfeedImageOverrideCache(repo = getConfiguredRepoIdentifie
 export async function syncPopfeedBookCoverOverrides({
 	items = [],
 	limit = null,
+	offset = null,
 	force = false
 }: PopfeedCoverSyncOptions): Promise<PopfeedCoverSyncResult> {
 	const books = items.filter((item) => item.type === 'book');
+	const normalizedLimit =
+		typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? limit : null;
+	const normalizedOffset =
+		typeof offset === 'number' && Number.isFinite(offset) && offset >= 0 ? offset : 0;
 	const selectedBooks =
-		typeof limit === 'number' && Number.isFinite(limit) && limit >= 0
-			? books.slice(0, limit)
-			: books;
+		typeof normalizedLimit === 'number'
+			? books.slice(normalizedOffset, normalizedOffset + normalizedLimit)
+			: normalizedOffset > 0
+				? books.slice(normalizedOffset)
+				: books;
 	const existingOverrides = await getPopfeedImageOverrides();
 	const session = await createSession();
 	const imageCache = new Map<string, ImagePayload | null>();
@@ -532,7 +602,14 @@ export async function syncPopfeedBookCoverOverrides({
 		repo,
 		did: session.did,
 		serviceUrl: session.serviceUrl,
-		limit: typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? limit : null,
+		limit: normalizedLimit,
+		offset: normalizedOffset,
+		nextOffset:
+			typeof normalizedLimit === 'number' &&
+			normalizedLimit > 0 &&
+			normalizedOffset + normalizedLimit < books.length
+				? normalizedOffset + normalizedLimit
+				: null,
 		force,
 		books: {
 			available: books.length,

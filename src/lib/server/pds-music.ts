@@ -68,6 +68,7 @@ type MusicImportOptions = {
 	albums?: AlbumEntry[];
 	collections?: Array<'tracks' | 'albums'>;
 	limit?: number | null;
+	offset?: number | null;
 };
 
 type MusicImportStats = {
@@ -84,6 +85,8 @@ export type MusicImportResult = {
 	serviceUrl: string;
 	collections: Array<'tracks' | 'albums'>;
 	limit: number | null;
+	offset: number;
+	nextOffset: number | null;
 	tracks: MusicImportStats;
 	albums: MusicImportStats;
 	errors: Array<{ collection: 'tracks' | 'albums'; slug: string; message: string }>;
@@ -95,10 +98,11 @@ let pdsMusicSessionPromise: Promise<AtprotoSession> | null = null;
 function getConfiguredRepoIdentifier() {
 	return (
 		String(
-			env.STANDARD_SITE_IDENTIFIER ||
-				env.ATPROTO_IDENTIFIER ||
-				env.ATPROTO_REPO ||
+			env.ATPROTO_REPO ||
 				process.env.ATPROTO_REPO ||
+				env.STANDARD_SITE_IDENTIFIER ||
+				env.ATPROTO_IDENTIFIER ||
+				env.ATP_IDENTIFIER ||
 				DEFAULT_REPO
 		)
 			.trim()
@@ -106,10 +110,55 @@ function getConfiguredRepoIdentifier() {
 	);
 }
 
+function getConfiguredServiceUrl() {
+	return String(
+		env.STANDARD_SITE_PDS_URL || env.ATPROTO_PDS_URL || env.PDS_URL || env.ATP_BASE_URL || ''
+	)
+		.trim()
+		.replace(/\/+$/, '');
+}
+
+function getConfiguredLoginIdentifiers(repoIdentifier = getConfiguredRepoIdentifier()) {
+	return [
+		env.STANDARD_SITE_IDENTIFIER,
+		env.ATPROTO_IDENTIFIER,
+		env.ATP_IDENTIFIER,
+		env.ATPROTO_REPO,
+		process.env.ATPROTO_REPO,
+		repoIdentifier,
+		DEFAULT_REPO
+	]
+		.map((value) => String(value || '').trim())
+		.filter(Boolean)
+		.filter((value, index, values) => values.indexOf(value) === index);
+}
+
 function getConfiguredAppPassword() {
 	return String(
 		env.STANDARD_SITE_APP_PASSWORD || env.ATPROTO_APP_PASSWORD || env.ATP_APP_PASSWORD || ''
 	).trim();
+}
+
+async function getConfiguredRepoIdentity() {
+	const repoIdentifier = getConfiguredRepoIdentifier();
+	const configuredServiceUrl = getConfiguredServiceUrl();
+
+	try {
+		return {
+			repoIdentifier,
+			...(await resolveAtprotoService(repoIdentifier))
+		};
+	} catch (error) {
+		if (!configuredServiceUrl) {
+			throw error;
+		}
+
+		return {
+			repoIdentifier,
+			did: await resolveAtprotoDid(repoIdentifier),
+			serviceUrl: configuredServiceUrl
+		};
+	}
 }
 
 function getMusicCache() {
@@ -453,22 +502,23 @@ async function getMusicSnapshot() {
 }
 
 async function createSession(): Promise<AtprotoSession> {
-	const identifier = getConfiguredRepoIdentifier();
+	const repoIdentifier = getConfiguredRepoIdentifier();
+	const identifiers = getConfiguredLoginIdentifiers(repoIdentifier);
 	const password = getConfiguredAppPassword();
 
-	if (!identifier || !password) {
+	if (!repoIdentifier || !identifiers.length || !password) {
 		throw new Error(
-			'PDS music import credentials are incomplete. Set STANDARD_SITE_IDENTIFIER and STANDARD_SITE_APP_PASSWORD.'
+			'PDS music import credentials are incomplete. Set STANDARD_SITE_APP_PASSWORD plus a repo or login identifier.'
 		);
 	}
 
-	const { did: resolvedDid, serviceUrl } = await resolveAtprotoService(identifier);
+	const { did: resolvedDid, serviceUrl } = await getConfiguredRepoIdentity();
 
 	if (
 		pdsMusicSessionCache &&
 		pdsMusicSessionCache.expiresAt > Date.now() &&
 		pdsMusicSessionCache.serviceUrl === serviceUrl &&
-		pdsMusicSessionCache.identifier === identifier
+		identifiers.includes(pdsMusicSessionCache.identifier)
 	) {
 		return pdsMusicSessionCache;
 	}
@@ -478,38 +528,51 @@ async function createSession(): Promise<AtprotoSession> {
 	}
 
 	pdsMusicSessionPromise = (async () => {
-		const response = await fetch(`${serviceUrl}/xrpc/${CREATE_SESSION_NSID}`, {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json'
-			},
-			body: JSON.stringify({
-				identifier,
-				password
-			})
-		});
+		let lastError: Error | null = null;
 
-		if (!response.ok) {
-			throw new Error(`ATProto session creation failed with ${response.status}`);
+		for (const identifier of identifiers) {
+			try {
+				const response = await fetch(`${serviceUrl}/xrpc/${CREATE_SESSION_NSID}`, {
+					method: 'POST',
+					headers: {
+						'content-type': 'application/json'
+					},
+					body: JSON.stringify({
+						identifier,
+						password
+					})
+				});
+
+				if (!response.ok) {
+					lastError = new Error(
+						`ATProto session creation failed with ${response.status} for ${identifier}`
+					);
+					continue;
+				}
+
+				const payload = (await response.json()) as { did?: string; accessJwt?: string };
+				const did = normalizeString(payload.did) || resolvedDid;
+				const accessJwt = normalizeString(payload.accessJwt);
+
+				if (!did || !accessJwt) {
+					throw new Error('ATProto session did not return a DID and access token');
+				}
+
+				const session: CachedAtprotoSession = {
+					serviceUrl,
+					did,
+					accessJwt,
+					identifier,
+					expiresAt: Date.now() + 1000 * 60 * 20
+				};
+				pdsMusicSessionCache = session;
+				return session;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error('ATProto session creation failed');
+			}
 		}
 
-		const payload = (await response.json()) as { did?: string; accessJwt?: string };
-		const did = normalizeString(payload.did) || resolvedDid;
-		const accessJwt = normalizeString(payload.accessJwt);
-
-		if (!did || !accessJwt) {
-			throw new Error('ATProto session did not return a DID and access token');
-		}
-
-		const session: CachedAtprotoSession = {
-			serviceUrl,
-			did,
-			accessJwt,
-			identifier,
-			expiresAt: Date.now() + 1000 * 60 * 20
-		};
-		pdsMusicSessionCache = session;
-		return session;
+		throw lastError || new Error('ATProto session creation failed');
 	})();
 
 	try {
@@ -830,7 +893,8 @@ export async function importMusicToPds({
 	tracks = [],
 	albums = [],
 	collections = ['tracks', 'albums'],
-	limit = null
+	limit = null,
+	offset = null
 }: MusicImportOptions): Promise<MusicImportResult> {
 	const selectedCollections = [...new Set(collections)].filter(
 		(collection): collection is 'tracks' | 'albums' =>
@@ -844,13 +908,19 @@ export async function importMusicToPds({
 	const session = await createSession();
 	const imageCache = new Map<string, ImagePayload | null>();
 	const repo = getConfiguredRepoIdentifier();
+	const normalizedLimit =
+		typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? limit : null;
+	const normalizedOffset =
+		typeof offset === 'number' && Number.isFinite(offset) && offset >= 0 ? offset : 0;
 	const result: MusicImportResult = {
 		ok: true,
 		repo,
 		did: session.did,
 		serviceUrl: session.serviceUrl,
 		collections: selectedCollections,
-		limit: typeof limit === 'number' && Number.isFinite(limit) ? limit : null,
+		limit: normalizedLimit,
+		offset: normalizedOffset,
+		nextOffset: null,
 		tracks: {
 			available: tracks.length,
 			attempted: 0,
@@ -866,11 +936,29 @@ export async function importMusicToPds({
 		errors: []
 	};
 
-	const applyLimit = <T>(items: T[]) =>
-		typeof result.limit === 'number' && result.limit >= 0 ? items.slice(0, result.limit) : items;
+	const applyWindow = <T>(items: T[]) => {
+		if (typeof normalizedLimit === 'number') {
+			return items.slice(normalizedOffset, normalizedOffset + normalizedLimit);
+		}
+
+		return normalizedOffset > 0 ? items.slice(normalizedOffset) : items;
+	};
+
+	const totalAvailable = Math.max(
+		0,
+		...selectedCollections.map((collection) =>
+			collection === 'tracks' ? tracks.length : albums.length
+		)
+	);
+	if (typeof normalizedLimit === 'number' && normalizedLimit > 0) {
+		result.nextOffset =
+			normalizedOffset + normalizedLimit < totalAvailable
+				? normalizedOffset + normalizedLimit
+				: null;
+	}
 
 	if (selectedCollections.includes('tracks')) {
-		for (const entry of applyLimit(tracks)) {
+		for (const entry of applyWindow(tracks)) {
 			result.tracks.attempted += 1;
 
 			try {
@@ -897,7 +985,7 @@ export async function importMusicToPds({
 	}
 
 	if (selectedCollections.includes('albums')) {
-		for (const entry of applyLimit(albums)) {
+		for (const entry of applyWindow(albums)) {
 			result.albums.attempted += 1;
 
 			try {

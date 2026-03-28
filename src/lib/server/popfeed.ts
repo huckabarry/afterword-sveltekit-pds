@@ -6,8 +6,6 @@ const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 const POPFEED_ITEM_COLLECTION = 'social.popfeed.feed.listItem';
 const POPFEED_LIST_COLLECTION = 'social.popfeed.feed.list';
 const POPFEED_CACHE_TTL_MS = 1000 * 60 * 10;
-const BOOK_COVER_CACHE_TTL_MS = 1000 * 60 * 60 * 24;
-const ISBNDB_PLACEHOLDER_CONTENT_LENGTH = 3736;
 
 export type PopfeedItemType = 'book' | 'movie' | 'tv_show';
 
@@ -56,11 +54,6 @@ type PopfeedCacheEntry = {
 	items: PopfeedItem[];
 };
 
-type BookCoverCacheEntry = {
-	expiresAt: number;
-	available: boolean;
-};
-
 function getRepo() {
 	return (
 		(process.env.ATPROTO_REPOS || process.env.ATPROTO_REPO || env.ATPROTO_REPO || DEFAULT_REPO)
@@ -80,18 +73,6 @@ function getPopfeedCache() {
 	}
 
 	return scope.__afterwordPopfeedCache;
-}
-
-function getBookCoverCache() {
-	const scope = globalThis as typeof globalThis & {
-		__afterwordBookCoverCache?: Map<string, BookCoverCacheEntry>;
-	};
-
-	if (!scope.__afterwordBookCoverCache) {
-		scope.__afterwordBookCoverCache = new Map<string, BookCoverCacheEntry>();
-	}
-
-	return scope.__afterwordBookCoverCache;
 }
 
 function getRecordKey(uri: string | undefined | null) {
@@ -344,45 +325,6 @@ function getOpenLibraryCoverUrl(identifiers: Record<string, string>) {
 		: null;
 }
 
-async function isAvailableBookCover(url: string) {
-	const normalized = String(url || '').trim();
-
-	if (!normalized) {
-		return false;
-	}
-
-	const cache = getBookCoverCache();
-	const cached = cache.get(normalized);
-
-	if (cached && cached.expiresAt > Date.now()) {
-		return cached.available;
-	}
-
-	try {
-		const response = await fetch(normalized, {
-			method: 'HEAD',
-			redirect: 'follow'
-		});
-
-		const contentLength = Number.parseInt(response.headers.get('content-length') || '', 10);
-		const available =
-			response.ok &&
-			(!looksLikeIsbnDbCover(normalized) ||
-				!Number.isFinite(contentLength) ||
-				contentLength !== ISBNDB_PLACEHOLDER_CONTENT_LENGTH);
-
-		cache.set(normalized, {
-			expiresAt: Date.now() + BOOK_COVER_CACHE_TTL_MS,
-			available
-		});
-
-		return available;
-	} catch (error) {
-		console.warn('[popfeed] Unable to verify book cover availability:', error);
-		return true;
-	}
-}
-
 function normalizeItem(
 	record: Record<string, unknown>,
 	did: string,
@@ -486,39 +428,24 @@ export async function getPopfeedBaseItems(): Promise<PopfeedItem[]> {
 			return true;
 		});
 
-		const verified = await Promise.all(
-			deduped.map(async (item) => {
-				if (item.type !== 'book') {
-					return item;
-				}
+		const verified = deduped.map((item) => {
+			if (item.type !== 'book') {
+				return item;
+			}
 
-				let posterImage = item.posterImage;
+			const openLibraryCoverUrl = getOpenLibraryCoverUrl(item.identifiers);
+			const posterImage =
+				openLibraryCoverUrl && (!item.posterImage || looksLikeIsbnDbCover(item.posterImage))
+					? openLibraryCoverUrl
+					: item.posterImage;
 
-				if (
-					posterImage &&
-					looksLikeIsbnDbCover(posterImage) &&
-					!(await isAvailableBookCover(posterImage))
-				) {
-					posterImage = null;
-				}
-
-				const openLibraryCoverUrl = getOpenLibraryCoverUrl(item.identifiers);
-				if (
-					openLibraryCoverUrl &&
-					(!posterImage || looksLikeIsbnDbCover(posterImage)) &&
-					(await isAvailableBookCover(openLibraryCoverUrl))
-				) {
-					posterImage = openLibraryCoverUrl;
-				}
-
-				return posterImage === item.posterImage
-					? item
-					: {
-							...item,
-							posterImage
-						};
-			})
-		);
+			return posterImage === item.posterImage
+				? item
+				: {
+						...item,
+						posterImage
+					};
+		});
 
 		cache.set(repo, {
 			expiresAt: Date.now() + POPFEED_CACHE_TTL_MS,

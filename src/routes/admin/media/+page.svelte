@@ -1,6 +1,8 @@
 <script lang="ts">
 	type MusicImportPayload = {
 		ok: boolean;
+		offset?: number;
+		nextOffset?: number | null;
 		tracks?: {
 			available?: number;
 			attempted?: number;
@@ -19,6 +21,8 @@
 
 	type CoverOverridePayload = {
 		ok: boolean;
+		offset?: number;
+		nextOffset?: number | null;
 		books?: {
 			available?: number;
 			attempted?: number;
@@ -55,6 +59,7 @@
 	}
 
 	async function runMusicImport() {
+		const batchSize = 4;
 		musicState = {
 			running: true,
 			message: '',
@@ -62,29 +67,53 @@
 		};
 
 		try {
-			const response = await fetch('/admin/api/music-import', {
-				method: 'POST',
-				headers: {
-					'content-type': 'application/json'
-				},
-				body: JSON.stringify({
-					collections: ['tracks', 'albums']
-				})
-			});
-			const payload: MusicImportPayload | null = await response.json().catch(() => null);
+			let nextOffset: number | null = 0;
+			let trackImported = 0;
+			let albumImported = 0;
+			let trackAvailable = 0;
+			let albumAvailable = 0;
+			let ok = true;
+			const errors: string[] = [];
 
-			if (!response.ok || !payload) {
-				throw new Error(payload?.error || `Music import failed with ${response.status}`);
+			while (nextOffset !== null) {
+				const currentOffset = nextOffset;
+				const response = await fetch('/admin/api/music-import', {
+					method: 'POST',
+					headers: {
+						'content-type': 'application/json'
+					},
+					body: JSON.stringify({
+						collections: ['tracks', 'albums'],
+						limit: batchSize,
+						offset: currentOffset
+					})
+				});
+				const payload: MusicImportPayload | null = await response.json().catch(() => null);
+
+				if (!response.ok || !payload) {
+					throw new Error(payload?.error || `Music import failed with ${response.status}`);
+				}
+
+				trackImported += payload.tracks?.imported ?? 0;
+				albumImported += payload.albums?.imported ?? 0;
+				trackAvailable = Math.max(trackAvailable, payload.tracks?.available ?? 0);
+				albumAvailable = Math.max(albumAvailable, payload.albums?.available ?? 0);
+				errors.push(
+					...(payload.errors || []).map(
+						(entry) =>
+							`${entry.collection || 'music'}:${entry.slug || 'item'} ${entry.message || 'Unknown error'}`
+					)
+				);
+				ok = ok && payload.ok;
+
+				const upcomingOffset = typeof payload.nextOffset === 'number' ? payload.nextOffset : null;
+
+				if (upcomingOffset !== null && upcomingOffset <= currentOffset) {
+					throw new Error('Music import did not advance to the next batch.');
+				}
+
+				nextOffset = upcomingOffset;
 			}
-
-			const trackImported = payload.tracks?.imported ?? 0;
-			const albumImported = payload.albums?.imported ?? 0;
-			const trackAvailable = payload.tracks?.available ?? 0;
-			const albumAvailable = payload.albums?.available ?? 0;
-			const errors = (payload.errors || []).map(
-				(entry) =>
-					`${entry.collection || 'music'}:${entry.slug || 'item'} ${entry.message || 'Unknown error'}`
-			);
 
 			musicState = {
 				running: false,
@@ -92,7 +121,7 @@
 				errors
 			};
 
-			return payload.ok;
+			return ok && errors.length === 0;
 		} catch (error) {
 			musicState = {
 				running: false,
@@ -104,6 +133,7 @@
 	}
 
 	async function runBookCoverOverrides() {
+		const batchSize = 6;
 		coverState = {
 			running: true,
 			message: '',
@@ -111,27 +141,50 @@
 		};
 
 		try {
-			const response = await fetch('/admin/api/popfeed-cover-overrides', {
-				method: 'POST',
-				headers: {
-					'content-type': 'application/json'
-				},
-				body: JSON.stringify({
-					force: forceBookCovers
-				})
-			});
-			const payload: CoverOverridePayload | null = await response.json().catch(() => null);
+			let nextOffset: number | null = 0;
+			let imported = 0;
+			let available = 0;
+			let skipped = 0;
+			let ok = true;
+			const errors: string[] = [];
 
-			if (!response.ok || !payload) {
-				throw new Error(payload?.error || `Book-cover sync failed with ${response.status}`);
+			while (nextOffset !== null) {
+				const currentOffset = nextOffset;
+				const response = await fetch('/admin/api/popfeed-cover-overrides', {
+					method: 'POST',
+					headers: {
+						'content-type': 'application/json'
+					},
+					body: JSON.stringify({
+						force: forceBookCovers,
+						limit: batchSize,
+						offset: currentOffset
+					})
+				});
+				const payload: CoverOverridePayload | null = await response.json().catch(() => null);
+
+				if (!response.ok || !payload) {
+					throw new Error(payload?.error || `Book-cover sync failed with ${response.status}`);
+				}
+
+				imported += payload.books?.imported ?? 0;
+				available = Math.max(available, payload.books?.available ?? 0);
+				skipped += payload.books?.skipped ?? 0;
+				errors.push(
+					...(payload.errors || []).map(
+						(entry) => `${entry.title || entry.slug || 'book'}: ${entry.message || 'Unknown error'}`
+					)
+				);
+				ok = ok && payload.ok;
+
+				const upcomingOffset = typeof payload.nextOffset === 'number' ? payload.nextOffset : null;
+
+				if (upcomingOffset !== null && upcomingOffset <= currentOffset) {
+					throw new Error('Book-cover sync did not advance to the next batch.');
+				}
+
+				nextOffset = upcomingOffset;
 			}
-
-			const imported = payload.books?.imported ?? 0;
-			const available = payload.books?.available ?? 0;
-			const skipped = payload.books?.skipped ?? 0;
-			const errors = (payload.errors || []).map(
-				(entry) => `${entry.title || entry.slug || 'book'}: ${entry.message || 'Unknown error'}`
-			);
 
 			coverState = {
 				running: false,
@@ -139,7 +192,7 @@
 				errors
 			};
 
-			return payload.ok;
+			return ok && errors.length === 0;
 		} catch (error) {
 			coverState = {
 				running: false,

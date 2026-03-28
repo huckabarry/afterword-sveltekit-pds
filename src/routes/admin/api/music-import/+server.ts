@@ -21,12 +21,18 @@ function normalizeLimit(value: unknown) {
 	return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+function normalizeOffset(value: unknown) {
+	const parsed = Number.parseInt(String(value || ''), 10);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
 export async function POST(event) {
 	await requireAdminAccess(event);
 
 	const body = await event.request.json().catch(() => ({}));
 	const collections = normalizeCollections(body?.collections);
 	const limit = normalizeLimit(body?.limit);
+	const offset = normalizeOffset(body?.offset);
 
 	const [tracks, albums] = await Promise.all([
 		collections.includes('tracks') ? getArchiveTracks() : Promise.resolve([]),
@@ -38,7 +44,8 @@ export async function POST(event) {
 			tracks,
 			albums,
 			collections,
-			limit
+			limit,
+			offset
 		});
 
 		return json({
@@ -51,6 +58,7 @@ export async function POST(event) {
 				ok: false,
 				collections,
 				limit,
+				offset,
 				error: error instanceof Error ? error.message : 'Unable to import music records.'
 			},
 			{ status: 500 }
