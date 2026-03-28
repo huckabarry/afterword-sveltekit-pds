@@ -200,7 +200,6 @@
 			...data.albums.map(toAlbumTimelineItem)
 		])
 	);
-	let indexItems = $derived.by(() => timelineItems.slice(0, 8));
 </script>
 
 <svelte:head>
@@ -220,25 +219,6 @@
 		</div>
 	</article>
 </section>
-
-{#if indexItems.length}
-	<section class="section-block">
-		<h2 class="section-title">On This Page</h2>
-		<div class="media-index-list" aria-label="Current media notes">
-			{#each indexItems as item}
-				<a class="media-index-row" href={`#${item.id}`}>
-					<div class="media-index-row__main">
-						<span class="media-index-row__kind">{item.label}</span>
-						<h3 class="media-index-row__title">{item.title}</h3>
-					</div>
-					<time class="media-index-row__date" datetime={item.date.toISOString()}>
-						{item.dateLabel}
-					</time>
-				</a>
-			{/each}
-		</div>
-	</section>
-{/if}
 
 {#if timelineItems.length}
 	<section class="section-block">
@@ -398,10 +378,6 @@
 {/if}
 
 <style>
-	.media-index-list {
-		border-top: 1px solid var(--border);
-	}
-
 	.media-timeline {
 		--timeline-date-column: 4.5rem;
 		--timeline-rail-column: 1.4rem;
@@ -423,51 +399,6 @@
 		opacity: 0.55;
 		transform: translateX(-50%);
 		pointer-events: none;
-	}
-
-	.media-index-row {
-		--media-index-kind-column: 8.75rem;
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		gap: 0.95rem;
-		align-items: center;
-		padding: 0.9rem 0;
-		text-decoration: none;
-		color: inherit;
-	}
-
-	.media-index-row__main {
-		display: grid;
-		grid-template-columns: var(--media-index-kind-column) minmax(0, 1fr);
-		align-items: baseline;
-		column-gap: 0.7rem;
-		min-width: 0;
-	}
-
-	.media-index-row__kind {
-		color: var(--accent);
-		font-size: 0.76rem;
-		font-weight: 700;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		white-space: nowrap;
-	}
-
-	.media-index-row__title {
-		margin: 0;
-		font-family: 'Fira Sans', sans-serif;
-		font-size: 1.02rem;
-		line-height: 1.3;
-		color: inherit;
-		max-width: 100%;
-	}
-
-	.media-index-row__date {
-		color: var(--muted);
-		font-size: 0.82rem;
-		line-height: 1.2;
-		white-space: nowrap;
-		padding-left: 0.75rem;
 	}
 
 	.media-timeline__entry {
@@ -671,16 +602,6 @@
 	}
 
 	@media (max-width: 640px) {
-		.media-index-row {
-			grid-template-columns: minmax(0, 1fr) auto;
-			gap: 0.7rem;
-		}
-
-		.media-index-row__main {
-			grid-template-columns: 7.75rem minmax(0, 1fr);
-			column-gap: 0.6rem;
-		}
-
 		.media-timeline__entry {
 			display: block;
 		}

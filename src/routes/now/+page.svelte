@@ -42,6 +42,29 @@
 	</article>
 </section>
 
+<section class="section-block">
+	<h2 class="section-title">Recent Now Posts</h2>
+	<p class="page-head__lede">
+		A few recent notes about whatever currently has my attention. Books, music, movies, and shows
+		live over on <a href="/media">Media</a>.
+	</p>
+
+	{#if data.nowPosts.length}
+		<div class="now-post-list">
+			{#each data.nowPosts as post}
+				<a class="now-post-row" href={post.path}>
+					<h3 class="now-post-row__title">{post.title}</h3>
+					<time class="now-post-row__date" datetime={post.publishedAt.toISOString()}>
+						{formatDate(post.publishedAt)}
+					</time>
+				</a>
+			{/each}
+		</div>
+	{:else}
+		<p class="page-head__lede">No now posts are available yet.</p>
+	{/if}
+</section>
+
 {#if data.latestCheckin || data.latestPhoto}
 	<section class="section-block">
 		<div class="now-glance">
@@ -94,15 +117,6 @@
 				<article class="now-card">
 					<p class="now-card__kicker">Latest Photo</p>
 
-					<a class="now-photo" href={data.latestPhoto.postPath}>
-						<img
-							class="now-photo__image"
-							src={data.latestPhoto.imageUrl}
-							alt={data.latestPhoto.alt || data.latestPhoto.postTitle}
-							loading="lazy"
-						/>
-					</a>
-
 					<div class="now-card__copy">
 						<div class="now-card__meta">
 							<time datetime={data.latestPhoto.postPublishedAt.toISOString()}>
@@ -115,6 +129,15 @@
 						</h2>
 					</div>
 
+					<a class="now-photo" href={data.latestPhoto.postPath}>
+						<img
+							class="now-photo__image"
+							src={data.latestPhoto.imageUrl}
+							alt={data.latestPhoto.alt || data.latestPhoto.postTitle}
+							loading="lazy"
+						/>
+					</a>
+
 					<div class="now-card__actions">
 						<a class="tag-pill now-card__action" href={data.latestPhoto.postPath}>View post</a>
 						<a class="tag-pill now-card__action" href="/photos">Gallery</a>
@@ -124,29 +147,6 @@
 		</div>
 	</section>
 {/if}
-
-<section class="section-block">
-	<h2 class="section-title">Recent Now Posts</h2>
-	<p class="page-head__lede">
-		A few recent notes about whatever currently has my attention. Books, music, movies, and shows
-		live over on <a href="/media">Media</a>.
-	</p>
-
-	{#if data.nowPosts.length}
-		<div class="now-post-list">
-			{#each data.nowPosts as post}
-				<a class="now-post-row" href={post.path}>
-					<h3 class="now-post-row__title">{post.title}</h3>
-					<time class="now-post-row__date" datetime={post.publishedAt.toISOString()}>
-						{formatDate(post.publishedAt)}
-					</time>
-				</a>
-			{/each}
-		</div>
-	{:else}
-		<p class="page-head__lede">No now posts are available yet.</p>
-	{/if}
-</section>
 
 <style>
 	.now-glance {
