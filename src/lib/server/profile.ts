@@ -23,6 +23,8 @@ export type SiteProfile = {
 };
 
 const DEFAULT_ABOUT_CONTENT = getAboutContent();
+const DEFAULT_MOVE_TARGET_HANDLE = 'bryan@micro.blog';
+const DEFAULT_MOVE_TARGET_ACTOR_URL = 'https://micro.blog/activitypub/bryan';
 
 const DEFAULT_PROFILE: SiteProfile = {
 	displayName: 'Bryan Robb',
@@ -33,8 +35,8 @@ const DEFAULT_PROFILE: SiteProfile = {
 	aboutInterests: DEFAULT_ABOUT_CONTENT.interests,
 	verificationLinks: [{ label: 'Bluesky', url: 'https://bsky.app/profile/afterword.blog' }],
 	migrationAliases: [],
-	moveTargetHandle: null,
-	moveTargetActorUrl: null,
+	moveTargetHandle: DEFAULT_MOVE_TARGET_HANDLE,
+	moveTargetActorUrl: DEFAULT_MOVE_TARGET_ACTOR_URL,
 	moveStartedAt: null
 };
 
@@ -201,8 +203,8 @@ function mapProfile(row: ProfileRow | null | undefined): SiteProfile {
 		aboutInterests: parseAboutInterests(row.about_interests_json),
 		verificationLinks: parseVerificationLinks(row.verification_links_json),
 		migrationAliases: parseMigrationAliases(row.migration_aliases_json),
-		moveTargetHandle: getString(row.move_target_handle),
-		moveTargetActorUrl: getString(row.move_target_actor_url),
+		moveTargetHandle: getString(row.move_target_handle) ?? DEFAULT_PROFILE.moveTargetHandle,
+		moveTargetActorUrl: getString(row.move_target_actor_url) ?? DEFAULT_PROFILE.moveTargetActorUrl,
 		moveStartedAt: getString(row.move_started_at)
 	};
 }
