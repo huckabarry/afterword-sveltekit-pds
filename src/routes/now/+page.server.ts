@@ -6,8 +6,8 @@ import { getAlbums, getTracks } from '$lib/server/music';
 export async function load() {
 	const [intro, nowPosts, bookPosts, checkins, albums, tracks] = await Promise.all([
 		getNowIntroContent(),
-		getRecentTaggedPosts(['now'], 5),
-		getRecentTaggedPosts(['books', 'book-reviews'], 3),
+		getRecentTaggedPosts(['now'], 12),
+		getRecentTaggedPosts(['books', 'book-reviews'], 8),
 		getCheckins(),
 		getAlbums(),
 		getTracks()
@@ -17,10 +17,10 @@ export async function load() {
 
 	return {
 		intro,
-		nowPosts: nowPosts.filter((post) => !bookIds.has(post.id)).slice(0, 4),
-		bookPosts: bookPosts.slice(0, 2),
-		checkins: checkins.slice(0, 4),
-		albums: albums.slice(0, 3),
-		tracks: tracks.slice(0, 3)
+		nowPosts: nowPosts.filter((post) => !bookIds.has(post.id)),
+		bookPosts,
+		checkins,
+		albums,
+		tracks
 	};
 }

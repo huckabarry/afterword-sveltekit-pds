@@ -56,8 +56,6 @@
 		| TrackTimelineItem
 		| AlbumTimelineItem;
 
-	type TimelineFamily = 'authored' | 'place' | 'music';
-
 	let {
 		data
 	}: {
@@ -195,18 +193,6 @@
 		return 'Read post';
 	}
 
-	function getTimelineFamily(item: TimelineItem): TimelineFamily {
-		if (item.kind === 'post') {
-			return 'authored';
-		}
-
-		if (item.kind === 'checkin') {
-			return 'place';
-		}
-
-		return 'music';
-	}
-
 	function getCheckinLede(item: CheckinTimelineItem) {
 		const lede = stripHtml(item.summary);
 		const meta = stripHtml(item.meta);
@@ -295,85 +281,12 @@
 		};
 	}
 
-	function getBalancedTimelineItems(items: TimelineItem[], limit = 10) {
-		const ordered = items
-			.slice()
-			.sort((a, b) => b.date.getTime() - a.date.getTime())
-			.map((item, rawIndex) => ({
-				item,
-				rawIndex,
-				family: getTimelineFamily(item)
-			}));
-
-		const selected: typeof ordered = [];
-		const remaining = [...ordered];
-		const totalAuthored = ordered.filter((entry) => entry.family === 'authored').length;
-
-		while (remaining.length && selected.length < limit) {
-			const slot = selected.length;
-			let bestIndex = 0;
-			let bestScore = -Infinity;
-
-			for (let index = 0; index < remaining.length; index += 1) {
-				const candidate = remaining[index];
-				const lastFamily = selected.at(-1)?.family;
-				const previousFamily = selected.at(-2)?.family;
-				const authoredCount = selected.filter((entry) => entry.family === 'authored').length;
-				const placeCount = selected.filter((entry) => entry.family === 'place').length;
-				const musicCount = selected.filter((entry) => entry.family === 'music').length;
-
-				let score = 100 - candidate.rawIndex * 4;
-
-				if (candidate.family === lastFamily) {
-					score -= 12;
-				}
-
-				if (candidate.family === lastFamily && candidate.family === previousFamily) {
-					score -= 36;
-				}
-
-				if (totalAuthored > 0) {
-					const desiredAuthoredCount = slot < 3 ? Math.min(totalAuthored, 1) : Math.min(totalAuthored, 2);
-
-					if (candidate.family === 'authored' && authoredCount < desiredAuthoredCount) {
-						score += slot < 3 ? 18 : 14;
-					}
-
-					if (candidate.family !== 'authored' && authoredCount < desiredAuthoredCount) {
-						score -= slot < 3 ? 10 : 6;
-					}
-				}
-
-				if (slot < 6 && candidate.family === 'music' && musicCount >= 2) {
-					score -= 8;
-				}
-
-				if (slot < 6 && candidate.family === 'place' && placeCount >= 2) {
-					score -= 8;
-				}
-
-				if (candidate.item.kind === 'post') {
-					score += 3;
-				}
-
-				if (candidate.item.label === 'Book') {
-					score += 5;
-				}
-
-				if (score > bestScore) {
-					bestScore = score;
-					bestIndex = index;
-				}
-			}
-
-			selected.push(remaining.splice(bestIndex, 1)[0]);
-		}
-
-		return selected.map((entry) => entry.item);
+	function getTimelineItems(items: TimelineItem[]) {
+		return items.slice().sort((a, b) => b.date.getTime() - a.date.getTime());
 	}
 
-	function getTimelineItems() {
-		return getBalancedTimelineItems([
+	function getAllTimelineItems() {
+		return getTimelineItems([
 			...data.nowPosts.map(toPostTimelineItem),
 			...data.bookPosts.map(toPostTimelineItem),
 			...data.checkins.map(toCheckinTimelineItem),
@@ -382,7 +295,7 @@
 		]);
 	}
 
-	let timelineItems = $derived.by(() => getTimelineItems());
+	let timelineItems = $derived.by(() => getAllTimelineItems());
 	let indexItems = $derived.by(() => timelineItems.slice(0, 6));
 </script>
 
@@ -411,7 +324,6 @@
 						<span class="now-index-row__kind">{item.label}</span>
 						<h3 class="now-index-row__title">{item.title}</h3>
 					</div>
-					<span class="now-index-row__leader" aria-hidden="true"></span>
 					<time class="now-index-row__date" datetime={item.date.toISOString()}>
 						{item.dateLabel}
 					</time>
@@ -607,28 +519,11 @@
 		--timeline-date-column: 4.5rem;
 		--timeline-rail-column: 1.4rem;
 		--timeline-gap: 1rem;
-		position: relative;
-	}
-
-	.now-timeline::before {
-		content: '';
-		position: absolute;
-		top: 0.55rem;
-		bottom: 0.35rem;
-		left: calc(
-			var(--timeline-date-column) + var(--timeline-gap) + (var(--timeline-rail-column) / 2)
-		);
-		width: 3px;
-		background: color-mix(in srgb, var(--accent) 78%, white 22%);
-		border-radius: 999px;
-		opacity: 0.92;
-		transform: translateX(-50%);
-		pointer-events: none;
 	}
 
 	.now-index-row {
 		display: grid;
-		grid-template-columns: max-content minmax(0, 1fr) auto;
+		grid-template-columns: minmax(0, 1fr) auto;
 		gap: 0.95rem;
 		align-items: center;
 		padding: 0.9rem 0;
@@ -660,21 +555,6 @@
 		line-height: 1.3;
 		color: inherit;
 		max-width: 100%;
-	}
-
-	.now-index-row__leader {
-		display: block;
-		min-width: 1.5rem;
-		height: 2px;
-		align-self: center;
-		background-image: repeating-linear-gradient(
-			to right,
-			color-mix(in srgb, var(--accent) 72%, white 28%) 0 2px,
-			transparent 2px 7px
-		);
-		background-repeat: repeat-x;
-		background-position: center;
-		opacity: 0.95;
 	}
 
 	.now-index-row__date {
@@ -716,7 +596,20 @@
 	}
 
 	.now-timeline__rail::before {
-		display: none;
+		content: '';
+		position: absolute;
+		top: 0.8rem;
+		bottom: 0;
+		left: 50%;
+		width: 2px;
+		background: color-mix(in srgb, var(--accent) 70%, white 30%);
+		border-radius: 999px;
+		opacity: 0.9;
+		transform: translateX(-50%);
+	}
+
+	.now-timeline__entry:last-child .now-timeline__rail::before {
+		bottom: 0.35rem;
 	}
 
 	.now-timeline__dot {
@@ -888,7 +781,7 @@
 
 	@media (max-width: 640px) {
 		.now-index-row {
-			grid-template-columns: max-content minmax(0, 1fr) auto;
+			grid-template-columns: minmax(0, 1fr) auto;
 			gap: 0.7rem;
 		}
 
