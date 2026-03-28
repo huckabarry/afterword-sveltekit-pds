@@ -144,8 +144,8 @@
 					<nav class="site-nav" aria-label="Primary">
 						<ul class="site-nav-list">
 							<li class="site-nav-list-item"><a class="site-nav-item" href="/">Home</a></li>
-							<li class="site-nav-list-item"><a class="site-nav-item" href="/photos">Gallery</a></li>
 							<li class="site-nav-list-item"><a class="site-nav-item" href="/now">Now</a></li>
+							<li class="site-nav-list-item"><a class="site-nav-item" href="/photos">Gallery</a></li>
 							<li class="site-nav-list-item"><a class="site-nav-item" href="/hello">Hello</a></li>
 						</ul>
 					</nav>
@@ -176,9 +176,9 @@
 
 		<footer class="site-foot">
 			<div class="site-foot-nav">
-				<a class="site-foot-nav-item" href="/photos">Gallery</a>
-				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/now">Now</a>
+				<span class="site-foot-separator">/</span>
+				<a class="site-foot-nav-item" href="/photos">Gallery</a>
 				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/colophon">Colophon</a>
 				{#each profile.verificationLinks as link}
