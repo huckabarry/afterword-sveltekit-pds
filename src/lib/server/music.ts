@@ -120,7 +120,7 @@ function parseFrontmatter(source: string): { data: Frontmatter; content: string 
 		else if (value === 'false') data[key] = false;
 		else if (/^-?\d+(\.\d+)?$/.test(value)) data[key] = Number(value);
 		else if (value === 'null') data[key] = null;
-		else data[key] = value;
+		else data[key] = decodeHtmlEntities(value);
 	}
 
 	return { data, content: match[2].trim() };
@@ -139,7 +139,8 @@ function slugify(value: string): string {
 }
 
 function splitTitleAndArtist(value: string): { title: string; artist: string } {
-	const match = String(value || '').match(/^["*“”\s]*([^*"]+?)["*“”\s]+by\s+(.+)$/i);
+	const normalized = decodeHtmlEntities(String(value || ''));
+	const match = normalized.match(/^["*“”\s]*([^*"]+?)["*“”\s]+by\s+(.+)$/i);
 	if (match) {
 		return {
 			title: match[1].trim(),
@@ -147,7 +148,7 @@ function splitTitleAndArtist(value: string): { title: string; artist: string } {
 		};
 	}
 
-	const parts = String(value || '').split(/\s+by\s+/i);
+	const parts = normalized.split(/\s+by\s+/i);
 	if (parts.length >= 2) {
 		const artist = parts.pop() || '';
 		return {
@@ -157,7 +158,7 @@ function splitTitleAndArtist(value: string): { title: string; artist: string } {
 	}
 
 	return {
-		title: String(value || '').trim() || 'Untitled',
+		title: normalized.trim() || 'Untitled',
 		artist: ''
 	};
 }
@@ -189,11 +190,49 @@ function formatPacificArchiveTimestamp(date: Date): string {
 	return `${lookup('day')}-${lookup('month')}-${lookup('year')} ${lookup('hour')}:${lookup('minute')}`;
 }
 
+function decodeHtmlEntities(value: string): string {
+	return String(value || '').replace(
+		/&(#x?[0-9a-f]+|amp|apos|gt|lt|nbsp|quot);/gi,
+		(entity, body: string) => {
+			const normalized = String(body || '').toLowerCase();
+
+			switch (normalized) {
+				case 'amp':
+					return '&';
+				case 'apos':
+					return "'";
+				case 'gt':
+					return '>';
+				case 'lt':
+					return '<';
+				case 'nbsp':
+					return ' ';
+				case 'quot':
+					return '"';
+			}
+
+			if (normalized.startsWith('#x')) {
+				const codePoint = Number.parseInt(normalized.slice(2), 16);
+				return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : entity;
+			}
+
+			if (normalized.startsWith('#')) {
+				const codePoint = Number.parseInt(normalized.slice(1), 10);
+				return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : entity;
+			}
+
+			return entity;
+		}
+	);
+}
+
 function stripHtml(value: string): string {
-	return String(value || '')
-		.replace(/<[^>]+>/g, ' ')
-		.replace(/\s+/g, ' ')
-		.trim();
+	return decodeHtmlEntities(
+		String(value || '')
+			.replace(/<[^>]+>/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim()
+	);
 }
 
 function absolutizeUrl(value: string, base: string): string {

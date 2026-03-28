@@ -117,11 +117,59 @@
 										<span>{formatDate(post.date)}</span>
 									</div>
 								</div>
-								<a class="status-row__permalink" href={statusUrl(post.slug)}>
-									<div class="status-row__content">
-										{@html post.html}
-									</div>
-								</a>
+								{#if post.html}
+									<a class="status-row__permalink" href={statusUrl(post.slug)}>
+										<div class="status-row__content">
+											{@html post.html}
+										</div>
+									</a>
+								{/if}
+								{#if post.quotedPost}
+									<a
+										class="status-quote"
+										href={post.quotedPost.blueskyUrl}
+										target="_blank"
+										rel="noreferrer"
+									>
+										<div class="status-quote__meta">
+											{#if post.quotedPost.avatar}
+												<img
+													class="status-quote__avatar"
+													src={post.quotedPost.avatar}
+													alt={post.quotedPost.displayName}
+													loading="lazy"
+												/>
+											{/if}
+											<div class="status-quote__byline">
+												<strong>{post.quotedPost.displayName}</strong>
+												<span>{post.quotedPost.handle}</span>
+											</div>
+										</div>
+										{#if post.quotedPost.html}
+											<div class="status-quote__content">
+												{@html post.quotedPost.html}
+											</div>
+										{/if}
+										{#if post.quotedPost.images.length}
+											<div
+												class="status-row__media status-row__media--quoted {post.quotedPost.images.length > 1 ? 'status-row__media--multi' : ''}"
+											>
+												{#each post.quotedPost.images as image}
+													<img src={image.thumb} alt={image.alt || 'Quoted post image'} loading="lazy" />
+												{/each}
+											</div>
+										{/if}
+										{#if post.quotedPost.external}
+											<span class="status-card status-card--quoted">
+												<span class="status-card__domain">{post.quotedPost.external.domain}</span>
+												<strong class="status-card__title">{post.quotedPost.external.title}</strong>
+												{#if post.quotedPost.external.description}
+													<span class="status-card__description">{post.quotedPost.external.description}</span>
+												{/if}
+											</span>
+										{/if}
+									</a>
+								{/if}
 								{#if post.images.length}
 									<div class="status-row__media {post.images.length > 1 ? 'status-row__media--multi' : ''}">
 										{#each post.images as image}

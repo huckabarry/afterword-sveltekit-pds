@@ -51,17 +51,9 @@ export type StatusPost = {
 	replyCount: number;
 	repostCount: number;
 	likeCount: number;
-	images: Array<{
-		thumb: string;
-		fullsize: string;
-		alt: string;
-	}>;
-	external: {
-		uri: string;
-		title: string;
-		description: string;
-		domain: string;
-	} | null;
+	images: StatusImage[];
+	external: StatusExternal | null;
+	quotedPost?: StatusQuotedPost | null;
 	replyTo?: {
 		uri: string | null;
 		displayName: string;
@@ -69,6 +61,32 @@ export type StatusPost = {
 		blueskyUrl: string;
 	} | null;
 	replies?: StatusPost[];
+};
+
+export type StatusImage = {
+	thumb: string;
+	fullsize: string;
+	alt: string;
+};
+
+export type StatusExternal = {
+	uri: string;
+	title: string;
+	description: string;
+	domain: string;
+};
+
+export type StatusQuotedPost = {
+	uri: string;
+	date: Date;
+	blueskyUrl: string;
+	displayName: string;
+	handle: string;
+	avatar: string;
+	text: string;
+	html: string;
+	images: StatusImage[];
+	external: StatusExternal | null;
 };
 
 type StatusCacheEntry = {
@@ -317,25 +335,28 @@ function getPostUrl(uri: string, handle: string) {
 	return `https://bsky.app/profile/${handle}/post/${recordKey}`;
 }
 
-function getImages(post: Record<string, any>) {
-	const embed = post.embed || post.record?.embed;
+function normalizeImage(image: Record<string, any>): StatusImage {
+	return {
+		thumb: image.thumb || image.fullsize,
+		fullsize: image.fullsize || image.thumb,
+		alt: image.alt || ''
+	};
+}
 
+function getImagesFromEmbed(embed: Record<string, any> | null | undefined): StatusImage[] {
 	if (!embed) {
 		return [];
 	}
 
 	const imageViews = embed.images || embed.media?.images || [];
-
-	return imageViews.map((image: Record<string, any>) => ({
-		thumb: image.thumb || image.fullsize,
-		fullsize: image.fullsize || image.thumb,
-		alt: image.alt || ''
-	}));
+	return imageViews.map((image: Record<string, any>) => normalizeImage(image));
 }
 
-function getExternal(post: Record<string, any>) {
-	const embed = post.embed || post.record?.embed;
+function getImages(post: Record<string, any>) {
+	return getImagesFromEmbed(post.embed || post.record?.embed);
+}
 
+function getExternalFromEmbed(embed: Record<string, any> | null | undefined): StatusExternal | null {
 	if (!embed) {
 		return null;
 	}
@@ -359,6 +380,74 @@ function getExternal(post: Record<string, any>) {
 		title: external.title || domain,
 		description: external.description || '',
 		domain
+	};
+}
+
+function getExternal(post: Record<string, any>) {
+	return getExternalFromEmbed(post.embed || post.record?.embed);
+}
+
+function getImagesFromEmbedViews(embeds: Array<Record<string, any>> | undefined): StatusImage[] {
+	if (!Array.isArray(embeds) || !embeds.length) {
+		return [];
+	}
+
+	const seen = new Set<string>();
+	const images: StatusImage[] = [];
+
+	for (const embed of embeds) {
+		for (const image of getImagesFromEmbed(embed)) {
+			const key = `${image.fullsize}::${image.thumb}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			images.push(image);
+		}
+	}
+
+	return images;
+}
+
+function getExternalFromEmbedViews(embeds: Array<Record<string, any>> | undefined): StatusExternal | null {
+	if (!Array.isArray(embeds) || !embeds.length) {
+		return null;
+	}
+
+	for (const embed of embeds) {
+		const external = getExternalFromEmbed(embed);
+		if (external) {
+			return external;
+		}
+	}
+
+	return null;
+}
+
+function getQuotedPost(post: Record<string, any>): StatusQuotedPost | null {
+	const embed = post.embed || post.record?.embed;
+	const recordView = embed?.record?.record || embed?.record;
+
+	if (!recordView || recordView.$type !== 'app.bsky.embed.record#viewRecord') {
+		return null;
+	}
+
+	const author = recordView.author || {};
+	const handle = String(author.handle || '').trim();
+	const text = String(recordView.value?.text || '');
+	const embeds = Array.isArray(recordView.embeds) ? recordView.embeds : [];
+
+	return {
+		uri: String(recordView.uri || ''),
+		date: new Date(
+			String(recordView.value?.createdAt || recordView.indexedAt || new Date().toISOString())
+		),
+		blueskyUrl: getPostUrl(String(recordView.uri || ''), handle),
+		displayName: author.displayName || handle,
+		handle: handle ? `@${handle}` : '',
+		avatar: author.avatar || '',
+		text,
+		html: renderTextHtml(text),
+		images: getImagesFromEmbedViews(embeds),
+		external: getExternalFromEmbedViews(embeds)
 	};
 }
 
@@ -406,6 +495,7 @@ function normalizeReply(node: Record<string, any>): StatusPost | null {
 		likeCount: Number(post.likeCount || 0),
 		images: getImages(post),
 		external: getExternal(post),
+		quotedPost: getQuotedPost(post),
 		replies: (node.replies || []).map(normalizeReply).filter(Boolean) as StatusPost[]
 	};
 }
@@ -437,6 +527,7 @@ function normalizeStatus(item: Record<string, any>, actor: string): StatusPost |
 		likeCount: Number(post.likeCount || 0),
 		images: getImages(post),
 		external: getExternal(post),
+		quotedPost: getQuotedPost(post),
 		replyTo: null,
 		replies: []
 	};

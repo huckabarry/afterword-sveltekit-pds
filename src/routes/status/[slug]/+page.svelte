@@ -43,9 +43,56 @@
 				</div>
 			</div>
 			<a class="u-url" href={`/status/${data.post.slug}`} hidden>{`/status/${data.post.slug}`}</a>
-			<div class="status-row__content e-content">
-				{@html data.post.html}
-			</div>
+			{#if data.post.html}
+				<div class="status-row__content e-content">
+					{@html data.post.html}
+				</div>
+			{/if}
+			{#if data.post.quotedPost}
+				<a class="status-quote" href={data.post.quotedPost.blueskyUrl} target="_blank" rel="noreferrer">
+					<div class="status-quote__meta">
+						{#if data.post.quotedPost.avatar}
+							<img
+								class="status-quote__avatar"
+								src={data.post.quotedPost.avatar}
+								alt={data.post.quotedPost.displayName}
+								loading="lazy"
+							/>
+						{/if}
+						<div class="status-quote__byline">
+							<strong>{data.post.quotedPost.displayName}</strong>
+							<span>{data.post.quotedPost.handle}</span>
+							<span>·</span>
+							<time datetime={new Date(data.post.quotedPost.date).toISOString()}>
+								{formatDate(data.post.quotedPost.date)}
+							</time>
+						</div>
+					</div>
+					{#if data.post.quotedPost.html}
+						<div class="status-quote__content">
+							{@html data.post.quotedPost.html}
+						</div>
+					{/if}
+					{#if data.post.quotedPost.images.length}
+						<div
+							class="status-row__media status-row__media--quoted {data.post.quotedPost.images.length > 1 ? 'status-row__media--multi' : ''}"
+						>
+							{#each data.post.quotedPost.images as image}
+								<img src={image.fullsize || image.thumb} alt={image.alt || 'Quoted post image'} />
+							{/each}
+						</div>
+					{/if}
+					{#if data.post.quotedPost.external}
+						<span class="status-card status-card--quoted">
+							<span class="status-card__domain">{data.post.quotedPost.external.domain}</span>
+							<strong class="status-card__title">{data.post.quotedPost.external.title}</strong>
+							{#if data.post.quotedPost.external.description}
+								<span class="status-card__description">{data.post.quotedPost.external.description}</span>
+							{/if}
+						</span>
+					{/if}
+				</a>
+			{/if}
 			{#if data.post.images.length}
 				<div class="status-row__media {data.post.images.length > 1 ? 'status-row__media--multi' : ''}">
 					{#each data.post.images as image}
