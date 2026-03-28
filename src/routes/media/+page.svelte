@@ -404,11 +404,23 @@
 									{/if}
 								</div>
 
-								<a class="media-entry__cover media-entry__cover--full" href={item.href}>
+								<a
+									class="media-entry__cover media-entry__cover--full media-entry__cover--poster"
+									href={item.href}
+								>
 									{#if item.imageUrl}
-										<img class="media-entry__art" src={item.imageUrl} alt={item.imageAlt} />
+										<img
+											class="media-entry__art media-entry__art--poster"
+											src={item.imageUrl}
+											alt={item.imageAlt}
+										/>
 									{:else}
-										<div class="media-entry__fallback" aria-hidden="true">{item.label}</div>
+										<div
+											class="media-entry__fallback media-entry__fallback--poster"
+											aria-hidden="true"
+										>
+											{item.label}
+										</div>
 									{/if}
 								</a>
 
@@ -681,6 +693,10 @@
 		border-radius: 0.85rem;
 	}
 
+	.media-entry__art--poster {
+		aspect-ratio: 2 / 3;
+	}
+
 	.media-entry__fallback {
 		display: flex;
 		align-items: center;
@@ -694,6 +710,10 @@
 		font-weight: 700;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
+	}
+
+	.media-entry__fallback--poster {
+		aspect-ratio: 2 / 3;
 	}
 
 	.media-entry__audio {

@@ -1403,6 +1403,11 @@ p:last-child {
 	text-align: center;
 }
 
+.media-card__cover--poster img,
+.media-card__fallback--poster {
+	aspect-ratio: 2 / 3;
+}
+
 .media-card__caption {
 	margin-top: 0.5rem;
 }

@@ -26,11 +26,11 @@
 <section class="media-grid">
 	{#each items as item}
 		<article class="media-card">
-			<a class="media-card__cover" href={item.localPath}>
+			<a class="media-card__cover media-card__cover--poster" href={item.localPath}>
 				{#if item.posterImage}
 					<img src={item.posterImage} alt={item.title} />
 				{:else}
-					<span class="media-card__fallback">{item.title}</span>
+					<span class="media-card__fallback media-card__fallback--poster">{item.title}</span>
 				{/if}
 			</a>
 			<div class="media-card__caption">
