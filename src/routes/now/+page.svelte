@@ -522,6 +522,7 @@
 	}
 
 	.now-index-row {
+		--now-index-kind-column: 8.75rem;
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
 		gap: 0.95rem;
@@ -532,10 +533,10 @@
 	}
 
 	.now-index-row__main {
-		display: flex;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: var(--now-index-kind-column) minmax(0, 1fr);
 		align-items: baseline;
-		gap: 0.55rem;
+		column-gap: 0.7rem;
 		min-width: 0;
 	}
 
@@ -783,6 +784,11 @@
 		.now-index-row {
 			grid-template-columns: minmax(0, 1fr) auto;
 			gap: 0.7rem;
+		}
+
+		.now-index-row__main {
+			grid-template-columns: 7.75rem minmax(0, 1fr);
+			column-gap: 0.6rem;
 		}
 
 		.now-timeline__entry {
