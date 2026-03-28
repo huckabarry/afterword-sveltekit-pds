@@ -85,6 +85,10 @@
 	function getNowIntroParagraph() {
 		return data.intro.paragraphs[0] || data.intro.description;
 	}
+
+	function getAlbumLead() {
+		return data.albums[0] ?? null;
+	}
 </script>
 
 <svelte:head>
@@ -102,9 +106,58 @@
 	</article>
 </section>
 
-{#if data.nowPost}
+{#if data.nowPost || data.latestCheckin || data.tracks.length || data.albums.length}
 	<section class="section-block">
-		<h2 class="section-title">Latest Now</h2>
+		<h2 class="section-title">On This Page</h2>
+		<div class="now-index" aria-label="Current threads">
+			{#if data.nowPost}
+				<a class="now-index__item" href="#lately">
+					<span class="now-index__label">Lately</span>
+					<strong class="now-index__title">{data.nowPost.title}</strong>
+					<time class="now-index__meta" datetime={data.nowPost.publishedAt.toISOString()}>
+						{formatDate(data.nowPost.publishedAt)}
+					</time>
+				</a>
+			{/if}
+
+			{#if data.latestCheckin}
+				<a class="now-index__item" href="#wandering">
+					<span class="now-index__label">Out And About</span>
+					<strong class="now-index__title">{data.latestCheckin.name}</strong>
+					<span class="now-index__meta">
+						{#if data.latestCheckin.place}{data.latestCheckin.place} · {/if}{formatDate(
+							data.latestCheckin.visitedAt
+						)}
+					</span>
+				</a>
+			{/if}
+
+			{#if data.tracks.length}
+				{@const track = data.tracks[0]}
+				<a class="now-index__item" href="#listening">
+					<span class="now-index__label">Listening</span>
+					<strong class="now-index__title">{track.trackTitle}</strong>
+					<span class="now-index__meta">{track.artist}</span>
+				</a>
+			{/if}
+
+			{#if getAlbumLead()}
+				{@const album = getAlbumLead()}
+				<a class="now-index__item" href="#rotation">
+					<span class="now-index__label">Rotation</span>
+					<strong class="now-index__title">{album.albumTitle}</strong>
+					{#if album.artist}
+						<span class="now-index__meta">{album.artist}</span>
+					{/if}
+				</a>
+			{/if}
+		</div>
+	</section>
+{/if}
+
+{#if data.nowPost}
+	<section class="section-block" id="lately">
+		<h2 class="section-title">Lately</h2>
 		<article class="content content-page">
 			<div class="post-full-content">
 				<section class="content-body">
@@ -173,8 +226,8 @@
 {/if}
 
 {#if data.latestCheckin}
-	<section class="section-block section-block-checkin">
-		<h2 class="section-title">Latest Check-In</h2>
+	<section class="section-block section-block-checkin" id="wandering">
+		<h2 class="section-title">Out And About</h2>
 		<article class="checkin-card checkin-card--featured">
 			{#if data.latestCheckin.coverImage}
 				<a class="checkin-card__media" href={data.latestCheckin.canonicalPath}>
@@ -226,7 +279,7 @@
 {/if}
 
 {#if data.tracks.length}
-	<section class="section-block">
+	<section class="section-block" id="listening">
 		<div class="section-head section-head--now">
 			<h2 class="section-title">Listening Now</h2>
 		</div>
@@ -278,7 +331,7 @@
 {/if}
 
 {#if data.albums.length}
-	<section class="section-block">
+	<section class="section-block" id="rotation">
 		<div class="section-head section-head--now">
 			<h2 class="section-title">Album Rotation</h2>
 			{#if data.albums.length > 2}
@@ -322,6 +375,54 @@
 {/if}
 
 <style>
+	.now-index {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.85rem;
+	}
+
+	.now-index__item {
+		display: grid;
+		gap: 0.22rem;
+		padding: 0.95rem 1rem;
+		border: 1px solid color-mix(in srgb, var(--line) 82%, transparent 18%);
+		border-radius: 0.8rem;
+		background: color-mix(in srgb, var(--surface) 82%, white 18%);
+		text-decoration: none;
+		color: inherit;
+		transition:
+			transform 140ms ease,
+			border-color 140ms ease,
+			background 140ms ease;
+	}
+
+	.now-index__item:hover,
+	.now-index__item:focus-visible {
+		transform: translateY(-1px);
+		border-color: color-mix(in srgb, var(--accent) 28%, var(--line) 72%);
+		background: color-mix(in srgb, var(--surface) 70%, white 30%);
+	}
+
+	.now-index__label {
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+
+	.now-index__title {
+		font-family: 'Fira Sans', sans-serif;
+		font-size: 1.05rem;
+		line-height: 1.2;
+	}
+
+	.now-index__meta {
+		font-size: 0.88rem;
+		line-height: 1.4;
+		color: var(--muted);
+	}
+
 	.section-head--now {
 		margin-bottom: 1.15rem;
 	}
@@ -482,6 +583,10 @@
 	}
 
 	@media (max-width: 640px) {
+		.now-index {
+			grid-template-columns: 1fr;
+		}
+
 		.track-row--now {
 			grid-template-columns: 4.5rem minmax(0, 1fr);
 			column-gap: 0.85rem;
