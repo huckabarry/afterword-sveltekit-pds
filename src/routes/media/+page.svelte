@@ -293,10 +293,16 @@
 										</a>
 									</div>
 
-									{#if item.credit}
-										<p class="media-timeline__meta media-timeline__meta--artist">{item.credit}</p>
-									{/if}
-								</div>
+								{#if item.credit}
+									<p class="media-timeline__meta media-timeline__meta--artist">{item.credit}</p>
+								{/if}
+
+								{#if item.activityLabel}
+									<p class="media-timeline__meta media-timeline__meta--status">
+										Latest update: {item.activityLabel}
+									</p>
+								{/if}
+							</div>
 
 								{#if !isBookPopfeed(item) && getItemImageUrl(item) && !hiddenImages[item.id]}
 									<a
@@ -566,6 +572,12 @@
 
 	.media-timeline__meta--artist {
 		margin-top: 0.35rem;
+	}
+
+	.media-timeline__meta--status {
+		margin-top: 0.35rem;
+		font-size: 0.88rem;
+		color: color-mix(in srgb, var(--accent) 70%, var(--muted) 30%);
 	}
 
 	.media-timeline__lede--compact {

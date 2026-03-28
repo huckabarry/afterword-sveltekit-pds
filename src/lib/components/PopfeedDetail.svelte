@@ -40,6 +40,13 @@
 			{/if}
 
 			<dl class="media-entry__details">
+				{#if item.listTypeLabel}
+					<div>
+						<dt>Status</dt>
+						<dd>{item.listTypeLabel}</dd>
+					</div>
+				{/if}
+
 				{#if item.mainCreditRole}
 					<div>
 						<dt>Credit</dt>
@@ -49,8 +56,12 @@
 
 				{#if item.addedAt}
 					<div>
-						<dt>Added</dt>
-						<dd><time datetime={item.addedAt.toISOString()}>{item.displayDate}</time></dd>
+						<dt>{item.activityDateLabel}</dt>
+						<dd>
+							<time datetime={item.addedAt.toISOString()}>
+								{item.activityDisplayDate || item.displayDate}
+							</time>
+						</dd>
 					</div>
 				{/if}
 
@@ -69,7 +80,7 @@
 
 				{#if item.listName}
 					<div>
-						<dt>List</dt>
+						<dt>Source List</dt>
 						<dd>{item.listName}</dd>
 					</div>
 				{/if}

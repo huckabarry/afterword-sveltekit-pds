@@ -36,10 +36,13 @@ export type PopfeedItem = {
 	listDescription: string;
 	listType: string;
 	listTypeLabel: string;
+	activityLabel: string;
+	activityDateLabel: string;
 	addedAt: Date | null;
 	releaseDate: Date | null;
 	date: Date;
 	displayDate: string;
+	activityDisplayDate: string | null;
 	posterImage: string | null;
 	sourcePosterImage: string | null;
 	backdropUrl: string | null;
@@ -168,6 +171,60 @@ function naturalListTypeLabel(value: string) {
 			return 'Logged';
 		default:
 			return titleCase(value);
+	}
+}
+
+function getActivityMetadata(value: string) {
+	switch (
+		String(value || '')
+			.trim()
+			.toLowerCase()
+	) {
+		case 'read_books':
+			return {
+				label: 'Finished reading',
+				dateLabel: 'Finished'
+			};
+		case 'currently_reading_books':
+			return {
+				label: 'Started reading',
+				dateLabel: 'Started'
+			};
+		case 'to_read_books':
+			return {
+				label: 'Added to reading list',
+				dateLabel: 'Added'
+			};
+		case 'watched_movies':
+		case 'watched_tv_shows':
+			return {
+				label: 'Watched',
+				dateLabel: 'Watched'
+			};
+		case 'movie_watchlist':
+			return {
+				label: 'Added to watchlist',
+				dateLabel: 'Added'
+			};
+		case 'ratings':
+		case 'rated':
+			return {
+				label: 'Rated',
+				dateLabel: 'Rated'
+			};
+		case 'favorites':
+		case 'favourites':
+			return {
+				label: 'Added to favorites',
+				dateLabel: 'Added'
+			};
+		default: {
+			const fallback = naturalListTypeLabel(value);
+			return {
+				label: fallback,
+				dateLabel: 'Updated'
+			};
+		}
 	}
 }
 
@@ -341,6 +398,7 @@ function normalizeItem(
 	const list = listsByUri.get(listUri);
 	const listType = String(value.listType || list?.listType || '').trim();
 	const listTypeLabel = naturalListTypeLabel(listType);
+	const activity = getActivityMetadata(listType);
 	const identifiers = normalizeIdentifiers(value.identifiers);
 	const addedAt = normalizeDate(value.addedAt);
 	const releaseDate = normalizeDate(value.releaseDate);
@@ -369,10 +427,13 @@ function normalizeItem(
 		listDescription: String(list?.description || '').trim(),
 		listType,
 		listTypeLabel,
+		activityLabel: activity.label,
+		activityDateLabel: activity.dateLabel,
 		addedAt,
 		releaseDate,
 		date,
 		displayDate: formatDisplayDate(date),
+		activityDisplayDate: addedAt ? formatDisplayDate(addedAt) : null,
 		posterImage,
 		sourcePosterImage: posterImage,
 		backdropUrl: String(value.backdropUrl || '').trim() || null,

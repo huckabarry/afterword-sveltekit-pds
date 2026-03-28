@@ -204,7 +204,9 @@ function toPopfeedTimelineItem(
 		tags: item.listTypeLabel ? [item.listTypeLabel] : [],
 		credit: item.mainCredit,
 		links: toTimelineLinks(item.links),
-		mediaType: item.type
+		mediaType: item.type,
+		statusLabel: item.listTypeLabel,
+		activityLabel: item.activityLabel
 	};
 }
 

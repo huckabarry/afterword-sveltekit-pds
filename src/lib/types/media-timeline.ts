@@ -41,6 +41,8 @@ export type PopfeedTimelineItem = BaseMediaTimelineItem & {
 	credit: string;
 	links: TimelineLink[];
 	mediaType: 'book' | 'movie' | 'tv_show';
+	statusLabel: string;
+	activityLabel: string;
 };
 
 export type MediaTimelineItem =
