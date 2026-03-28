@@ -43,9 +43,6 @@
 
 <section class="stream-head">
 	<h1 class="stream-head__title">Visual Notes</h1>
-	<p class="stream-head__lede">
-		A masonry view of photographs pulled from gallery and photo-led field notes posts.
-	</p>
 </section>
 
 <section class="photo-grid" aria-label="Photo gallery">
