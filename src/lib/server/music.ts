@@ -167,6 +167,26 @@ function normalizeTrackKey(title: string, artist: string): string {
 	return `${slugify(title)}::${slugify(artist)}`;
 }
 
+function getTrackDedupKey(track: {
+	localPath?: string | null;
+	trackTitle?: string | null;
+	artist?: string | null;
+	publishedAt?: Date | string | null;
+}) {
+	const localPath = String(track.localPath || '').trim();
+
+	if (localPath) {
+		return localPath;
+	}
+
+	const publishedAt =
+		track.publishedAt instanceof Date
+			? track.publishedAt.toISOString()
+			: new Date(String(track.publishedAt || '')).toISOString();
+
+	return `${normalizeTrackKey(String(track.trackTitle || ''), String(track.artist || ''))}::${publishedAt}`;
+}
+
 function formatDisplayDate(date: Date): string {
 	return new Intl.DateTimeFormat('en-GB', {
 		day: '2-digit',
@@ -632,9 +652,15 @@ export async function getTracks(): Promise<TrackEntry[]> {
 	const archivedSourceUrls = new Set(
 		archivedTracks.map((track) => String(track.sourceUrl || '').trim()).filter(Boolean)
 	);
-	const liveOnlyTracks = trackDetails.items.filter(
-		(track) => !archivedSourceUrls.has(String(track.sourceUrl || '').trim())
-	);
+	const archivedTrackKeys = new Set(archivedTracks.map((track) => getTrackDedupKey(track)));
+	const liveOnlyTracks = trackDetails.items.filter((track) => {
+		const sourceUrl = String(track.sourceUrl || '').trim();
+		if (sourceUrl && archivedSourceUrls.has(sourceUrl)) {
+			return false;
+		}
+
+		return !archivedTrackKeys.has(getTrackDedupKey(track));
+	});
 
 	return [...archivedTracks, ...liveOnlyTracks].sort(
 		(a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()
