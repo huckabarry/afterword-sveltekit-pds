@@ -1,8 +1,84 @@
 <script lang="ts">
 	import { formatDate } from '$lib/format';
-	import type { StatusPost } from '$lib/server/atproto';
+	import type { StatusFeedPage, StatusPost } from '$lib/server/atproto';
 
-	let { data }: { data: { statuses: StatusPost[] } } = $props();
+	let {
+		data
+	}: {
+		data: {
+			statusPage: StatusFeedPage;
+		};
+	} = $props();
+
+	let statuses = $state<StatusPost[]>([]);
+	let nextCursor = $state<string | null>(null);
+	let isLoadingMore = $state(false);
+	let loadError = $state('');
+	let seededStatuses = $state(false);
+
+	const pageSize = $derived(data.statusPage.limit);
+
+	$effect(() => {
+		if (seededStatuses) {
+			return;
+		}
+
+		statuses = data.statusPage.statuses;
+		nextCursor = data.statusPage.cursor;
+		seededStatuses = true;
+	});
+
+	function infiniteLoad(node: HTMLElement) {
+		if (typeof IntersectionObserver === 'undefined') {
+			return;
+		}
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					void loadMore();
+				}
+			},
+			{
+				rootMargin: '320px 0px'
+			}
+		);
+
+		observer.observe(node);
+
+		return {
+			destroy() {
+				observer.disconnect();
+			}
+		};
+	}
+
+	async function loadMore() {
+		if (isLoadingMore || !nextCursor) {
+			return;
+		}
+
+		isLoadingMore = true;
+		loadError = '';
+
+		try {
+			const response = await fetch(
+				`/status/feed.json?cursor=${encodeURIComponent(nextCursor)}&limit=${encodeURIComponent(String(pageSize))}`
+			);
+
+			if (!response.ok) {
+				throw new Error(`Status request failed with ${response.status}`);
+			}
+
+			const page = (await response.json()) as StatusFeedPage;
+			statuses = [...statuses, ...page.statuses];
+			nextCursor = page.cursor;
+		} catch (error) {
+			loadError = error instanceof Error ? error.message : 'Unable to load more status updates.';
+		} finally {
+			isLoadingMore = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -14,7 +90,7 @@
 </section>
 
 <section class="status-list">
-	{#each data.statuses as post}
+	{#each statuses as post}
 		<article class="status-row h-entry">
 			<div class="status-row__avatar h-card">
 				{#if post.avatar}
@@ -153,3 +229,44 @@
 		</article>
 	{/each}
 </section>
+
+{#if statuses.length}
+	<div class="status-list__footer">
+		<p class="status-list__status">Showing {statuses.length} updates</p>
+
+		{#if nextCursor}
+			<div class="status-list__load-more" use:infiniteLoad>
+				<button class="tag-pill status-list__load-button" type="button" disabled={isLoadingMore} onclick={loadMore}>
+					{isLoadingMore ? 'Loading more…' : 'Load older updates'}
+				</button>
+			</div>
+		{/if}
+
+		{#if loadError}
+			<p class="status-list__error">{loadError}</p>
+		{/if}
+	</div>
+{/if}
+
+<style>
+	.status-list__footer {
+		display: grid;
+		gap: 0.75rem;
+		padding-top: 1.5rem;
+	}
+
+	.status-list__status,
+	.status-list__error {
+		margin: 0;
+		color: var(--muted);
+	}
+
+	.status-list__load-more {
+		display: flex;
+	}
+
+	.status-list__load-button:disabled {
+		cursor: wait;
+		opacity: 0.7;
+	}
+</style>

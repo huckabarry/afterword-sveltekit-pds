@@ -1,7 +1,12 @@
-import { getStatuses } from '$lib/server/atproto';
+import { getStatusPage, STATUS_PAGE_SIZE } from '$lib/server/atproto';
 
 export async function load() {
+	const page = await getStatusPage(undefined, {
+		includeThreadContext: true,
+		limit: STATUS_PAGE_SIZE
+	});
+
 	return {
-		statuses: await getStatuses()
+		statusPage: page
 	};
 }

@@ -2,7 +2,9 @@ const AUTHOR_FEED_URL = 'https://public.api.bsky.app/xrpc/app.bsky.feed.getAutho
 import { resolveAtprotoService } from '$lib/server/atproto-identity';
 const CHECKIN_COLLECTION = 'blog.afterword.checkin';
 const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
-const FEED_LIMIT = 20;
+export const STATUS_PAGE_SIZE = 20;
+const FEED_LIMIT = STATUS_PAGE_SIZE;
+const STATUS_LOOKUP_PAGE_LIMIT = 40;
 const STATUS_CACHE_TTL_MS = 60_000;
 
 export type Checkin = {
@@ -87,9 +89,15 @@ export type StatusQuotedPost = {
 	external: StatusExternal | null;
 };
 
+export type StatusFeedPage = {
+	statuses: StatusPost[];
+	cursor: string | null;
+	limit: number;
+};
+
 type StatusCacheEntry = {
 	expiresAt: number;
-	statuses: StatusPost[];
+	page: StatusFeedPage;
 };
 
 function getRepos() {
@@ -593,12 +601,31 @@ export async function getCheckins() {
 	}
 }
 
-async function fetchStatuses(actor: string | undefined, includeThreadContext = true) {
+async function fetchStatusesPage(
+	actor: string | undefined,
+	options?: {
+		cursor?: string | null;
+		includeThreadContext?: boolean;
+		limit?: number;
+	}
+) {
 	const targetActor = actor || getPrimaryRepo();
+	const includeThreadContext = options?.includeThreadContext ?? true;
+	const limit = Math.max(1, Math.min(Math.floor(options?.limit ?? FEED_LIMIT), 100));
+	const cursor = String(options?.cursor || '').trim();
 
 	try {
+		const params = new URLSearchParams({
+			actor: targetActor,
+			limit: String(limit)
+		});
+
+		if (cursor) {
+			params.set('cursor', cursor);
+		}
+
 		const response = await fetch(
-			`${AUTHOR_FEED_URL}?actor=${encodeURIComponent(targetActor)}&limit=${FEED_LIMIT}`,
+			`${AUTHOR_FEED_URL}?${params.toString()}`,
 			{
 				headers: { accept: 'application/json' }
 			}
@@ -608,53 +635,88 @@ async function fetchStatuses(actor: string | undefined, includeThreadContext = t
 			throw new Error(`Bluesky feed request failed with ${response.status}`);
 		}
 
-		const data = (await response.json()) as { feed?: Array<Record<string, any>> };
+		const data = (await response.json()) as {
+			feed?: Array<Record<string, any>>;
+			cursor?: string;
+		};
 
 		const posts = (data.feed || [])
 			.map((item) => normalizeStatus(item, targetActor))
 			.filter((post): post is StatusPost => Boolean(post));
 
-		return includeThreadContext
-			? Promise.all(posts.map((post) => fetchThreadContextForPost(post)))
+		const statuses = includeThreadContext
+			? await Promise.all(posts.map((post) => fetchThreadContextForPost(post)))
 			: posts;
+
+		return {
+			statuses,
+			cursor: String(data.cursor || '').trim() || null,
+			limit
+		};
 	} catch (error) {
 		console.warn('[bluesky] Unable to fetch author feed:', error);
-		return [];
+		return {
+			statuses: [],
+			cursor: null,
+			limit
+		};
 	}
 }
 
-async function getCachedStatuses(
+async function getCachedStatusPage(
 	actor?: string,
 	options?: {
+		cursor?: string | null;
 		includeThreadContext?: boolean;
 		freshnessMs?: number;
+		limit?: number;
 	}
 ) {
 	const targetActor = actor || getPrimaryRepo();
 	const includeThreadContext = options?.includeThreadContext ?? true;
 	const freshnessMs = Math.max(0, options?.freshnessMs ?? STATUS_CACHE_TTL_MS);
-	const cacheKey = `${targetActor}:${includeThreadContext ? 'full' : 'lite'}`;
+	const limit = Math.max(1, Math.min(Math.floor(options?.limit ?? FEED_LIMIT), 100));
+	const cursor = String(options?.cursor || '').trim();
+	const cacheKey = `${targetActor}:${includeThreadContext ? 'full' : 'lite'}:${limit}:${cursor || 'first'}`;
 	const cache = getStatusCache();
 	const cached = cache.get(cacheKey);
 
 	if (cached && cached.expiresAt > Date.now()) {
-		return cached.statuses;
+		return cached.page;
 	}
 
-	const statuses = await fetchStatuses(targetActor, includeThreadContext);
+	const page = await fetchStatusesPage(targetActor, {
+		cursor,
+		includeThreadContext,
+		limit
+	});
 	cache.set(cacheKey, {
 		expiresAt: Date.now() + freshnessMs,
-		statuses
+		page
 	});
-	return statuses;
+	return page;
+}
+
+export async function getStatusPage(
+	actor?: string,
+	options?: {
+		cursor?: string | null;
+		includeThreadContext?: boolean;
+		freshnessMs?: number;
+		limit?: number;
+	}
+) {
+	return getCachedStatusPage(actor, options);
 }
 
 export async function getStatuses(actor?: string) {
-	return getCachedStatuses(actor, { includeThreadContext: true });
+	const page = await getStatusPage(actor, { includeThreadContext: true });
+	return page.statuses;
 }
 
 export async function getStatusesLite(actor?: string) {
-	return getCachedStatuses(actor, { includeThreadContext: false });
+	const page = await getStatusPage(actor, { includeThreadContext: false });
+	return page.statuses;
 }
 
 export async function getCheckinBySlug(slug: string) {
@@ -663,6 +725,28 @@ export async function getCheckinBySlug(slug: string) {
 }
 
 export async function getStatusBySlug(slug: string) {
-	const statuses = await getStatuses();
-	return statuses.find((item) => item.slug === slug) || null;
+	let cursor: string | null = null;
+	let pageCount = 0;
+
+	while (pageCount < STATUS_LOOKUP_PAGE_LIMIT) {
+		const page = await getStatusPage(undefined, {
+			cursor,
+			includeThreadContext: false,
+			limit: 50
+		});
+		const match = page.statuses.find((item) => item.slug === slug);
+
+		if (match) {
+			return fetchThreadContextForPost(match);
+		}
+
+		if (!page.cursor) {
+			return null;
+		}
+
+		cursor = page.cursor;
+		pageCount += 1;
+	}
+
+	return null;
 }
