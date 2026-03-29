@@ -108,14 +108,40 @@
 
 <style>
 	.hello-page__body {
-		display: grid;
-		gap: 0.35rem;
+		display: block;
+	}
+
+	.hello-page__body > * {
+		margin: 0;
+	}
+
+	.hello-page__body > p + p {
+		margin-top: 1.15rem;
+	}
+
+	.hello-page__body > h2 {
+		margin-top: 2.25rem;
+	}
+
+	.hello-page__body > h2 + .hello-page__list {
+		margin-top: 0.85rem;
+	}
+
+	.hello-page__body > .hello-page__list + h2 {
+		margin-top: 2.25rem;
+	}
+
+	.hello-page__body > .hello-page__list + p {
+		margin-top: 1.4rem;
 	}
 
 	.hello-page__list {
-		display: grid;
-		gap: 0.7rem;
+		margin: 0;
 		padding-left: 1.2rem;
+	}
+
+	.hello-page__list li + li {
+		margin-top: 0.7rem;
 	}
 
 	.hello-page__list li {
