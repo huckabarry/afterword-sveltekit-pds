@@ -3,4 +3,4 @@ title: Media
 description: "Books, music, movies, and shows that have been keeping me company lately."
 ---
 
-Books, songs, albums, and films. I don’t read reviews. I never liked them. I just write down what I watched, what got under my skin, what made me feel something. Saying that out loud is harder than I thought.
+Books, songs, albums, films, etc. I don't usually do reviews — I don't have the patience for that. Just a record of what I watched and somtimes what I actually felt something about, which is harder to admit than it sounds.
