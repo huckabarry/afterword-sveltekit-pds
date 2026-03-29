@@ -12,56 +12,54 @@
 		<div class="post-full-content">
 			<section class="content-body hello-page__body">
 				<p>
-					If you’ve landed here and are wondering what this site is or how best to reach me,
-					this is the short version.
+					If you’re curious about this site or how to get in touch, here’s a summary.
 				</p>
 
 				<p>
-					Afterword is my home on the web. It’s where I keep short updates, photos, check-ins,
-					and longer notes about cities, neighborhoods, design, transit, music, and the small
-					things that keep catching my attention. Some parts of it are powered by my own PDS,
-					but I still think of this domain as the center of gravity.
+					Afterword is my online home. I post short updates, photos, check-ins, and longer
+					notes about cities, neighborhoods, design, transit, music, and small things that
+					catch my attention. Some of it runs on my own PDS, a private space where I manage
+					my digital information, but this site is still my main hub.
 				</p>
 
 				<p>
-					By profession I’m an urban planner. Outside of work I’m usually taking pictures as
-					an amateur photographer, trying to grow tomatoes, or listening closely to music. I
-					play guitar too, usually in a nerdy pedals-and-amps way, but mostly because getting
-					lost in it is still one of the best ways I know to reset and feel a little more like
-					myself. I’m also married and a dad of two little ones, which shapes the rhythms of
-					this place even when I’m not writing about family directly.
+					I’m an urban planner. Outside of work, I enjoy photography, gardening, and music.
+					Playing guitar helps me relax and feel like myself. I’m married with two young kids.
+					While I don’t always write about family, they’re a big part of my life.
 				</p>
 
 				<p>
-					A lot of what shows up here comes from wandering around with too many thoughts about
-					buildings, public space, neighborhood life, creativity, and the question of how to
-					make a personal site feel more human than a profile page. I still believe the
-					internet should have more human-sized corners.
+					Most posts come from wandering and thinking about buildings, public spaces,
+					neighborhood life, and making a personal site feel more human. I believe the
+					internet needs more small, personal places. To help you explore, here’s where you
+					might want to start:
 				</p>
 
 				<h2>Start Here</h2>
 
 				<ul class="hello-page__list">
 					<li>
-						<a href="/field-notes">Field Notes</a> for the more personal, place-based writing.
+						<a href="/field-notes">Field Notes</a> contains my personal, place-based
+						writing, sharing observations and experiences from my perspective.
 					</li>
 					<li>
-						<a href="/planning">Planning &amp; Urbanism</a> for the professional side of my
-						brain.
+						<a href="/planning">Planning &amp; Urbanism</a> is dedicated to my professional
+						perspectives on city planning and urban issues.
 					</li>
 					<li>
-						<a href="/photos">Gallery</a> if you’d rather start with images.
+						<a href="/photos">The Gallery</a> showcases some of my photography and visual
+						observations.
 					</li>
 					<li>
 						<a href="/now">Now</a> for a snapshot of what currently has my attention.
 					</li>
 					<li>
-						<a href="/media">Media</a> for the soundtrack, the reading stack, and the part
-						of my brain that gets excited about guitar sounds.
+						In <a href="/media">Media</a>, I highlight what I’m listening to, reading, and
+						watching, with brief commentary.
 					</li>
 					<li>
-						<a href="/check-ins">Check-ins</a> if you like maps, places, and traces of where
-						I’ve been.
+						<a href="/check-ins">Check-ins</a> document maps and locations from my travels
+						and provide context to the places I visit.
 					</li>
 				</ul>
 
@@ -69,16 +67,16 @@
 
 				<ul class="hello-page__list">
 					<li>
-						For public conversation, <a href="https://bsky.app/profile/afterword.blog" target="_blank" rel="noreferrer">Bluesky</a>
-						is the best bet. That’s the place I’m most likely to reply in a timely way.
+						For public conversations, you’ll find me on
+						<a href="https://bsky.app/profile/afterword.blog" target="_blank" rel="noreferrer">Bluesky</a>.
+						I usually reply quickly there.
 					</li>
 					<li>
-						For a private note, use the <a href="/contact">contact page</a>.
+						If you want to send a private message, use the <a href="/contact">contact page</a>.
 					</li>
 					<li>
-						If you found me through an old fediverse or side-project profile, I probably
-						won’t be active there in the same way anymore. This site and Bluesky are the real
-						places to find me now.
+						If you found me through an old fediverse or side-project profile, I’m probably
+						not active there anymore. This site and Bluesky are the best ways to reach me.
 					</li>
 				</ul>
 
@@ -86,24 +84,22 @@
 
 				<ul class="hello-page__list">
 					<li>
-						I like slower, more thoughtful exchanges more than the endless churn of posting
-						for posting’s sake.
+						I prefer slower, more thoughtful conversations over the constant rush to post.
 					</li>
 					<li>
-						I don’t mind people reaching out cold if there’s a genuine reason. A note about a
-						post, a city, a photograph, a shared obsession, or a recommendation is always a
-						good place to start.
+						I don’t mind people reaching out cold if there’s a genuine reason. A note about
+						a post, city, photograph, shared obsession, or recommendation is always a good
+						place to start.
 					</li>
 					<li>
-						If you’re mostly trying to figure out who I am before diving in, the
-						<a href="/about">About page</a> fills in more of the background, and the
-						<a href="/colophon">Colophon</a> explains how this site is put together.
+						If you want to know more about me, check the <a href="/about">About page</a>.
+						The <a href="/colophon">Colophon</a> explains how this site was built.
 					</li>
 				</ul>
 
 				<p>
-					Mostly, I just want this place to feel approachable. If something here resonates
-					with you, feel free to say hello.
+					I want this place to feel approachable. If something here resonates with you, feel
+					free to say hello.
 				</p>
 			</section>
 		</div>
