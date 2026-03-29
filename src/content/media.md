@@ -3,6 +3,4 @@ title: Media
 description: "Books, music, movies, and shows that have been keeping me company lately."
 ---
 
-A running timeline of the consuming side of this site: books, albums, songs, and the occasional movie or show note when I have one.
-
-It lives separately from the Now page on purpose. Now is more about what life feels like lately; this is the soundtrack, the reading stack, and the things I keep carrying around after I finish them.
+Books, songs, albums, films, etc. the stuff that got in. I don't usually do reviews — i don't have the patience for that — just a record of what i watched and somtimes what I actually felt something about, which is harder to admit than it sounds.
