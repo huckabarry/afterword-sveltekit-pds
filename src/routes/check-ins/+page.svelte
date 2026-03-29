@@ -13,7 +13,8 @@
 <section class="page-head">
 	<h1 class="section-title">Check-ins</h1>
 	<p class="page-head__lede">
-		Places saved from your custom PDS collection, rendered live through SvelteKit.
+		Little place notes from weekends, errands, walks, and family outings. Not a full life log, just
+		the spots that felt worth pinning to the board for a minute.
 	</p>
 </section>
 

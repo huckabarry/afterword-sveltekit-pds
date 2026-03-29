@@ -10,7 +10,11 @@
 
 <section class="stream-head">
 	<h1 class="stream-head__title">Listening Now</h1>
-	<p class="stream-head__lede">Recent track notes mirrored from my Crucial Tracks feed.</p>
+	<p class="stream-head__lede">
+		Short track notes for whatever song has its hooks in me at the moment. Sometimes it is
+		nostalgia, sometimes a new discovery, sometimes just the right thing for a drive, a walk, or the
+		middle of a Tuesday.
+	</p>
 </section>
 
 <section class="track-list">

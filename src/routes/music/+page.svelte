@@ -11,8 +11,9 @@
 <section class="stream-head">
 	<h1 class="stream-head__title">Music</h1>
 	<p class="stream-head__lede">
-		Albums mirrored from my Album Whale listening feed. For individual track notes, see
-		<a href="/listening/">Listening Now</a>.
+		Albums that have been hanging around long enough to earn a place here. Usually things I kept
+		replaying while driving, working, or walking around the neighborhood. For single-song fixations,
+		see <a href="/listening/">Listening Now</a>.
 	</p>
 </section>
 

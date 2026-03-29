@@ -4,7 +4,10 @@
 
 <section class="contact">
 	<h1 class="section-title">Contact</h1>
-	<p>You can send me a note here.</p>
+	<p>
+		If something here resonated, or you have a good tip about a neighborhood, a trail, a record, or
+		some other small corner of the internet I should know about, send a note.
+	</p>
 	<script data-letterbirduser="bryan" src="https://letterbird.co/embed/v1.js"></script>
 </section>
 

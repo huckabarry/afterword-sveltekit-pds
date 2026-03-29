@@ -1,8 +1,8 @@
 ---
 title: Media
-description: "Books, music, movies, and shows that have been keeping me company lately."
+description: 'Books, records, tracks, movies, and other things that have been keeping me company lately.'
 ---
 
-A running timeline of the consuming side of this site: books, albums, songs, and the occasional movie or show note when I have one.
+This is the consuming side of the site: records on repeat, books that sent me down a rabbit hole, weeknight movies, and the occasional show that helped carry a tired stretch.
 
-It lives separately from the Now page on purpose. Now is more about what life feels like lately; this is the soundtrack, the reading stack, and the things I keep carrying around after I finish them.
+It lives separately from the Now page on purpose. Now is more about what life feels like lately. This is the soundtrack, the reading stack, and the things that keep echoing after I finish them.

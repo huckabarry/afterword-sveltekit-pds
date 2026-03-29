@@ -21,7 +21,9 @@
 <section class="stream-head">
 	<h1 class="stream-head__title">Latest writing</h1>
 	<p class="stream-head__lede">
-		A compact archive for field notes, gallery posts, and urbanism writing.
+		Longer posts live here. Usually they start with a place, a question, or something that has been
+		needling me for a while, then wander into cities, housing, family life, technology, or whatever
+		else I cannot quite leave alone.
 	</p>
 </section>
 
@@ -33,7 +35,10 @@
 					<img class="blog-row__image" src={post.coverImage} alt={post.title} loading="lazy" />
 				{/if}
 				<div class="blog-row__body">
-					<time class="blog-row__date dt-published" datetime={new Date(post.publishedAt).toISOString()}>
+					<time
+						class="blog-row__date dt-published"
+						datetime={new Date(post.publishedAt).toISOString()}
+					>
 						{new Date(post.publishedAt).toLocaleDateString('en-GB', {
 							day: '2-digit',
 							month: 'short',

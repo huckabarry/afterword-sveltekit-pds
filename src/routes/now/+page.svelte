@@ -45,8 +45,8 @@
 <section class="section-block">
 	<h2 class="section-title">Recent Now Posts</h2>
 	<p class="page-head__lede">
-		A few recent notes about whatever currently has my attention. Books, music, movies, and shows
-		live over on <a href="/media">Media</a>.
+		Recent notes from the messy present tense. Usually the things I have not turned into something
+		bigger yet. Books, music, movies, and shows live over on <a href="/media">Media</a>.
 	</p>
 
 	{#if data.nowPosts.length}
@@ -107,7 +107,9 @@
 					{/if}
 
 					<div class="now-card__actions">
-						<a class="tag-pill now-card__action" href={data.latestCheckin.canonicalPath}>View check-in</a>
+						<a class="tag-pill now-card__action" href={data.latestCheckin.canonicalPath}
+							>View check-in</a
+						>
 						<a class="tag-pill now-card__action" href="/check-ins">All check-ins</a>
 					</div>
 				</article>

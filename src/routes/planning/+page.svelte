@@ -26,7 +26,10 @@
 
 <section class="stream-head">
 	<h1 class="stream-head__title">Planning & Urbanism</h1>
-	<p class="stream-head__lede">Urbanism, transportation, housing, and public finance writing.</p>
+	<p class="stream-head__lede">
+		The planner side of my brain: housing affordability, transit, public space, growth, and the ways
+		places shape daily life whether people notice it or not.
+	</p>
 </section>
 
 <section class="blog-list blog-list--archive" aria-label="Planning posts">
@@ -35,7 +38,12 @@
 			<a class="blog-row__link" href={post.path}>
 				{#if post.coverImage}
 					<div class="planning-row__media">
-						<img class="planning-row__image" src={post.coverImage} alt={post.title} loading="lazy" />
+						<img
+							class="planning-row__image"
+							src={post.coverImage}
+							alt={post.title}
+							loading="lazy"
+						/>
 						{#if post.coverImage.includes('images.unsplash.com') && post.coverImageCaption}
 							<span class="planning-row__credit">{post.coverImageCaption}</span>
 						{/if}
