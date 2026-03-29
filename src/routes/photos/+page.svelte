@@ -43,6 +43,11 @@
 
 <section class="stream-head">
 	<h1 class="stream-head__title">Visual Notes</h1>
+	<div class="stream-head__lede">
+		<p>
+			Mostly photos of places I've been, street photography, and landscapes. Photography is just a hobby of mine, something I'm still experimenting with and trying to figure out. It's an outlet like any other thing.
+		</p>
+	</div>
 </section>
 
 <section class="photo-grid" aria-label="Photo gallery">
