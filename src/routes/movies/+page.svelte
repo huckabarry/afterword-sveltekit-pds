@@ -11,7 +11,7 @@
 
 <PopfeedGrid
 	title="Movies"
-	lede="A running shelf of movies I watched and wanted to remember. Usually some mix of sci-fi, character-driven stuff, older favorites, and whatever feels right when my brain is a little too cooked for anything demanding."
+	lede="Movies logged on Popfeed, mirrored into the site as local entries."
 	items={data.items}
 	emptyMessage="No movies are available yet."
 />

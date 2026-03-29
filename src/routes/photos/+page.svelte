@@ -43,10 +43,6 @@
 
 <section class="stream-head">
 	<h1 class="stream-head__title">Visual Notes</h1>
-	<p class="stream-head__lede">
-		Photos from walks, family outings, road trips, neighborhood wandering, and the moments of light,
-		weather, texture, or quiet that made me stop.
-	</p>
 </section>
 
 <section class="photo-grid" aria-label="Photo gallery">
@@ -75,11 +71,7 @@
 					<span class="photo-card__title">{photo.postTitle}</span>
 					<span class="photo-card__meta">
 						<time class="photo-card__date">
-							{new Date(photo.postPublishedAt).toLocaleDateString('en-US', {
-								month: 'short',
-								day: 'numeric',
-								year: 'numeric'
-							})}
+							{new Date(photo.postPublishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
 						</time>
 						<span class="photo-card__source">View post</span>
 					</span>
@@ -92,47 +84,22 @@
 {#if activeIndex !== null}
 	{@const activePhoto = data.photos[activeIndex]}
 	<div class="lightbox is-open" role="dialog" aria-modal="true" aria-label="Photo viewer">
-		<button
-			class="lightbox__backdrop"
-			type="button"
-			onclick={closeLightbox}
-			aria-label="Close photo viewer"
-		></button>
+		<button class="lightbox__backdrop" type="button" onclick={closeLightbox} aria-label="Close photo viewer"></button>
 		<div class="lightbox__dialog">
 			<button class="lightbox__close" type="button" onclick={closeLightbox} aria-label="Close">
 				×
 			</button>
-			<button
-				class="lightbox__nav lightbox__nav--prev"
-				type="button"
-				onclick={showPrevious}
-				aria-label="Previous image"
-			>
+			<button class="lightbox__nav lightbox__nav--prev" type="button" onclick={showPrevious} aria-label="Previous image">
 				‹
 			</button>
-			<button
-				class="lightbox__nav lightbox__nav--next"
-				type="button"
-				onclick={showNext}
-				aria-label="Next image"
-			>
+			<button class="lightbox__nav lightbox__nav--next" type="button" onclick={showNext} aria-label="Next image">
 				›
 			</button>
 			<figure class="lightbox__figure">
-				<img
-					class="lightbox__image"
-					src={activePhoto.lightboxUrl}
-					alt={activePhoto.alt || activePhoto.postTitle}
-				/>
+				<img class="lightbox__image" src={activePhoto.lightboxUrl} alt={activePhoto.alt || activePhoto.postTitle} />
 				<figcaption class="lightbox__caption">
 					<a href={activePhoto.postPath}>{activePhoto.postTitle}</a>
-					<span
-						>{new Date(activePhoto.postPublishedAt).toLocaleDateString('en-US', {
-							month: 'short',
-							day: 'numeric',
-							year: 'numeric'
-						})}</span
-					>
+					<span>{new Date(activePhoto.postPublishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
 				</figcaption>
 			</figure>
 		</div>

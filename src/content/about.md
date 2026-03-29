@@ -1,6 +1,6 @@
 ---
 title: About
-description: "I'm Bryan. I write here about place, family life, music, photography, and the smaller things that keep sticking with me."
+description: "Hello, fellow wanderer. I’m Bryan and this is my blog, a place where I write short updates, post photos, and share longer notes."
 interests:
   - urban design
   - landscape architecture
@@ -81,12 +81,12 @@ interests:
 
 Hey, thanks for stopping by.
 
-I'm Bryan. This is the part of the internet where I keep short updates, photos, and longer notes about whatever has been occupying my brain lately. That can mean cities and architecture, a walk around Portland, a record I cannot stop replaying, a garden that got a little out of hand, or some other small thing that felt worth writing down before it drifted off.
+I’m Bryan. This site is where I write short posts about whatever has been occupying my brain lately. Sometimes that’s cities and architecture. Sometimes it’s photos from a walk. Sometimes a book, a piece of music, or a stray observation that felt worth writing down.
 
-By profession I'm an urban planner. I spend a lot of time thinking about how places work, how they fail people, and how they could work better. Transit, public space, housing, architecture, and landscape design have a way of sneaking into how I see almost everything else.
+By profession I’m an urban planner. I spend a lot of time thinking about how places work and how they could work better. Transit, public space, architecture, and landscape design have a way of sneaking into how I see everything else.
 
-Outside of work I mostly like making things and paying attention. Writing, photography, gardening, cooking, tinkering with guitars and personal websites, wandering neighborhoods with my family, letting small obsessions get a little more elaborate than they probably need to.
+Outside of work I mostly like making things. Writing, photography, gardening, music, cooking experiments, tinkering with personal websites. The internet used to be full of small strange personal sites and I still believe that’s one of its best forms.
 
-I grew up in the Great Lakes region and still miss it in the particular way Midwesterners seem to. These days I live in the Pacific Northwest with my family, where everything is greener, the forests are mossy, and the tomatoes in the yard get a little too ambitious by August.
+I grew up in the Great Lakes region and still miss it a lot. These days I live in the Pacific Northwest with my family, where everything is greener, the forests are mossy, and the tomatoes in my yard get a little out of control by August.
 
-Part of the reason I keep a site like this is that the internet can feel exhausting and weirdly impersonal. I wanted a small corner that feels more human, a little quieter, and more enjoyable to return to. That's still the project.
+Part of the reason I keep a site like this is that the internet can feel pretty mean and exhausting these days. I wanted a small corner that feels more personal and more enjoyable to return to. I’m still working on it, but that’s the idea.

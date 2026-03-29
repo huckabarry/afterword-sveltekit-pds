@@ -26,8 +26,7 @@
 <section class="stream-head">
 	<h1 class="stream-head__title">Field Notes</h1>
 	<p class="stream-head__lede">
-		Walks, family outings, road trips, photographs, and the kind of place-based writing that starts
-		with weather or light and usually ends somewhere more reflective.
+		Travel, photography, and on-the-ground notes from walks, trains, road trips, and everyday wandering.
 	</p>
 </section>
 
@@ -36,12 +35,7 @@
 		<article class="blog-row field-notes-row">
 			<a class="blog-row__link" href={post.path}>
 				{#if post.coverImage}
-					<img
-						class="field-notes-row__image"
-						src={post.coverImage}
-						alt={post.title}
-						loading="lazy"
-					/>
+					<img class="field-notes-row__image" src={post.coverImage} alt={post.title} loading="lazy" />
 				{/if}
 				<div class="field-notes-row__body">
 					<time class="blog-row__date" datetime={new Date(post.publishedAt).toISOString()}>

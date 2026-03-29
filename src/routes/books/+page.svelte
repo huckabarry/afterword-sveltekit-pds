@@ -11,7 +11,7 @@
 
 <PopfeedGrid
 	title="Books"
-	lede="Books I wanted to keep track of here for one reason or another. Sometimes a recommendation, sometimes a rabbit hole, sometimes just the right book at the right time."
+	lede="Books pulled from Popfeed on my PDS and folded into the wider media timeline."
 	items={data.items}
 	emptyMessage="No books are available yet."
 />
