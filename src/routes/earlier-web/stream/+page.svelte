@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import type { EarlierWebPostSummary, EarlierWebStreamPage } from '$lib/server/earlier-web';
+	import type { EarlierWebStreamHydratedPage, EarlierWebStreamPost } from '$lib/server/earlier-web';
 
 	let {
 		data
 	}: {
 		data: {
-			stream: EarlierWebStreamPage;
+			stream: EarlierWebStreamHydratedPage;
 		};
 	} = $props();
 
-	let posts = $state<EarlierWebPostSummary[]>(untrack(() => data.stream.posts));
+	let posts = $state<EarlierWebStreamPost[]>(untrack(() => data.stream.posts));
 	let nextCursor = $state<string | null>(untrack(() => data.stream.cursor));
 	let isLoadingMore = $state(false);
 	let loadError = $state('');
@@ -56,7 +56,7 @@
 				throw new Error(`Archive request failed with ${response.status}`);
 			}
 
-			const page = (await response.json()) as EarlierWebStreamPage;
+			const page = (await response.json()) as EarlierWebStreamHydratedPage;
 			posts = [...posts, ...page.posts];
 			nextCursor = page.cursor;
 		} catch (error) {
@@ -72,17 +72,6 @@
 			month: 'short',
 			day: 'numeric'
 		});
-	}
-
-	function usesGeneratedMicroTitle(post: EarlierWebPostSummary) {
-		const title = post.title.trim().toLowerCase();
-		const excerpt = post.excerpt.trim().toLowerCase();
-
-		if (!title || !excerpt) {
-			return false;
-		}
-
-		return title === excerpt || excerpt.startsWith(title) || title.startsWith(excerpt);
 	}
 </script>
 
@@ -136,18 +125,14 @@
 										<span>·</span>
 										<span>{post.year}</span>
 									</p>
-									{#if usesGeneratedMicroTitle(post)}
-										<p class="earlier-web-stream__micro-link">
-											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-											<a href={post.path}>{post.excerpt}</a>
-										</p>
-									{:else}
-										<h2>
-											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-											<a href={post.path}>{post.title}</a>
-										</h2>
-										<p>{post.excerpt}</p>
-									{/if}
+									<div class="earlier-web-stream__content">
+										<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+										{@html post.bodyHtml}
+									</div>
+									<p class="earlier-web-stream__permalink">
+										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+										<a href={post.path}>Open post</a>
+									</p>
 								</div>
 							</article>
 						{/each}
@@ -185,14 +170,14 @@
 
 	.earlier-web-stream {
 		display: grid;
-		gap: 1rem;
+		gap: 1.75rem;
 	}
 
 	.earlier-web-stream__entry {
 		display: grid;
 		grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
 		gap: 1rem;
-		padding-top: 1rem;
+		padding-top: 1.5rem;
 		border-top: 1px solid rgba(255, 255, 255, 0.08);
 		align-items: start;
 	}
@@ -213,43 +198,35 @@
 		background: color-mix(in srgb, var(--surface) 82%, white 18%);
 	}
 
-	.earlier-web-stream__body h2 {
-		margin: 0 0 0.45rem;
-		font-size: 1.15rem;
-		line-height: 1.15;
+	.earlier-web-stream__content :global(p) {
+		margin: 0 0 1rem;
 	}
 
-	.earlier-web-stream__body h2 a {
+	.earlier-web-stream__content :global(.earlier-web-post__figure) {
+		margin: 1rem 0 1.25rem;
+	}
+
+	.earlier-web-stream__content :global(img) {
+		display: block;
+		max-width: 100%;
+		height: auto;
+		border-radius: 0.25rem;
+	}
+
+	.earlier-web-stream__permalink {
+		margin-top: 0.25rem;
+		font-size: 0.92rem;
+	}
+
+	.earlier-web-stream__permalink a {
 		color: inherit;
-		text-decoration: none;
-	}
-
-	.earlier-web-stream__body h2 a:hover {
 		text-decoration: underline;
-	}
-
-	.earlier-web-stream__micro-link {
-		font-size: 1.02rem;
-		line-height: 1.55;
-	}
-
-	.earlier-web-stream__micro-link a {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.earlier-web-stream__micro-link a:hover {
-		text-decoration: underline;
-	}
-
-	.earlier-web-stream__body p {
-		margin: 0;
 	}
 
 	.earlier-web-stream__meta {
 		display: flex;
 		gap: 0.4rem;
-		margin-bottom: 0.4rem;
+		margin-bottom: 0.7rem;
 		font-size: 0.88rem;
 		opacity: 0.72;
 	}

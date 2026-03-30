@@ -78,6 +78,16 @@ export type EarlierWebStreamPage = {
 	limit: number;
 };
 
+export type EarlierWebStreamPost = EarlierWebPostSummary & {
+	bodyHtml: string;
+};
+
+export type EarlierWebStreamHydratedPage = {
+	posts: EarlierWebStreamPost[];
+	cursor: string | null;
+	limit: number;
+};
+
 export const EARLIER_WEB_STREAM_PAGE_SIZE = 30;
 
 function getEarlierWebDb(event: Pick<RequestEvent, 'platform'>) {
@@ -489,6 +499,86 @@ export async function getEarlierWebStreamPage(
 			posts: [],
 			cursor: null,
 			limit: normalizedLimit
+		};
+	}
+}
+
+export async function getEarlierWebStreamHydratedPage(
+	event: Pick<RequestEvent, 'platform'>,
+	options: {
+		cursor?: string | null;
+		limit?: number;
+	} = {}
+): Promise<EarlierWebStreamHydratedPage> {
+	const page = await getEarlierWebStreamPage(event, options);
+	const bucket = getEarlierWebBucket(event);
+
+	if (!bucket || !page.posts.length) {
+		return {
+			posts: page.posts.map((post) => ({
+				...post,
+				bodyHtml: post.excerpt ? `<p>${escapeHtml(post.excerpt)}</p>` : ''
+			})),
+			cursor: page.cursor,
+			limit: page.limit
+		};
+	}
+
+	const db = getEarlierWebDb(event);
+
+	if (!db) {
+		return {
+			posts: page.posts.map((post) => ({
+				...post,
+				bodyHtml: post.excerpt ? `<p>${escapeHtml(post.excerpt)}</p>` : ''
+			})),
+			cursor: page.cursor,
+			limit: page.limit
+		};
+	}
+
+	const ids = page.posts.map((post) => post.id);
+	const placeholders = ids.map(() => '?').join(', ');
+
+	try {
+		const result = await db
+			.prepare(
+				`SELECT id, bundle_key
+				FROM earlier_web_posts
+				WHERE id IN (${placeholders})`
+			)
+			.bind(...ids)
+			.all<{ id: string; bundle_key: string }>();
+
+		const rows: Array<{ id: string; bundle_key: string }> = Array.isArray(result.results)
+			? (result.results as Array<{ id: string; bundle_key: string }>)
+			: [];
+		const bundleKeys = [...new Set(rows.map((row: { id: string; bundle_key: string }) => row.bundle_key))];
+		const bundles = await Promise.all(bundleKeys.map((key) => getBundleFromR2(bucket, key)));
+		const postsById = new Map<string, EarlierWebStoredPost>();
+
+		for (const bundle of bundles) {
+			for (const post of bundle?.posts || []) {
+				postsById.set(post.id, post);
+			}
+		}
+
+		return {
+			posts: page.posts.map((post) => ({
+				...post,
+				bodyHtml: renderEarlierWebBody(postsById.get(post.id)?.bodyMarkdown || post.excerpt)
+			})),
+			cursor: page.cursor,
+			limit: page.limit
+		};
+	} catch {
+		return {
+			posts: page.posts.map((post) => ({
+				...post,
+				bodyHtml: post.excerpt ? `<p>${escapeHtml(post.excerpt)}</p>` : ''
+			})),
+			cursor: page.cursor,
+			limit: page.limit
 		};
 	}
 }
