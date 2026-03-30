@@ -437,8 +437,8 @@ async function writeSql(entries) {
 		`CREATE INDEX idx_earlier_web_posts_published_at ON earlier_web_posts(published_at DESC);`
 	];
 
-	for (let index = 0; index < entries.length; index += 100) {
-		const batch = entries.slice(index, index + 100);
+	for (let index = 0; index < entries.length; index += 25) {
+		const batch = entries.slice(index, index + 25);
 		const values = batch.map(
 			(entry) =>
 				`(${[
