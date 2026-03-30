@@ -187,7 +187,7 @@
 				<a class="site-foot-nav-item" href="/earlier-web">Earlier Web</a>
 				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/colophon">Colophon</a>
-				{#each profile.verificationLinks as link}
+				{#each profile.verificationLinks.filter((link) => link.url !== '/' && link.label.toLowerCase() !== 'afterword') as link}
 					<span class="site-foot-separator">/</span>
 					<a class="site-foot-nav-item" href={link.url} target="_blank" rel="noreferrer me">{link.label}</a>
 				{/each}
