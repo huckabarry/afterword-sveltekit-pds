@@ -423,10 +423,6 @@
 		text-decoration: none;
 	}
 
-	.on-this-day-card__excerpt a:hover {
-		text-decoration: underline;
-	}
-
 	@media (max-width: 760px) {
 		.now-glance {
 			grid-template-columns: 1fr;
