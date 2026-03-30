@@ -2,7 +2,7 @@
 	<title>Subscribe | Bryan Robb</title>
 	<meta
 		name="description"
-		content="Subscribe to Afterword by RSS or JSON feed, with options for writing, planning, status updates, and Earlier Web."
+		content="Subscribe to Afterword by RSS or JSON feed, with options for writing, planning, and status updates."
 	/>
 </svelte:head>
 
@@ -25,12 +25,6 @@
 			description: 'Short updates pulled from Bluesky into the site.',
 			rssUrl: '/status/feed.xml',
 			jsonUrl: '/status/feed-public.json'
-		},
-		{
-			title: 'Earlier Web',
-			description: 'Archive posts from older platforms and earlier years online.',
-			rssUrl: '/earlier-web/feed.xml',
-			jsonUrl: '/earlier-web/feed-public.json'
 		}
 	];
 </script>
