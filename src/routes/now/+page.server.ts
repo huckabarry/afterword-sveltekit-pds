@@ -28,7 +28,7 @@ export async function load(event) {
 		getRecentTaggedPosts(['now'], 12),
 		getLatestCheckinSnapshot(event),
 		getRecentManifestGalleryPhotos(event, 1),
-		getEarlierWebOnThisDayPosts(event)
+		getEarlierWebOnThisDayPosts(event, new Date(), 3, { sourceType: 'instagram' })
 	]);
 
 	const nowPosts = rawNowPosts.filter((post: BlogPost) => !isMediaTagged(post));

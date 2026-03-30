@@ -330,7 +330,10 @@ export async function getEarlierWebYearPosts(
 export async function getEarlierWebOnThisDayPosts(
 	event: Pick<RequestEvent, 'platform'>,
 	date = new Date(),
-	limit = 3
+	limit = 3,
+	options: {
+		sourceType?: string | null;
+	} = {}
 ): Promise<EarlierWebOnThisDayPost[]> {
 	const db = getEarlierWebDb(event);
 
@@ -342,33 +345,61 @@ export async function getEarlierWebOnThisDayPosts(
 	const day = String(date.getDate()).padStart(2, '0');
 	const monthDay = `${month}-${day}`;
 	const normalizedLimit = Math.max(1, Math.min(Number(limit) || 3, 12));
+	const normalizedSourceType = String(options.sourceType || '').trim().toLowerCase();
 
 	try {
-		const result = await db
-			.prepare(
-				`SELECT
-					id,
-					slug,
-					year,
-					month,
-					title,
-					excerpt,
-					body_text,
-					path,
-					bundle_key,
-					cover_image,
-					has_images,
-					published_at,
-					source_path,
-					source_type,
-					source_confidence
-				FROM earlier_web_posts
-				WHERE substr(published_at, 6, 5) = ?
-				ORDER BY published_at DESC
-				LIMIT ?`
-			)
-			.bind(monthDay, Math.max(normalizedLimit * 8, 24))
-			.all<EarlierWebPostRow>();
+		const statement = normalizedSourceType
+			? db
+					.prepare(
+						`SELECT
+							id,
+							slug,
+							year,
+							month,
+							title,
+							excerpt,
+							body_text,
+							path,
+							bundle_key,
+							cover_image,
+							has_images,
+							published_at,
+							source_path,
+							source_type,
+							source_confidence
+						FROM earlier_web_posts
+						WHERE substr(published_at, 6, 5) = ?
+						  AND LOWER(COALESCE(source_type, '')) = ?
+						ORDER BY published_at DESC
+						LIMIT ?`
+					)
+					.bind(monthDay, normalizedSourceType, Math.max(normalizedLimit * 8, 24))
+			: db
+					.prepare(
+						`SELECT
+							id,
+							slug,
+							year,
+							month,
+							title,
+							excerpt,
+							body_text,
+							path,
+							bundle_key,
+							cover_image,
+							has_images,
+							published_at,
+							source_path,
+							source_type,
+							source_confidence
+						FROM earlier_web_posts
+						WHERE substr(published_at, 6, 5) = ?
+						ORDER BY published_at DESC
+						LIMIT ?`
+					)
+					.bind(monthDay, Math.max(normalizedLimit * 8, 24));
+
+		const result = await statement.all<EarlierWebPostRow>();
 
 		const rows = Array.isArray(result.results) ? result.results : [];
 		const sorted = rows
