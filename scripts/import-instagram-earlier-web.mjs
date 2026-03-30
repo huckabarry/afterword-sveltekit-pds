@@ -438,7 +438,9 @@ async function writeSql(entries) {
 			cover_image TEXT,
 			has_images INTEGER NOT NULL DEFAULT 0,
 			published_at TEXT NOT NULL,
-			source_path TEXT NOT NULL UNIQUE
+			source_path TEXT NOT NULL UNIQUE,
+			source_type TEXT,
+			source_confidence TEXT
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_earlier_web_posts_year_month ON earlier_web_posts(year DESC, month DESC, published_at DESC);`,
 		`CREATE INDEX IF NOT EXISTS idx_earlier_web_posts_published_at ON earlier_web_posts(published_at DESC);`
@@ -461,13 +463,15 @@ async function writeSql(entries) {
 					entry.coverImage ? sqlQuote(entry.coverImage) : 'NULL',
 					entry.hasImages ? 1 : 0,
 					sqlQuote(entry.publishedAt),
-					sqlQuote(entry.sourcePath)
+					sqlQuote(entry.sourcePath),
+					sqlQuote('instagram'),
+					sqlQuote('explicit')
 				].join(', ')})`
 		);
 
 		statements.push(
 			`INSERT OR REPLACE INTO earlier_web_posts (
-				id, slug, year, month, title, excerpt, body_text, path, bundle_key, cover_image, has_images, published_at, source_path
+				id, slug, year, month, title, excerpt, body_text, path, bundle_key, cover_image, has_images, published_at, source_path, source_type, source_confidence
 			) VALUES ${values.join(', ')};`
 		);
 	}

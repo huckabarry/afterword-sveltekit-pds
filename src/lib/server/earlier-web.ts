@@ -17,6 +17,8 @@ type EarlierWebPostRow = {
 	has_images: number;
 	published_at: string;
 	source_path: string;
+	source_type: string | null;
+	source_confidence: string | null;
 };
 
 type EarlierWebStoredPost = {
@@ -56,6 +58,8 @@ export type EarlierWebPostSummary = {
 	publishedAt: string;
 	sourcePath: string;
 	bodyTextLength: number;
+	sourceType: string | null;
+	sourceConfidence: string | null;
 };
 
 export type EarlierWebPost = EarlierWebPostSummary & {
@@ -125,7 +129,9 @@ function toEarlierWebPostSummary(row: EarlierWebPostRow): EarlierWebPostSummary 
 		hasImages: Boolean(row.has_images),
 		publishedAt: row.published_at,
 		sourcePath: row.source_path,
-		bodyTextLength: String(row.body_text || '').trim().length
+		bodyTextLength: String(row.body_text || '').trim().length,
+		sourceType: row.source_type || null,
+		sourceConfidence: row.source_confidence || null
 	};
 }
 
@@ -304,7 +310,9 @@ export async function getEarlierWebYearPosts(
 					cover_image,
 					has_images,
 					published_at,
-					source_path
+					source_path,
+					source_type,
+					source_confidence
 				FROM earlier_web_posts
 				WHERE year = ?
 				ORDER BY published_at DESC`
@@ -351,7 +359,9 @@ export async function getEarlierWebOnThisDayPosts(
 					cover_image,
 					has_images,
 					published_at,
-					source_path
+					source_path,
+					source_type,
+					source_confidence
 				FROM earlier_web_posts
 				WHERE substr(published_at, 6, 5) = ?
 				ORDER BY published_at DESC
@@ -425,7 +435,9 @@ export async function getEarlierWebPost(
 					cover_image,
 					has_images,
 					published_at,
-					source_path
+					source_path,
+					source_type,
+					source_confidence
 				FROM earlier_web_posts
 				WHERE year = ? AND month = ? AND slug = ?
 				LIMIT 1`
@@ -582,7 +594,9 @@ export async function getEarlierWebStreamPage(
 							cover_image,
 							has_images,
 							published_at,
-							source_path
+							source_path,
+							source_type,
+							source_confidence
 						FROM earlier_web_posts
 						WHERE published_at < ? OR (published_at = ? AND id < ?)
 						ORDER BY published_at DESC, id DESC
@@ -604,7 +618,9 @@ export async function getEarlierWebStreamPage(
 							cover_image,
 							has_images,
 							published_at,
-							source_path
+							source_path,
+							source_type,
+							source_confidence
 						FROM earlier_web_posts
 						ORDER BY published_at DESC, id DESC
 						LIMIT ?`
@@ -746,7 +762,9 @@ export async function getEarlierWebSeriesPosts(
 					cover_image,
 					has_images,
 					published_at,
-					source_path
+					source_path,
+					source_type,
+					source_confidence
 				FROM earlier_web_posts
 				WHERE LENGTH(TRIM(body_text)) >= ?
 				ORDER BY published_at DESC
