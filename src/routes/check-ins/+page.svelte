@@ -78,8 +78,8 @@
 
 	.card__link-wrap {
 		display: grid;
-		grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
-		gap: 1.5rem;
+		grid-template-columns: 1fr;
+		gap: 1rem;
 		text-decoration: none;
 		align-items: stretch;
 	}
@@ -139,7 +139,6 @@
 	}
 
 	.card__media {
-		order: 2;
 		display: grid;
 		overflow: hidden;
 		border-radius: 1rem;
@@ -167,13 +166,4 @@
 		border-radius: 0;
 	}
 
-	@media (max-width: 800px) {
-		.card__link-wrap {
-			grid-template-columns: 1fr;
-		}
-
-		.card__media {
-			order: 0;
-		}
-	}
 </style>
