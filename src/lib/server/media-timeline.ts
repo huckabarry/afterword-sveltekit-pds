@@ -23,10 +23,15 @@ type BoundR2Bucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
 function getTimelineCache() {
 	const scope = globalThis as typeof globalThis & {
 		__afterwordMediaTimelineCache?: Map<string, MediaTimelineCacheEntry>;
+		__afterwordMediaTimelineRefreshes?: Map<string, Promise<MediaTimelineItem[]>>;
 	};
 
 	if (!scope.__afterwordMediaTimelineCache) {
 		scope.__afterwordMediaTimelineCache = new Map<string, MediaTimelineCacheEntry>();
+	}
+
+	if (!scope.__afterwordMediaTimelineRefreshes) {
+		scope.__afterwordMediaTimelineRefreshes = new Map<string, Promise<MediaTimelineItem[]>>();
 	}
 
 	return scope;
@@ -181,6 +186,39 @@ function writeItemsToMemoryCache(cacheKey: string, items: MediaTimelineItem[]) {
 	});
 }
 
+async function rebuildMediaTimelineItems(
+	cacheKey: string,
+	context?: MediaTimelineContext
+) {
+	const scope = getTimelineCache();
+	const existingRefresh = scope.__afterwordMediaTimelineRefreshes?.get(cacheKey);
+
+	if (existingRefresh) {
+		return existingRefresh;
+	}
+
+	const refresh = (async () => {
+		const items = await buildAllMediaTimelineItems(context);
+		writeItemsToMemoryCache(cacheKey, items);
+
+		const bucket = getBucket(context);
+		if (bucket) {
+			await writeTimelineSnapshotToR2(bucket, items);
+		}
+
+		return items;
+	})()
+		.catch((error) => {
+			throw error;
+		})
+		.finally(() => {
+			scope.__afterwordMediaTimelineRefreshes?.delete(cacheKey);
+		});
+
+	scope.__afterwordMediaTimelineRefreshes?.set(cacheKey, refresh);
+	return refresh;
+}
+
 async function readTimelineSnapshotFromR2(bucket: BoundR2Bucket) {
 	const object = await bucket.get(MEDIA_TIMELINE_R2_KEY);
 
@@ -231,13 +269,28 @@ async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
 		return cached.items;
 	}
 
+	if (cached?.items?.length) {
+		context?.platform?.ctx?.waitUntil?.(rebuildMediaTimelineItems(cacheKey, context).catch(() => {}));
+		return cached.items;
+	}
+
 	if (bucket) {
 		try {
 			const snapshot = await readTimelineSnapshotFromR2(bucket);
 			const generatedAt = snapshot?.generatedAt ? Date.parse(snapshot.generatedAt) : NaN;
 
-			if (snapshot && Number.isFinite(generatedAt) && generatedAt + MEDIA_TIMELINE_CACHE_TTL_MS > Date.now()) {
+			if (snapshot) {
 				writeItemsToMemoryCache(cacheKey, snapshot.items);
+
+				if (
+					!Number.isFinite(generatedAt) ||
+					generatedAt + MEDIA_TIMELINE_CACHE_TTL_MS <= Date.now()
+				) {
+					context?.platform?.ctx?.waitUntil?.(
+						rebuildMediaTimelineItems(cacheKey, context).catch(() => {})
+					);
+				}
+
 				return snapshot.items;
 			}
 		} catch {
@@ -245,16 +298,7 @@ async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
 		}
 	}
 
-	const items = await buildAllMediaTimelineItems(context);
-	writeItemsToMemoryCache(cacheKey, items);
-
-	if (bucket) {
-		void writeTimelineSnapshotToR2(bucket, items).catch(() => {
-			// A failed snapshot write should not block the timeline render.
-		});
-	}
-
-	return items;
+	return rebuildMediaTimelineItems(cacheKey, context);
 }
 
 export async function getMediaTimelinePage(

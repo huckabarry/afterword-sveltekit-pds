@@ -13,5 +13,9 @@ export async function GET(event) {
 
 	const page = await getMediaTimelinePage(event, offset, limit);
 
-	return json(attachMediaCoverDelivery(page, event));
+	return json(attachMediaCoverDelivery(page, event), {
+		headers: {
+			'cache-control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
+		}
+	});
 }
