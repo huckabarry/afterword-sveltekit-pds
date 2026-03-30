@@ -161,6 +161,17 @@ async function getSortedGhostPhotoItems() {
 	});
 }
 
+async function getRecentGhostPhotoItems(limit: number) {
+	const normalizedLimit = Math.min(Math.max(Math.floor(limit), 1), 60);
+
+	return (await getPhotoItems())
+		.sort((a, b) => {
+			const dateDiff = b.postPublishedAt.getTime() - a.postPublishedAt.getTime();
+			return dateDiff || a.index - b.index;
+		})
+		.slice(0, normalizedLimit);
+}
+
 function toGalleryPhotoItem(row: GalleryPhotoManifestRow): GalleryPhotoItem {
 	return {
 		id: row.id,
@@ -566,5 +577,55 @@ export async function runScheduledPhotoSyncBatch(
 		limit,
 		state: await getPhotoSyncState(event),
 		cycleCompleted
+	};
+}
+
+export async function syncRecentPhotoManifestBatch(
+	event: Pick<RequestEvent, 'platform'>,
+	options: {
+		limit?: number;
+	} = {}
+) {
+	const db = getGalleryDb(event);
+	const bucket = getGalleryBucket(event);
+
+	if (!db) {
+		throw new Error('D1 database is not configured');
+	}
+
+	if (!bucket) {
+		throw new Error('R2_BUCKET is not configured');
+	}
+
+	await ensureGalleryPhotoManifestSchema(db);
+
+	const limit = Math.min(toPositiveInteger(options.limit, 18), 60);
+	const photos = await getRecentGhostPhotoItems(limit);
+	const synced: GalleryPhotoItem[] = [];
+	const failures: Array<{ id: string; postTitle: string; error: string }> = [];
+
+	for (const photo of photos) {
+		try {
+			const asset = await ensureGalleryPhotoAsset(photo, bucket as GalleryBucket);
+			const manifestItem: GalleryPhotoItem = {
+				...photo,
+				...asset
+			};
+			await upsertGalleryPhotoManifestRow(db, manifestItem);
+			synced.push(manifestItem);
+		} catch (error) {
+			failures.push({
+				id: photo.id,
+				postTitle: photo.postTitle,
+				error: error instanceof Error ? error.message : 'Unexpected sync error.'
+			});
+		}
+	}
+
+	return {
+		limit,
+		processed: photos.length,
+		syncedCount: synced.length,
+		failures
 	};
 }
