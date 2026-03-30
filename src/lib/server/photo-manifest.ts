@@ -3,7 +3,7 @@ import {
 	ensureGalleryPhotoAsset,
 	type GalleryPhotoItem
 } from '$lib/server/gallery-assets';
-import { getPhotoItems } from '$lib/server/ghost';
+import { getBlogPostBySlug, getPhotoItems, getPostImages } from '$lib/server/ghost';
 
 type GalleryDb = NonNullable<App.Platform['env']['D1_DATABASE']>;
 type GalleryBucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
@@ -624,6 +624,65 @@ export async function syncRecentPhotoManifestBatch(
 
 	return {
 		limit,
+		processed: photos.length,
+		syncedCount: synced.length,
+		failures
+	};
+}
+
+export async function syncGhostPostPhotoManifestBySlug(
+	event: Pick<RequestEvent, 'platform'>,
+	slug: string
+) {
+	const db = getGalleryDb(event);
+	const bucket = getGalleryBucket(event);
+
+	if (!db) {
+		throw new Error('D1 database is not configured');
+	}
+
+	if (!bucket) {
+		throw new Error('R2_BUCKET is not configured');
+	}
+
+	const normalizedSlug = String(slug || '').trim();
+
+	if (!normalizedSlug) {
+		throw new Error('A Ghost post slug is required');
+	}
+
+	await ensureGalleryPhotoManifestSchema(db);
+
+	const post = await getBlogPostBySlug(normalizedSlug);
+
+	if (!post) {
+		throw new Error(`Ghost post not found for slug "${normalizedSlug}"`);
+	}
+
+	const photos = getPostImages(post);
+	const synced: GalleryPhotoItem[] = [];
+	const failures: Array<{ id: string; postTitle: string; error: string }> = [];
+
+	for (const photo of photos) {
+		try {
+			const asset = await ensureGalleryPhotoAsset(photo, bucket as GalleryBucket);
+			const manifestItem: GalleryPhotoItem = {
+				...photo,
+				...asset
+			};
+			await upsertGalleryPhotoManifestRow(db, manifestItem);
+			synced.push(manifestItem);
+		} catch (error) {
+			failures.push({
+				id: photo.id,
+				postTitle: photo.postTitle,
+				error: error instanceof Error ? error.message : 'Unexpected sync error.'
+			});
+		}
+	}
+
+	return {
+		slug: normalizedSlug,
 		processed: photos.length,
 		syncedCount: synced.length,
 		failures

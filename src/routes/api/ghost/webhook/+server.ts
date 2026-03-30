@@ -1,6 +1,9 @@
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
-import { syncRecentPhotoManifestBatch } from '$lib/server/photo-manifest';
+import {
+	syncGhostPostPhotoManifestBySlug,
+	syncRecentPhotoManifestBatch
+} from '$lib/server/photo-manifest';
 
 const MAX_SIGNATURE_AGE_MS = 1000 * 60 * 10;
 const textEncoder = new TextEncoder();
@@ -79,6 +82,27 @@ async function hasValidGhostSignature(request: Request, payload: string) {
 	return expected === signature.sha256;
 }
 
+function extractGhostPostSlug(payload: Record<string, unknown> | null) {
+	const post =
+		payload && typeof payload.post === 'object' && payload.post
+			? (payload.post as Record<string, unknown>)
+			: null;
+	const current = post && typeof post.current === 'object' ? post.current : null;
+	const previous = post && typeof post.previous === 'object' ? post.previous : null;
+
+	if (current && typeof current === 'object' && 'slug' in current) {
+		const slug = String((current as { slug?: unknown }).slug || '').trim();
+		if (slug) return slug;
+	}
+
+	if (previous && typeof previous === 'object' && 'slug' in previous) {
+		const slug = String((previous as { slug?: unknown }).slug || '').trim();
+		if (slug) return slug;
+	}
+
+	return null;
+}
+
 export async function POST(event) {
 	const payload = await event.request.text();
 
@@ -94,10 +118,17 @@ export async function POST(event) {
 		parsedPayload = null;
 	}
 
+	const slug = extractGhostPostSlug(parsedPayload);
+
 	event.platform?.ctx.waitUntil(
-		syncRecentPhotoManifestBatch(event, { limit: 24 }).catch((error) => {
+		(slug
+			? syncGhostPostPhotoManifestBySlug(event, slug)
+			: syncRecentPhotoManifestBatch(event, { limit: 24 })
+		).catch((error) => {
 			console.error(
-				'[ghost-webhook] Unable to sync recent gallery photos:',
+				`[ghost-webhook] Unable to sync ${
+					slug ? `gallery post "${slug}"` : 'recent gallery photos'
+				}:`,
 				error instanceof Error ? error.message : String(error)
 			);
 		})
@@ -107,6 +138,7 @@ export async function POST(event) {
 		ok: true,
 		trigger: 'ghost-webhook',
 		event: parsedPayload?.event || null,
+		slug,
 		receivedAt: new Date().toISOString()
 	});
 }
