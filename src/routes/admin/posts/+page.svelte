@@ -68,7 +68,7 @@
 									Open on Bluesky
 								</a>
 								<span class="admin-reply-count">
-									{post.replyCount} repl{post.replyCount === 1 ? 'y' : 'ies'} · {post.repostCount} repost{post.repostCount === 1 ? '' : 's'} · {post.likeCount} like{post.likeCount === 1 ? '' : 's'}
+									{post.replyCount} repl{post.replyCount === 1 ? 'y' : 'ies'} · {post.repostCount} repost{post.repostCount === 1 ? '' : 's'} · {post.quoteCount} quote{post.quoteCount === 1 ? '' : 's'} · {post.likeCount} like{post.likeCount === 1 ? '' : 's'}
 								</span>
 							</div>
 

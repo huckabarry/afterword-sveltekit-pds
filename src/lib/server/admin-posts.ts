@@ -16,6 +16,7 @@ export type AdminPostFeedItem = {
 	}>;
 	replyCount: number;
 	repostCount: number;
+	quoteCount: number;
 	likeCount: number;
 	openHref: string;
 	sourceHref: string;
@@ -40,6 +41,7 @@ export async function buildAdminPostFeed() {
 		})),
 		replyCount: post.replyCount,
 		repostCount: post.repostCount,
+		quoteCount: post.quoteCount,
 		likeCount: post.likeCount,
 		openHref: `/status/${post.slug}`,
 		sourceHref: post.blueskyUrl

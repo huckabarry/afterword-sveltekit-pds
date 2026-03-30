@@ -50,6 +50,7 @@ export type StatusPost = {
 	isReply: boolean;
 	replyCount: number;
 	repostCount: number;
+	quoteCount: number;
 	likeCount: number;
 	images: StatusImage[];
 	external: StatusExternal | null;
@@ -509,6 +510,7 @@ function normalizeReply(node: Record<string, any>): StatusPost | null {
 		isReply: Boolean(record.reply?.parent?.uri),
 		replyCount: Number(post.replyCount || 0),
 		repostCount: Number(post.repostCount || 0),
+		quoteCount: Number(post.quoteCount || 0),
 		likeCount: Number(post.likeCount || 0),
 		images: getImages(post),
 		external: getExternal(post),
@@ -541,6 +543,7 @@ function normalizeStatus(item: Record<string, any>, actor: string): StatusPost |
 		isReply: Boolean(record.reply?.parent?.uri),
 		replyCount: Number(post.replyCount || 0),
 		repostCount: Number(post.repostCount || 0),
+		quoteCount: Number(post.quoteCount || 0),
 		likeCount: Number(post.likeCount || 0),
 		images: getImages(post),
 		external: getExternal(post),
