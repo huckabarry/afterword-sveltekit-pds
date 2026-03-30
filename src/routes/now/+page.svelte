@@ -251,7 +251,6 @@
 	.now-card__copy {
 		display: grid;
 		gap: 0.35rem;
-		flex: 1 1 auto;
 		align-content: start;
 	}
 
@@ -268,7 +267,7 @@
 		margin: 0;
 		font-size: clamp(1.2rem, 2vw, 1.45rem);
 		line-height: 1.14;
-		min-height: 3.1rem;
+		min-height: 2.8rem;
 	}
 
 	.now-card__title a {
@@ -300,25 +299,30 @@
 	}
 
 	.now-card__map {
+		display: block;
 		overflow: hidden;
 		border-radius: 0.85rem;
+		aspect-ratio: 16 / 10;
 	}
 
 	.now-card__map :global(.checkin-map__frame--compact) {
-		min-height: 220px;
+		min-height: 0;
+		height: 100%;
 	}
 
 	.now-photo {
 		display: block;
 		text-decoration: none;
+		aspect-ratio: 16 / 10;
+		overflow: hidden;
+		border-radius: 0.85rem;
 	}
 
 	.now-photo__image {
 		display: block;
 		width: 100%;
-		aspect-ratio: 4 / 3;
+		height: 100%;
 		object-fit: cover;
-		border-radius: 0.85rem;
 		background: color-mix(in srgb, var(--surface) 82%, white 18%);
 	}
 
