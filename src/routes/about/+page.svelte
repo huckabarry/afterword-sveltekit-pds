@@ -4,17 +4,11 @@
 	}: {
 		data: {
 			title: string;
-			description: string;
 			paragraphs: string[];
 			interests: string[];
 			profile: {
-				displayName: string;
-				avatarUrl: string;
-				headerImageUrl: string | null;
-				bio: string;
 				aboutBody: string;
 				aboutInterests: string[];
-				verificationLinks: { label: string; url: string }[];
 			};
 		};
 	} = $props();
@@ -28,6 +22,10 @@
 	const aboutInterests = $derived.by(() =>
 		data.profile.aboutInterests?.length ? data.profile.aboutInterests : data.interests
 	);
+
+	function getInterestSearchHref(interest: string) {
+		return `/search?q=${encodeURIComponent(interest)}`;
+	}
 </script>
 
 <svelte:head>
@@ -39,23 +37,16 @@
 	<article class="content content-page">
 		<div class="post-full-content">
 			<section class="content-body">
-				{#each aboutParagraphs.length ? aboutParagraphs : data.paragraphs as paragraph}
+				{#each aboutParagraphs.length ? aboutParagraphs : data.paragraphs as paragraph (paragraph)}
 					<p>{paragraph}</p>
 				{/each}
 
 				<h2>Interests</h2>
 
 				<div class="about-interests" aria-label="Interests">
-					{#each aboutInterests as interest}
-						{#if interest.toLowerCase() === 'photography walks'}
-							<span class="tag-pill">{interest}</span>
-						{:else if interest.toLowerCase() === 'writing'}
-							<a class="tag-pill" href="/blog">{interest}</a>
-						{:else if interest === 'Mitski'}
-							<span class="tag-pill">{interest}</span>
-						{:else}
-							<span class="tag-pill">{interest}</span>
-						{/if}
+					{#each aboutInterests as interest (interest)}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a class="tag-pill" href={getInterestSearchHref(interest)}>{interest}</a>
 					{/each}
 				</div>
 			</section>
