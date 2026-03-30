@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { MediaTimelineItem, MediaTimelinePage } from '$lib/types/media-timeline';
 
 	let {
@@ -14,26 +15,15 @@
 		};
 	} = $props();
 
-	let timelineItems = $state<MediaTimelineItem[]>([]);
-	let nextOffset = $state<number | null>(null);
+	let timelineItems = $state<MediaTimelineItem[]>(untrack(() => data.timeline.items));
+	let nextOffset = $state<number | null>(untrack(() => data.timeline.nextOffset));
 	let isLoadingMore = $state(false);
 	let loadError = $state('');
 	let imageOverrides = $state<Record<string, string | null>>({});
 	let hiddenImages = $state<Record<string, boolean>>({});
-	let seededTimeline = $state(false);
 
 	const totalItems = $derived(data.timeline.total);
 	const pageSize = $derived(data.timeline.limit);
-
-	$effect(() => {
-		if (seededTimeline) {
-			return;
-		}
-
-		timelineItems = data.timeline.items;
-		nextOffset = data.timeline.nextOffset;
-		seededTimeline = true;
-	});
 
 	function usesPosterRatio(item: MediaTimelineItem) {
 		return item.kind === 'popfeed' && (item.mediaType === 'movie' || item.mediaType === 'tv_show');
@@ -293,16 +283,16 @@
 										</a>
 									</div>
 
-								{#if item.credit}
-									<p class="media-timeline__meta media-timeline__meta--artist">{item.credit}</p>
-								{/if}
+									{#if item.credit}
+										<p class="media-timeline__meta media-timeline__meta--artist">{item.credit}</p>
+									{/if}
 
-								{#if item.activityLabel}
-									<p class="media-timeline__meta media-timeline__meta--status">
-										Latest update: {item.activityLabel}
-									</p>
-								{/if}
-							</div>
+									{#if item.activityLabel}
+										<p class="media-timeline__meta media-timeline__meta--status">
+											Latest update: {item.activityLabel}
+										</p>
+									{/if}
+								</div>
 
 								{#if !isBookPopfeed(item) && getItemImageUrl(item) && !hiddenImages[item.id]}
 									<a

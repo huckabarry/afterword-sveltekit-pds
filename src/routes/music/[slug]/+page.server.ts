@@ -1,8 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { getAlbumBySlug, getAlbums } from '$lib/server/music';
 
-export async function load({ params }) {
-	const [album, albums] = await Promise.all([getAlbumBySlug(params.slug), getAlbums()]);
+export async function load(event) {
+	const { params } = event;
+	const [album, albums] = await Promise.all([getAlbumBySlug(params.slug, event), getAlbums(event)]);
 
 	if (!album) {
 		throw error(404, 'Album not found');

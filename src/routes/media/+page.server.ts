@@ -5,7 +5,7 @@ import { getMediaTimelinePage, MEDIA_TIMELINE_PAGE_SIZE } from '$lib/server/medi
 export async function load(event) {
 	const [intro, timeline] = await Promise.all([
 		getSimplePageContent('media.md', 'Media'),
-		getMediaTimelinePage(0, MEDIA_TIMELINE_PAGE_SIZE)
+		getMediaTimelinePage(event, 0, MEDIA_TIMELINE_PAGE_SIZE)
 	]);
 
 	return {

@@ -52,7 +52,23 @@
 		errors: string[];
 	};
 
-	let { data }: { data: { reviewQueue: PopfeedBookCoverReviewQueue } } = $props();
+	type MusicCacheStatusView = {
+		lastAttemptedAt: string | null;
+		lastRefreshedAt: string | null;
+		lastStatus: 'idle' | 'success' | 'error';
+		lastError: string | null;
+		lastSource: 'r2' | 'pds' | 'archive' | null;
+		archiveDigest: string | null;
+		currentArchiveDigest: string | null;
+		snapshotGeneratedAt: string | null;
+		snapshotArchiveDigest: string | null;
+		snapshotTrackCount: number;
+		snapshotAlbumCount: number;
+		snapshotIsCurrent: boolean;
+	};
+
+	let { data }: { data: { reviewQueue: PopfeedBookCoverReviewQueue; musicCache: MusicCacheStatusView } } =
+		$props();
 
 	const idleState = (): RunState => ({
 		running: false,
@@ -89,6 +105,26 @@
 
 	function isReviewActionRunning(sourceUri: string) {
 		return Boolean(reviewPending[sourceUri]);
+	}
+
+	function formatTimestamp(value: string | null) {
+		if (!value) {
+			return 'Not yet';
+		}
+
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) {
+			return value;
+		}
+
+		return new Intl.DateTimeFormat('en-US', {
+			dateStyle: 'medium',
+			timeStyle: 'short'
+		}).format(date);
+	}
+
+	function resolveLocalPath(path: string) {
+		return path;
 	}
 
 	async function loadReviewQueue() {
@@ -172,11 +208,12 @@
 				message: '',
 				errors: [error instanceof Error ? error.message : 'Unable to update this book cover.']
 			};
-		} finally {
-			const { [sourceUri]: _, ...rest } = reviewPending;
-			reviewPending = rest;
+			} finally {
+				const { [sourceUri]: removedPendingAction, ...rest } = reviewPending;
+				void removedPendingAction;
+				reviewPending = rest;
+			}
 		}
-	}
 
 	async function runMusicCollection(collection: 'tracks' | 'albums', batchSize: number) {
 		let nextOffset: number | null = 0;
@@ -408,14 +445,14 @@
 			</p>
 		{/if}
 
-		{#if overallErrors.length}
-			<div class="admin-link-list">
-				<p><strong>Run issues</strong></p>
-				{#each overallErrors as failure}
-					<p class="admin-form-error">{failure}</p>
-				{/each}
-			</div>
-		{/if}
+			{#if overallErrors.length}
+				<div class="admin-link-list">
+					<p><strong>Run issues</strong></p>
+					{#each overallErrors as failure (failure)}
+						<p class="admin-form-error">{failure}</p>
+					{/each}
+				</div>
+			{/if}
 	</div>
 
 	<div class="admin-card">
@@ -431,6 +468,41 @@
 			the public music pages can prefer local blobs instead of remote Apple Music or other provider
 			images.
 		</p>
+
+		<div class="music-cache-status">
+			<p><strong>Current music cache</strong></p>
+			<p class="admin-field-note">
+				Source: <code>{data.musicCache.lastSource || 'unknown'}</code>. Snapshot current:
+				<code>{data.musicCache.snapshotIsCurrent ? 'yes' : 'no'}</code>.
+			</p>
+			<p class="admin-field-note">
+				Last attempt: <code>{formatTimestamp(data.musicCache.lastAttemptedAt)}</code>
+			</p>
+			<p class="admin-field-note">
+				Last refresh success: <code>{formatTimestamp(data.musicCache.lastRefreshedAt)}</code>
+			</p>
+			<p class="admin-field-note">
+				Snapshot generated: <code>{formatTimestamp(data.musicCache.snapshotGeneratedAt)}</code>
+			</p>
+			<p class="admin-field-note">
+				Snapshot contents: <code>{data.musicCache.snapshotTrackCount}</code> tracks and
+				<code>{data.musicCache.snapshotAlbumCount}</code> albums
+			</p>
+			<p class="admin-field-note">
+				Archive digest match:
+				<code>{data.musicCache.snapshotArchiveDigest === data.musicCache.currentArchiveDigest ? 'yes' : 'no'}</code>
+			</p>
+			<p class="admin-field-note">
+				Recorded digest:
+				<code>{data.musicCache.archiveDigest || 'none'}</code>
+			</p>
+
+			{#if data.musicCache.lastStatus === 'error' && data.musicCache.lastError}
+				<p class="admin-form-error">
+					Last refresh error: {data.musicCache.lastError}
+				</p>
+			{/if}
+		</div>
 
 		<div class="admin-form-actions">
 			<button
@@ -456,14 +528,14 @@
 			</p>
 		{/if}
 
-		{#if musicState.errors.length}
-			<div class="admin-link-list">
-				<p><strong>Music import issues</strong></p>
-				{#each musicState.errors as failure}
-					<p class="admin-form-error">{failure}</p>
-				{/each}
-			</div>
-		{/if}
+			{#if musicState.errors.length}
+				<div class="admin-link-list">
+					<p><strong>Music import issues</strong></p>
+					{#each musicState.errors as failure (failure)}
+						<p class="admin-form-error">{failure}</p>
+					{/each}
+				</div>
+			{/if}
 	</div>
 
 	<div class="admin-card">
@@ -503,14 +575,14 @@
 			</p>
 		{/if}
 
-		{#if coverState.errors.length}
-			<div class="admin-link-list">
-				<p><strong>Book-cover issues</strong></p>
-				{#each coverState.errors as failure}
-					<p class="admin-form-error">{failure}</p>
-				{/each}
-			</div>
-		{/if}
+			{#if coverState.errors.length}
+				<div class="admin-link-list">
+					<p><strong>Book-cover issues</strong></p>
+					{#each coverState.errors as failure (failure)}
+						<p class="admin-form-error">{failure}</p>
+					{/each}
+				</div>
+			{/if}
 	</div>
 
 	<div class="admin-card">
@@ -552,14 +624,14 @@
 			</p>
 		{/if}
 
-		{#if reviewState.errors.length}
-			<div class="admin-link-list">
-				<p><strong>Review queue issues</strong></p>
-				{#each reviewState.errors as failure}
-					<p class="admin-form-error">{failure}</p>
-				{/each}
-			</div>
-		{/if}
+			{#if reviewState.errors.length}
+				<div class="admin-link-list">
+					<p><strong>Review queue issues</strong></p>
+					{#each reviewState.errors as failure (failure)}
+						<p class="admin-form-error">{failure}</p>
+					{/each}
+				</div>
+			{/if}
 
 		{#if !reviewItems.length && !reviewState.running && !reviewState.errors.length}
 			<p class="admin-field-note">No book covers are waiting for review right now.</p>
@@ -567,7 +639,7 @@
 
 		{#if reviewItems.length}
 			<div class="cover-review-list">
-				{#each reviewItems as item}
+				{#each reviewItems as item (item.sourceUri)}
 					<article class="cover-review-card">
 						<div class="cover-review-images">
 							<div class="cover-review-figure">
@@ -603,10 +675,13 @@
 							</div>
 						</div>
 
-						<div class="cover-review-body">
-							<h3 class="cover-review-title">
-								<a href={item.localPath} target="_blank" rel="noreferrer">{item.title}</a>
-							</h3>
+							<div class="cover-review-body">
+								<h3 class="cover-review-title">
+									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+									<a href={resolveLocalPath(item.localPath)} target="_blank" rel="noreferrer"
+										>{item.title}</a
+									>
+								</h3>
 
 							{#if item.author}
 								<p class="cover-review-meta">{item.author}</p>
@@ -624,8 +699,12 @@
 							</div>
 
 							<div class="cover-review-linkrow">
-								<a href={item.localPath} target="_blank" rel="noreferrer">Open local page</a>
+								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+								<a href={resolveLocalPath(item.localPath)} target="_blank" rel="noreferrer"
+									>Open local page</a
+								>
 								{#if item.openLibraryUrl}
+									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 									<a href={item.openLibraryUrl} target="_blank" rel="noreferrer"
 										>Open Library search (reference only)</a
 									>
@@ -692,6 +771,20 @@
 		background: rgba(255, 255, 255, 0.04);
 		color: rgba(239, 240, 244, 0.92);
 		border: 1px solid rgba(255, 255, 255, 0.12);
+	}
+
+	.music-cache-status {
+		display: grid;
+		gap: 0.35rem;
+		margin: 0.9rem 0 1rem;
+		padding: 0.9rem 1rem;
+		border-radius: 0.9rem;
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+	}
+
+	.music-cache-status p {
+		margin: 0;
 	}
 
 	.cover-review-list {

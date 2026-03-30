@@ -4,8 +4,9 @@ import adapter from '@sveltejs/adapter-cloudflare';
 const config = {
 	kit: {
 		adapter: adapter(),
-		// Mastodon/OAuth clients often POST form-encoded data without a same-site Origin header.
-		// We rely on token checks and password/session auth for protection on these routes instead.
+		// `/webmention` must accept cross-origin form posts, which requires disabling SvelteKit's
+		// global Origin check. We re-apply CSRF protection in `src/hooks.server.ts` for sensitive
+		// same-origin form routes like admin actions and uploads.
 		csrf: {
 			trustedOrigins: ['*']
 		}

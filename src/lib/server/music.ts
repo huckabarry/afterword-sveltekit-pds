@@ -1,3 +1,6 @@
+import type { RequestEvent } from '@sveltejs/kit';
+import { updateMusicCacheStatus } from '$lib/server/music-cache-status';
+import { getMusicSnapshotFromR2, writeMusicSnapshotToR2 } from '$lib/server/music-r2';
 import { getPdsAlbums, getPdsTracks } from '$lib/server/pds-music';
 
 const ALBUMWHALE_LIST_URL = 'https://albumwhale.com/bryan/listening-now';
@@ -76,10 +79,17 @@ type CrucialTrackFeedIndex = {
 	byTrackKey: Map<string, CrucialTrackFeedDetails>;
 };
 
+export type MusicReadContext = Pick<RequestEvent, 'platform'> | null | undefined;
+
 let albumWhalePageMapPromise: Promise<Map<string, string>> | null = null;
 let albumWhaleLinksPromise: Promise<Map<string, ListenLink[]>> | null = null;
 let crucialTracksDetailsPromise: Promise<CrucialTrackFeedIndex> | null = null;
 let crucialTracksDetailsExpiresAt = 0;
+let musicArchiveDigest: string | null = null;
+let musicSnapshotWritePromise:
+	| Promise<{ tracks: TrackEntry[]; albums: AlbumEntry[] }>
+	| null = null;
+let musicSnapshotWriteDigest: string | null = null;
 
 function walkMarkdownFiles(root: string): string[] {
 	const files = root === 'albumwhale' ? albumArchiveFiles : trackArchiveFiles;
@@ -220,6 +230,89 @@ function mergeMusicEntries<T extends { publishedAt: Date }>(
 	return [...preferred, ...fallback.filter((item) => !seen.has(getKey(item)))].sort(
 		(a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()
 	);
+}
+
+function hashString(value: string) {
+	let hash = 0x811c9dc5;
+
+	for (const character of String(value || '')) {
+		hash ^= character.charCodeAt(0);
+		hash = Math.imul(hash, 0x01000193);
+	}
+
+	return (hash >>> 0).toString(36);
+}
+
+export function getMusicArchiveDigest() {
+	if (musicArchiveDigest) {
+		return musicArchiveDigest;
+	}
+
+	const parts = [
+		...Object.entries(albumArchiveFiles).map(([path, content]) => `album:${path}:${content}`),
+		...Object.entries(trackArchiveFiles).map(([path, content]) => `track:${path}:${content}`)
+	].sort();
+
+	musicArchiveDigest = hashString(parts.join('\n---\n'));
+	return musicArchiveDigest;
+}
+
+async function ensureMusicSnapshotInR2(context: MusicReadContext, archiveDigest: string) {
+	if (!context?.platform?.env?.R2_BUCKET) {
+		return null;
+	}
+
+	if (musicSnapshotWritePromise && musicSnapshotWriteDigest === archiveDigest) {
+		return musicSnapshotWritePromise;
+	}
+
+	musicSnapshotWriteDigest = archiveDigest;
+	musicSnapshotWritePromise = (async () => {
+		const attemptedAt = new Date().toISOString();
+		await updateMusicCacheStatus(context, {
+			lastAttemptedAt: attemptedAt,
+			lastStatus: 'idle',
+			lastError: null,
+			archiveDigest
+		});
+
+		const [tracks, albums] = await Promise.all([getLegacyTracks(), getLegacyAlbums()]);
+
+		await writeMusicSnapshotToR2(context, {
+			tracks,
+			albums,
+			archiveDigest
+		});
+
+		await updateMusicCacheStatus(context, {
+			lastAttemptedAt: attemptedAt,
+			lastRefreshedAt: new Date().toISOString(),
+			lastStatus: 'success',
+			lastError: null,
+			lastSource: 'r2',
+			archiveDigest
+		});
+
+		return { tracks, albums };
+	})();
+
+	try {
+		return await musicSnapshotWritePromise;
+	} catch (error) {
+		await updateMusicCacheStatus(context, {
+			lastAttemptedAt: new Date().toISOString(),
+			lastStatus: 'error',
+			lastError: error instanceof Error ? error.message : 'Unknown music snapshot refresh error.',
+			lastSource: 'archive',
+			archiveDigest
+		});
+		throw error;
+	} finally {
+		if (musicSnapshotWriteDigest === archiveDigest) {
+			musicSnapshotWritePromise = null;
+			musicSnapshotWriteDigest = null;
+		}
+	}
 }
 
 function formatDisplayDate(date: Date): string {
@@ -733,38 +826,124 @@ async function getLegacyAlbums() {
 	return getArchiveAlbums();
 }
 
-export async function getAlbums(): Promise<AlbumEntry[]> {
-	const [pdsAlbums, legacyAlbums] = await Promise.all([
-		getPdsAlbums().catch(() => []),
-		getLegacyAlbums()
+export async function getAlbums(context?: MusicReadContext): Promise<AlbumEntry[]> {
+	const archiveDigest = getMusicArchiveDigest();
+	const [r2Snapshot, pdsAlbums] = await Promise.all([
+		getMusicSnapshotFromR2(context),
+		getPdsAlbums().catch(() => [])
 	]);
 
+	const r2Albums = r2Snapshot?.albums || [];
+	if (r2Albums.length && r2Snapshot?.archiveDigest === archiveDigest) {
+		void updateMusicCacheStatus(context, {
+			lastStatus: 'success',
+			lastSource: 'r2',
+			archiveDigest
+		}).catch(() => {});
+		return mergeMusicEntries(r2Albums, pdsAlbums, getAlbumDedupKey);
+	}
+
+	if (context?.platform?.env?.R2_BUCKET) {
+		try {
+			const snapshot = await ensureMusicSnapshotInR2(context, archiveDigest);
+			if (snapshot?.albums.length) {
+				return mergeMusicEntries(snapshot.albums, pdsAlbums, getAlbumDedupKey);
+			}
+		} catch {
+			// Ignore write errors and continue serving the freshest available data.
+		}
+	}
+
+	const legacyAlbums = await getLegacyAlbums();
+
+	if (r2Albums.length) {
+		void updateMusicCacheStatus(context, {
+			lastSource: 'r2',
+			archiveDigest
+		}).catch(() => {});
+		return mergeMusicEntries(r2Albums, mergeMusicEntries(pdsAlbums, legacyAlbums, getAlbumDedupKey), getAlbumDedupKey);
+	}
+
 	if (!pdsAlbums.length) {
+		void updateMusicCacheStatus(context, {
+			lastSource: 'archive',
+			archiveDigest
+		}).catch(() => {});
 		return legacyAlbums;
 	}
 
+	void updateMusicCacheStatus(context, {
+		lastSource: 'pds',
+		archiveDigest
+	}).catch(() => {});
 	return mergeMusicEntries(pdsAlbums, legacyAlbums, getAlbumDedupKey);
 }
 
-export async function getTracks(): Promise<TrackEntry[]> {
-	const [pdsTracks, legacyTracks] = await Promise.all([
-		getPdsTracks().catch(() => []),
-		getLegacyTracks()
+export async function getTracks(context?: MusicReadContext): Promise<TrackEntry[]> {
+	const archiveDigest = getMusicArchiveDigest();
+	const [r2Snapshot, pdsTracks] = await Promise.all([
+		getMusicSnapshotFromR2(context),
+		getPdsTracks().catch(() => [])
 	]);
 
+	const r2Tracks = r2Snapshot?.tracks || [];
+	if (r2Tracks.length && r2Snapshot?.archiveDigest === archiveDigest) {
+		void updateMusicCacheStatus(context, {
+			lastStatus: 'success',
+			lastSource: 'r2',
+			archiveDigest
+		}).catch(() => {});
+		return mergeMusicEntries(r2Tracks, pdsTracks, getTrackDedupKey);
+	}
+
+	if (context?.platform?.env?.R2_BUCKET) {
+		try {
+			const snapshot = await ensureMusicSnapshotInR2(context, archiveDigest);
+			if (snapshot?.tracks.length) {
+				return mergeMusicEntries(snapshot.tracks, pdsTracks, getTrackDedupKey);
+			}
+		} catch {
+			// Ignore write errors and continue serving the freshest available data.
+		}
+	}
+
+	const legacyTracks = await getLegacyTracks();
+
+	if (r2Tracks.length) {
+		void updateMusicCacheStatus(context, {
+			lastSource: 'r2',
+			archiveDigest
+		}).catch(() => {});
+		return mergeMusicEntries(r2Tracks, mergeMusicEntries(pdsTracks, legacyTracks, getTrackDedupKey), getTrackDedupKey);
+	}
+
 	if (!pdsTracks.length) {
+		void updateMusicCacheStatus(context, {
+			lastSource: 'archive',
+			archiveDigest
+		}).catch(() => {});
 		return legacyTracks;
 	}
 
+	void updateMusicCacheStatus(context, {
+		lastSource: 'pds',
+		archiveDigest
+	}).catch(() => {});
 	return mergeMusicEntries(pdsTracks, legacyTracks, getTrackDedupKey);
 }
 
-export async function getAlbumBySlug(slug: string): Promise<AlbumEntry | null> {
-	const albums = await getAlbums();
+export async function getAlbumBySlug(
+	slug: string,
+	context?: MusicReadContext
+): Promise<AlbumEntry | null> {
+	const albums = await getAlbums(context);
 	return albums.find((album) => album.slug === slug) || null;
 }
 
-export async function getTrackBySlug(slug: string): Promise<TrackEntry | null> {
-	const tracks = await getTracks();
+export async function getTrackBySlug(
+	slug: string,
+	context?: MusicReadContext
+): Promise<TrackEntry | null> {
+	const tracks = await getTracks(context);
 	return tracks.find((track) => track.slug === slug) || null;
 }

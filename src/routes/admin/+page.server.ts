@@ -5,9 +5,12 @@ import {
 	getSiteProfile
 } from '$lib/server/profile';
 import { countWebmentions } from '$lib/server/webmentions';
+import { requireAdminSession } from '$lib/server/admin';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
+	await requireAdminSession(event);
+
 	const [profile, photoSummary, webmentionCount] = await Promise.all([
 		getSiteProfile(event),
 		getGalleryManifestSummary(event),

@@ -11,7 +11,7 @@ export async function GET(event) {
 	const offset = normalizeNumber(event.url.searchParams.get('offset'), 0);
 	const limit = normalizeNumber(event.url.searchParams.get('limit'), MEDIA_TIMELINE_PAGE_SIZE);
 
-	const page = await getMediaTimelinePage(offset, limit);
+	const page = await getMediaTimelinePage(event, offset, limit);
 
 	return json(attachMediaCoverDelivery(page, event));
 }

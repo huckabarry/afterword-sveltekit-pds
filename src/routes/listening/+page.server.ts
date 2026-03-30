@@ -1,7 +1,7 @@
 import { getTracks } from '$lib/server/music';
 
-export async function load() {
+export async function load(event) {
 	return {
-		tracks: await getTracks()
+		tracks: await getTracks(event)
 	};
 }

@@ -6,9 +6,12 @@ import {
 	getStandardSitePublicationAtUri,
 	syncGhostPostToStandardSite
 } from '$lib/server/standard-site';
+import { requireAdminSession } from '$lib/server/admin';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
+	await requireAdminSession(event);
+
 	const [publicationAtUri, posts] = await Promise.all([
 		getStandardSitePublicationAtUri(),
 		getBlogPostsByAnyTag(['field-notes', 'urbanism'])
@@ -17,14 +20,14 @@ export const load: PageServerLoad = async (event) => {
 	const postStatuses = posts
 		.sort((a, b) => a.publishedAt.getTime() - b.publishedAt.getTime())
 		.map((post) => ({
-		slug: post.slug,
-		title: post.title,
-		path: post.path,
-		publishedAt: post.publishedAt.toISOString(),
-		documentAtUri: null,
-		matchingTags: post.publicTags
-			.filter((tag) => tag.slug === 'field-notes' || tag.slug === 'urbanism')
-			.map((tag) => tag.label)
+			slug: post.slug,
+			title: post.title,
+			path: post.path,
+			publishedAt: post.publishedAt.toISOString(),
+			documentAtUri: null,
+			matchingTags: post.publicTags
+				.filter((tag) => tag.slug === 'field-notes' || tag.slug === 'urbanism')
+				.map((tag) => tag.label)
 		}));
 
 	return {
@@ -35,6 +38,8 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions: Actions = {
 	syncPublication: async (event) => {
+		await requireAdminSession(event);
+
 		try {
 			const profile = await getSiteProfile(event);
 			const result = await ensurePublicationRecord(event, profile);
@@ -50,6 +55,8 @@ export const actions: Actions = {
 		}
 	},
 	syncPost: async (event) => {
+		await requireAdminSession(event);
+
 		const form = await event.request.formData();
 		const slug = String(form.get('slug') || '').trim();
 

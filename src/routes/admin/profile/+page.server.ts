@@ -10,9 +10,12 @@ import {
 	updateSiteProfile
 } from '$lib/server/profile';
 import { uploadImageFiles } from '$lib/server/media';
+import { requireAdminSession } from '$lib/server/admin';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
+	await requireAdminSession(event);
+
 	const profile = await getSiteProfile(event);
 
 	return {
@@ -30,6 +33,8 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions: Actions = {
 	default: async (event) => {
+		await requireAdminSession(event);
+
 		const currentProfile = await getSiteProfile(event);
 		const form = await event.request.formData();
 		const displayName = String(form.get('displayName') || '').trim();

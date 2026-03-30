@@ -1,8 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { getTrackBySlug, getTracks } from '$lib/server/music';
 
-export async function load({ params }) {
-	const [track, tracks] = await Promise.all([getTrackBySlug(params.slug), getTracks()]);
+export async function load(event) {
+	const { params } = event;
+	const [track, tracks] = await Promise.all([getTrackBySlug(params.slug, event), getTracks(event)]);
 
 	if (!track) {
 		throw error(404, 'Track not found');

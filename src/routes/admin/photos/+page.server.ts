@@ -1,7 +1,13 @@
-import { getGalleryManifestSummary, getPagedManifestGalleryPhotos } from '$lib/server/photo-manifest';
+import {
+	getGalleryManifestSummary,
+	getPagedManifestGalleryPhotos
+} from '$lib/server/photo-manifest';
+import { requireAdminSession } from '$lib/server/admin';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
+	await requireAdminSession(event);
+
 	const pageParam = Number.parseInt(event.url.searchParams.get('page') || '1', 10);
 	const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
 	const paged = await getPagedManifestGalleryPhotos(event, {

@@ -52,9 +52,7 @@ export async function hasAdminSession(cookies: Cookies) {
 	return current === expected;
 }
 
-function getSubmittedAdminSecret(
-	event: Pick<RequestEvent, 'request'>
-) {
+function getSubmittedAdminSecret(event: Pick<RequestEvent, 'request'>) {
 	const authorization = event.request.headers.get('authorization')?.trim() || '';
 	const bearer = authorization.toLowerCase().startsWith('bearer ')
 		? authorization.slice(7).trim()
@@ -68,14 +66,23 @@ function getSubmittedAdminSecret(
 	);
 }
 
+export function hasValidAdminSecret(request: Request) {
+	const password = getAdminPassword();
+
+	if (!password) {
+		return false;
+	}
+
+	const submitted = getSubmittedAdminSecret({ request } as Pick<RequestEvent, 'request'>);
+	return Boolean(submitted && submitted === password);
+}
+
 export async function hasAdminAccess(event: Pick<RequestEvent, 'cookies' | 'request'>) {
 	if (await hasAdminSession(event.cookies)) {
 		return true;
 	}
 
-	const password = getAdminPassword();
-	const submitted = getSubmittedAdminSecret(event);
-	return Boolean(password && submitted && submitted === password);
+	return hasValidAdminSecret(event.request);
 }
 
 export async function requireAdminSession(event: Pick<RequestEvent, 'cookies'>) {

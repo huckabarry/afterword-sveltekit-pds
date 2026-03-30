@@ -1,3 +1,4 @@
+import type { RequestEvent } from '@sveltejs/kit';
 import { getRecentTaggedPosts, type BlogPost } from '$lib/server/ghost';
 import { getAlbums, getTracks } from '$lib/server/music';
 import { getPopfeedItems } from '$lib/server/popfeed';
@@ -35,11 +36,11 @@ type MediaTimelineCacheEntry = {
 
 function getTimelineCache() {
 	const scope = globalThis as typeof globalThis & {
-		__afterwordMediaTimelineCache?: MediaTimelineCacheEntry | null;
+		__afterwordMediaTimelineCache?: Map<string, MediaTimelineCacheEntry>;
 	};
 
 	if (!scope.__afterwordMediaTimelineCache) {
-		scope.__afterwordMediaTimelineCache = null;
+		scope.__afterwordMediaTimelineCache = new Map<string, MediaTimelineCacheEntry>();
 	}
 
 	return scope;
@@ -210,19 +211,22 @@ function toPopfeedTimelineItem(
 	};
 }
 
-async function getAllMediaTimelineItems() {
-	const scope = getTimelineCache();
-	const cached = scope.__afterwordMediaTimelineCache;
+type MediaTimelineContext = Pick<RequestEvent, 'platform'> | null | undefined;
 
-	if (cached && cached.expiresAt > Date.now()) {
+async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
+	const scope = getTimelineCache();
+	const cacheKey = context?.platform?.env?.R2_BUCKET ? 'r2' : 'default';
+	const cached = scope.__afterwordMediaTimelineCache?.get(cacheKey);
+
+	if (cached?.expiresAt && cached.expiresAt > Date.now()) {
 		return cached.items;
 	}
 
 	const [bookPosts, screenPosts, albums, tracks, popfeedItems] = await Promise.all([
 		getRecentTaggedPosts(BOOK_TAGS, 14),
 		getRecentTaggedPosts(SCREEN_TAGS, 14),
-		getAlbums(),
-		getTracks(),
+		getAlbums(context),
+		getTracks(context),
 		getPopfeedItems()
 	]);
 	const items = [
@@ -232,19 +236,20 @@ async function getAllMediaTimelineItems() {
 		...popfeedItems.map(toPopfeedTimelineItem)
 	].sort((left, right) => Date.parse(right.dateIso) - Date.parse(left.dateIso));
 
-	scope.__afterwordMediaTimelineCache = {
+	scope.__afterwordMediaTimelineCache?.set(cacheKey, {
 		expiresAt: Date.now() + MEDIA_TIMELINE_CACHE_TTL_MS,
 		items
-	};
+	});
 
 	return items;
 }
 
 export async function getMediaTimelinePage(
+	context?: MediaTimelineContext,
 	offset = 0,
 	limit = MEDIA_TIMELINE_PAGE_SIZE
 ): Promise<MediaTimelinePage> {
-	const items = await getAllMediaTimelineItems();
+	const items = await getAllMediaTimelineItems(context);
 	const safeLimit = Math.max(1, Math.min(limit, 40));
 	const safeOffset = Math.max(0, offset);
 	const pageItems = items.slice(safeOffset, safeOffset + safeLimit);
