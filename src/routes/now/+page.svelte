@@ -26,28 +26,6 @@
 		data.latestCheckin ? excerpt(data.latestCheckin.excerpt || data.latestCheckin.note, 180) : ''
 	);
 
-	function dedupeCommaSeparated(value: string) {
-		const parts = String(value || '')
-			.split(',')
-			.map((part) => part.trim())
-			.filter(Boolean);
-		const seen = new Set<string>();
-		const deduped: string[] = [];
-
-		for (const part of parts) {
-			const key = part.toLowerCase();
-			if (seen.has(key)) continue;
-			seen.add(key);
-			deduped.push(part);
-		}
-
-		return deduped.join(', ');
-	}
-
-	const latestCheckinPlaceLine = $derived.by(() =>
-		data.latestCheckin ? dedupeCommaSeparated(data.latestCheckin.place) : ''
-	);
-
 </script>
 
 <svelte:head>
@@ -109,16 +87,8 @@
 							<a href={data.latestCheckin.canonicalPath}>{data.latestCheckin.name}</a>
 						</h2>
 
-						{#if latestCheckinPlaceLine}
-							<p class="now-card__place">{latestCheckinPlaceLine}</p>
-						{/if}
-
 						{#if data.latestCheckin.venueCategory}
 							<p class="now-card__subhead">{data.latestCheckin.venueCategory}</p>
-						{/if}
-
-						{#if latestCheckinText}
-							<p class="now-card__text">{latestCheckinText}</p>
 						{/if}
 					</div>
 
@@ -131,6 +101,10 @@
 								compact={true}
 							/>
 						</div>
+					{/if}
+
+					{#if latestCheckinText}
+						<p class="now-card__text">{latestCheckinText}</p>
 					{/if}
 
 					<div class="now-card__actions">
@@ -164,6 +138,10 @@
 							loading="lazy"
 						/>
 					</a>
+
+					{#if data.latestPhoto.alt && data.latestPhoto.alt !== data.latestPhoto.postTitle}
+						<p class="now-card__text">{data.latestPhoto.alt}</p>
+					{/if}
 
 					<div class="now-card__actions">
 						<a class="tag-pill now-card__action" href={data.latestPhoto.postPath}>View post</a>
@@ -275,16 +253,10 @@
 		text-decoration: none;
 	}
 
-	.now-card__place,
 	.now-card__subhead,
 	.now-card__text {
 		margin: 0;
 		color: var(--muted);
-	}
-
-	.now-card__place {
-		font-size: 0.96rem;
-		line-height: 1.5;
 	}
 
 	.now-card__subhead {
