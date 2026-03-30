@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import type { SearchResult } from '$lib/server/search';
 
 	let {
@@ -35,7 +34,8 @@
 							<article class="search-page-result">
 								<p class="search-page-result__eyebrow">{result.section}</p>
 								<h2 class="search-page-result__title">
-									<a href={resolve(result.path)}>{result.title}</a>
+									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+									<a href={result.path}>{result.title}</a>
 								</h2>
 								<p class="search-page-result__excerpt">{result.excerpt}</p>
 							</article>

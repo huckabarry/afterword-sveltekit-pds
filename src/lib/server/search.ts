@@ -1,5 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { getBlogPosts, type BlogPost } from '$lib/server/ghost';
+import { getAlbums, getTracks } from '$lib/server/music';
 
 type SearchDb = NonNullable<App.Platform['env']['D1_DATABASE']>;
 
@@ -12,6 +13,10 @@ export type SearchResult = {
 	section: string;
 	coverImage: string | null;
 	publishedAt: string;
+};
+
+type RankedSearchResult = SearchResult & {
+	score: number;
 };
 
 function getSearchDb(event: RequestEvent): SearchDb | null {
@@ -119,6 +124,27 @@ function scorePost(post: BlogPost, query: string) {
 	return score;
 }
 
+function scoreText(haystackParts: Array<string | null | undefined>, query: string) {
+	const haystack = haystackParts
+		.map((part) => String(part || '').trim().toLowerCase())
+		.filter(Boolean)
+		.join(' ');
+	const terms = query
+		.toLowerCase()
+		.split(/\s+/)
+		.map((term) => term.trim())
+		.filter(Boolean);
+
+	let score = 0;
+
+	for (const term of terms) {
+		if (!term) continue;
+		if (haystack.includes(term)) score += 1;
+	}
+
+	return score;
+}
+
 function postToResult(post: BlogPost): SearchResult {
 	return {
 		id: post.id,
@@ -130,6 +156,15 @@ function postToResult(post: BlogPost): SearchResult {
 		coverImage: post.coverImage,
 		publishedAt: post.publishedAt.toISOString()
 	};
+}
+
+function rankSearchResult(result: SearchResult, query: string) {
+	return {
+		...result,
+		score:
+			scoreText([result.title, result.excerpt, result.section], query) +
+			(result.title.toLowerCase().includes(query.toLowerCase()) ? 10 : 0)
+	} satisfies RankedSearchResult;
 }
 
 export async function syncSearchIndex(event: RequestEvent) {
@@ -182,7 +217,7 @@ export async function syncSearchIndex(event: RequestEvent) {
 	};
 }
 
-async function fallbackSearch(query: string, limit: number) {
+async function fallbackSearch(query: string, limit: number): Promise<RankedSearchResult[]> {
 	const posts = await getBlogPosts();
 
 	return posts
@@ -193,7 +228,86 @@ async function fallbackSearch(query: string, limit: number) {
 			return b.post.publishedAt.getTime() - a.post.publishedAt.getTime();
 		})
 		.slice(0, limit)
-		.map((entry) => postToResult(entry.post));
+		.map((entry) => ({
+			...postToResult(entry.post),
+			score: entry.score
+		}));
+}
+
+async function searchMusic(event: RequestEvent, query: string, limit: number): Promise<RankedSearchResult[]> {
+	const [albums, tracks] = await Promise.all([getAlbums(event), getTracks(event)]);
+	const rankedAlbums = albums
+		.map((album) => ({
+			id: `album:${album.id}`,
+			slug: album.slug,
+			path: album.localPath,
+			title: album.albumTitle,
+			excerpt: album.excerpt,
+			section: 'Music',
+			coverImage: album.coverImage,
+			publishedAt: album.publishedAt.toISOString(),
+			score:
+				scoreText([album.albumTitle, album.artist, album.note, album.excerpt], query) +
+				(album.albumTitle.toLowerCase().includes(query.toLowerCase()) ? 10 : 0) +
+				(album.artist.toLowerCase().includes(query.toLowerCase()) ? 8 : 0)
+		}))
+		.filter((entry) => entry.score > 0);
+	const rankedTracks = tracks
+		.map((track) => ({
+			id: `track:${track.id}`,
+			slug: track.slug,
+			path: track.localPath,
+			title: track.trackTitle,
+			excerpt: track.excerpt,
+			section: 'Listening',
+			coverImage: track.artworkUrl,
+			publishedAt: track.publishedAt.toISOString(),
+			score:
+				scoreText([track.trackTitle, track.artist, track.note, track.excerpt], query) +
+				(track.trackTitle.toLowerCase().includes(query.toLowerCase()) ? 10 : 0) +
+				(track.artist.toLowerCase().includes(query.toLowerCase()) ? 8 : 0)
+		}))
+		.filter((entry) => entry.score > 0);
+
+	return [...rankedAlbums, ...rankedTracks]
+		.sort((a, b) => {
+			if (b.score !== a.score) return b.score - a.score;
+			return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
+		})
+		.slice(0, limit);
+}
+
+function mergeSearchResults(results: RankedSearchResult[], limit: number): SearchResult[] {
+	const merged = new Map<string, RankedSearchResult>();
+
+	for (const result of results) {
+		const existing = merged.get(result.path);
+
+		if (
+			!existing ||
+			result.score > existing.score ||
+			(result.score === existing.score && Date.parse(result.publishedAt) > Date.parse(existing.publishedAt))
+		) {
+			merged.set(result.path, result);
+		}
+	}
+
+	return [...merged.values()]
+		.sort((a, b) => {
+			if (b.score !== a.score) return b.score - a.score;
+			return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
+		})
+		.slice(0, limit)
+		.map((result) => ({
+			id: result.id,
+			slug: result.slug,
+			path: result.path,
+			title: result.title,
+			excerpt: result.excerpt,
+			section: result.section,
+			coverImage: result.coverImage,
+			publishedAt: result.publishedAt
+		}));
 }
 
 export async function searchPosts(event: RequestEvent, query: string, limit = 8): Promise<SearchResult[]> {
@@ -205,6 +319,7 @@ export async function searchPosts(event: RequestEvent, query: string, limit = 8)
 
 	const db = getSearchDb(event);
 	const ftsQuery = buildFtsQuery(trimmed);
+	const musicResults = await searchMusic(event, trimmed, limit);
 
 	if (db && ftsQuery) {
 		try {
@@ -233,15 +348,28 @@ export async function searchPosts(event: RequestEvent, query: string, limit = 8)
 				: [];
 
 			if (rows.length) {
-				return rows.map((row: SearchResult & { rank: number }) => {
-					const { rank: _rank, ...resultRow } = row;
-					return resultRow;
-				});
+				const dbResults = rows.map((row: SearchResult & { rank: number }) =>
+					rankSearchResult(
+						{
+							id: row.id,
+							slug: row.slug,
+							path: row.path,
+							title: row.title,
+							excerpt: row.excerpt,
+							section: row.section,
+							coverImage: row.coverImage,
+							publishedAt: row.publishedAt
+						},
+						trimmed
+					)
+				);
+
+				return mergeSearchResults([...dbResults, ...musicResults], limit);
 			}
 		} catch {
 			// Fall back to live search if D1 is unavailable, uninitialized, or the FTS query errors.
 		}
 	}
 
-	return fallbackSearch(trimmed, limit);
+	return mergeSearchResults([...(await fallbackSearch(trimmed, limit)), ...musicResults], limit);
 }
