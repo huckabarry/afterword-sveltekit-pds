@@ -703,11 +703,6 @@ async function getCanonicalSnapshot() {
 export async function getCanonicalPopfeedItems(sourceItems: PopfeedItem[]): Promise<PopfeedItem[]> {
 	const repo = getConfiguredRepoIdentifier();
 	const cache = getCanonicalCache();
-	const cached = cache.get(repo);
-
-	if (cached && cached.expiresAt > Date.now()) {
-		return cached.items;
-	}
 
 	try {
 		const { did, serviceUrl } = await resolveAtprotoService(repo);
