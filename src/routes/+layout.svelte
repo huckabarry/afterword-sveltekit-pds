@@ -179,6 +179,8 @@
 			<div class="site-foot-nav">
 				<a class="site-foot-nav-item" href="/about">About</a>
 				<span class="site-foot-separator">/</span>
+				<a class="site-foot-nav-item" href="/subscribe">Subscribe</a>
+				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/colophon">Colophon</a>
 				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/check-ins">Check-ins</a>
