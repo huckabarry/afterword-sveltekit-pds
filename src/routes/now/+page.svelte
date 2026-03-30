@@ -26,6 +26,28 @@
 		data.latestCheckin ? excerpt(data.latestCheckin.excerpt || data.latestCheckin.note, 180) : ''
 	);
 
+	function dedupeCommaSeparated(value: string) {
+		const parts = String(value || '')
+			.split(',')
+			.map((part) => part.trim())
+			.filter(Boolean);
+		const seen = new Set<string>();
+		const deduped: string[] = [];
+
+		for (const part of parts) {
+			const key = part.toLowerCase();
+			if (seen.has(key)) continue;
+			seen.add(key);
+			deduped.push(part);
+		}
+
+		return deduped.join(', ');
+	}
+
+	const latestCheckinPlaceLine = $derived.by(() =>
+		data.latestCheckin ? dedupeCommaSeparated(data.latestCheckin.place) : ''
+	);
+
 </script>
 
 <svelte:head>
@@ -81,14 +103,15 @@
 							<time datetime={data.latestCheckin.visitedAt.toISOString()}>
 								{formatDate(data.latestCheckin.visitedAt)}
 							</time>
-							{#if data.latestCheckin.place}
-								<span>{data.latestCheckin.place}</span>
-							{/if}
 						</div>
 
 						<h2 class="now-card__title">
 							<a href={data.latestCheckin.canonicalPath}>{data.latestCheckin.name}</a>
 						</h2>
+
+						{#if latestCheckinPlaceLine}
+							<p class="now-card__place">{latestCheckinPlaceLine}</p>
+						{/if}
 
 						{#if data.latestCheckin.venueCategory}
 							<p class="now-card__subhead">{data.latestCheckin.venueCategory}</p>
@@ -205,7 +228,8 @@
 	}
 
 	.now-card {
-		display: grid;
+		display: flex;
+		flex-direction: column;
 		gap: 0.9rem;
 		padding: 1rem;
 		border: 1px solid var(--border);
@@ -225,6 +249,8 @@
 	.now-card__copy {
 		display: grid;
 		gap: 0.35rem;
+		flex: 1 1 auto;
+		align-content: start;
 	}
 
 	.now-card__meta {
@@ -240,6 +266,7 @@
 		margin: 0;
 		font-size: clamp(1.2rem, 2vw, 1.45rem);
 		line-height: 1.14;
+		min-height: 3.1rem;
 	}
 
 	.now-card__title a {
@@ -247,10 +274,16 @@
 		text-decoration: none;
 	}
 
+	.now-card__place,
 	.now-card__subhead,
 	.now-card__text {
 		margin: 0;
 		color: var(--muted);
+	}
+
+	.now-card__place {
+		font-size: 0.96rem;
+		line-height: 1.5;
 	}
 
 	.now-card__subhead {
@@ -288,13 +321,16 @@
 	}
 
 	.now-card__actions {
-		display: flex;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 0.5rem;
+		margin-top: auto;
 	}
 
 	.now-card__action {
 		text-decoration: none;
+		justify-content: center;
+		text-align: center;
 	}
 
 	.now-post-list {
