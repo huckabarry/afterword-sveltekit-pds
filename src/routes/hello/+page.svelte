@@ -44,7 +44,8 @@
 					</li>
 					<li>
 						<a href="/planning">Planning &amp; Urbanism</a> is dedicated to my professional
-						perspectives on city planning and urban issues.
+						perspectives on city planning and urban issues, and it can also be followed by
+						email through <a href="https://lowvelocity.org" target="_blank" rel="noreferrer">Low Velocity</a>.
 					</li>
 					<li>
 						<a href="/photos">The Gallery</a> showcases some of my photography and visual

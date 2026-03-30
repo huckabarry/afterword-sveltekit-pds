@@ -25,8 +25,8 @@
 				{/each}
 				<p>
 					If you’d rather follow along from your own reader, there’s now a
-					<a href="/subscribe">Subscribe page</a> with RSS and JSON feed links, and planning
-					posts can also be followed by email on
+					<a href="/subscribe">Subscribe page</a> with RSS and JSON feed links for writing,
+					planning, and status updates, and planning posts can also be followed by email on
 					<a href="https://lowvelocity.org" rel="noreferrer">Low Velocity</a>.
 				</p>
 			</section>
