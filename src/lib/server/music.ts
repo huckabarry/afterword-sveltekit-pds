@@ -1,5 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { updateMusicCacheStatus } from '$lib/server/music-cache-status';
+import { attachAlbumCoverDelivery, attachTrackCoverDelivery } from '$lib/server/music-cover-delivery';
 import { getMusicSnapshotFromR2, writeMusicSnapshotToR2 } from '$lib/server/music-r2';
 import { getPdsAlbums, getPdsTracks } from '$lib/server/pds-music';
 
@@ -79,7 +80,7 @@ type CrucialTrackFeedIndex = {
 	byTrackKey: Map<string, CrucialTrackFeedDetails>;
 };
 
-export type MusicReadContext = Pick<RequestEvent, 'platform'> | null | undefined;
+export type MusicReadContext = Pick<RequestEvent, 'platform' | 'url'> | null | undefined;
 
 let albumWhalePageMapPromise: Promise<Map<string, string>> | null = null;
 let albumWhaleLinksPromise: Promise<Map<string, ListenLink[]>> | null = null;
@@ -840,14 +841,17 @@ export async function getAlbums(context?: MusicReadContext): Promise<AlbumEntry[
 			lastSource: 'r2',
 			archiveDigest
 		}).catch(() => {});
-		return mergeMusicEntries(r2Albums, pdsAlbums, getAlbumDedupKey);
+		return attachAlbumCoverDelivery(mergeMusicEntries(r2Albums, pdsAlbums, getAlbumDedupKey), context);
 	}
 
 	if (context?.platform?.env?.R2_BUCKET) {
 		try {
 			const snapshot = await ensureMusicSnapshotInR2(context, archiveDigest);
 			if (snapshot?.albums.length) {
-				return mergeMusicEntries(snapshot.albums, pdsAlbums, getAlbumDedupKey);
+				return attachAlbumCoverDelivery(
+					mergeMusicEntries(snapshot.albums, pdsAlbums, getAlbumDedupKey),
+					context
+				);
 			}
 		} catch {
 			// Ignore write errors and continue serving the freshest available data.
@@ -861,7 +865,14 @@ export async function getAlbums(context?: MusicReadContext): Promise<AlbumEntry[
 			lastSource: 'r2',
 			archiveDigest
 		}).catch(() => {});
-		return mergeMusicEntries(r2Albums, mergeMusicEntries(pdsAlbums, legacyAlbums, getAlbumDedupKey), getAlbumDedupKey);
+		return attachAlbumCoverDelivery(
+			mergeMusicEntries(
+				r2Albums,
+				mergeMusicEntries(pdsAlbums, legacyAlbums, getAlbumDedupKey),
+				getAlbumDedupKey
+			),
+			context
+		);
 	}
 
 	if (!pdsAlbums.length) {
@@ -869,14 +880,17 @@ export async function getAlbums(context?: MusicReadContext): Promise<AlbumEntry[
 			lastSource: 'archive',
 			archiveDigest
 		}).catch(() => {});
-		return legacyAlbums;
+		return attachAlbumCoverDelivery(legacyAlbums, context);
 	}
 
 	void updateMusicCacheStatus(context, {
 		lastSource: 'pds',
 		archiveDigest
 	}).catch(() => {});
-	return mergeMusicEntries(pdsAlbums, legacyAlbums, getAlbumDedupKey);
+	return attachAlbumCoverDelivery(
+		mergeMusicEntries(pdsAlbums, legacyAlbums, getAlbumDedupKey),
+		context
+	);
 }
 
 export async function getTracks(context?: MusicReadContext): Promise<TrackEntry[]> {
@@ -893,14 +907,17 @@ export async function getTracks(context?: MusicReadContext): Promise<TrackEntry[
 			lastSource: 'r2',
 			archiveDigest
 		}).catch(() => {});
-		return mergeMusicEntries(r2Tracks, pdsTracks, getTrackDedupKey);
+		return attachTrackCoverDelivery(mergeMusicEntries(r2Tracks, pdsTracks, getTrackDedupKey), context);
 	}
 
 	if (context?.platform?.env?.R2_BUCKET) {
 		try {
 			const snapshot = await ensureMusicSnapshotInR2(context, archiveDigest);
 			if (snapshot?.tracks.length) {
-				return mergeMusicEntries(snapshot.tracks, pdsTracks, getTrackDedupKey);
+				return attachTrackCoverDelivery(
+					mergeMusicEntries(snapshot.tracks, pdsTracks, getTrackDedupKey),
+					context
+				);
 			}
 		} catch {
 			// Ignore write errors and continue serving the freshest available data.
@@ -914,7 +931,14 @@ export async function getTracks(context?: MusicReadContext): Promise<TrackEntry[
 			lastSource: 'r2',
 			archiveDigest
 		}).catch(() => {});
-		return mergeMusicEntries(r2Tracks, mergeMusicEntries(pdsTracks, legacyTracks, getTrackDedupKey), getTrackDedupKey);
+		return attachTrackCoverDelivery(
+			mergeMusicEntries(
+				r2Tracks,
+				mergeMusicEntries(pdsTracks, legacyTracks, getTrackDedupKey),
+				getTrackDedupKey
+			),
+			context
+		);
 	}
 
 	if (!pdsTracks.length) {
@@ -922,14 +946,17 @@ export async function getTracks(context?: MusicReadContext): Promise<TrackEntry[
 			lastSource: 'archive',
 			archiveDigest
 		}).catch(() => {});
-		return legacyTracks;
+		return attachTrackCoverDelivery(legacyTracks, context);
 	}
 
 	void updateMusicCacheStatus(context, {
 		lastSource: 'pds',
 		archiveDigest
 	}).catch(() => {});
-	return mergeMusicEntries(pdsTracks, legacyTracks, getTrackDedupKey);
+	return attachTrackCoverDelivery(
+		mergeMusicEntries(pdsTracks, legacyTracks, getTrackDedupKey),
+		context
+	);
 }
 
 export async function getAlbumBySlug(

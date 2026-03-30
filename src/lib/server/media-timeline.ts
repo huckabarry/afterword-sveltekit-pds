@@ -211,7 +211,7 @@ function toPopfeedTimelineItem(
 	};
 }
 
-type MediaTimelineContext = Pick<RequestEvent, 'platform'> | null | undefined;
+type MediaTimelineContext = Pick<RequestEvent, 'platform' | 'url'> | null | undefined;
 
 async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
 	const scope = getTimelineCache();
