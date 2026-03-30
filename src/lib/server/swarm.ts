@@ -13,6 +13,8 @@ const FOURSQUARE_API_VERSION = '20260330';
 const SWARM_STATE_COOKIE = 'afterword_swarm_oauth_state';
 const SWARM_SYNC_ROW_ID = 1;
 const SWARM_MAX_PHOTOS = 4;
+let swarmTablesReady = false;
+let swarmTablesPromise: Promise<void> | null = null;
 
 type SwarmUserSummary = {
 	id: string | null;
@@ -119,36 +121,54 @@ function getDatabase(event: Pick<RequestEvent, 'platform'>) {
 }
 
 async function ensureSwarmTables(event: Pick<RequestEvent, 'platform'>) {
+	if (swarmTablesReady) {
+		return;
+	}
+
+	if (swarmTablesPromise) {
+		await swarmTablesPromise;
+		return;
+	}
+
 	const db = getDatabase(event);
-	await db
-		.prepare(
-			`CREATE TABLE IF NOT EXISTS swarm_sync_state (
-				id INTEGER PRIMARY KEY CHECK (id = 1),
-				access_token TEXT,
-				user_id TEXT,
-				first_name TEXT,
-				last_name TEXT,
-				photo_url TEXT,
-				connected_at TEXT,
-				last_synced_at TEXT,
-				last_error TEXT,
-				last_source_checkin_id TEXT,
-				sync_count INTEGER NOT NULL DEFAULT 0,
-				updated_at TEXT NOT NULL
-			)`
-		)
-		.run();
-	await db
-		.prepare(
-			`CREATE TABLE IF NOT EXISTS swarm_checkin_records (
-				source_id TEXT PRIMARY KEY,
-				record_uri TEXT NOT NULL,
-				record_key TEXT NOT NULL,
-				created_at TEXT NOT NULL,
-				updated_at TEXT NOT NULL
-			)`
-		)
-		.run();
+	swarmTablesPromise = (async () => {
+		await db
+			.prepare(
+				`CREATE TABLE IF NOT EXISTS swarm_sync_state (
+					id INTEGER PRIMARY KEY CHECK (id = 1),
+					access_token TEXT,
+					user_id TEXT,
+					first_name TEXT,
+					last_name TEXT,
+					photo_url TEXT,
+					connected_at TEXT,
+					last_synced_at TEXT,
+					last_error TEXT,
+					last_source_checkin_id TEXT,
+					sync_count INTEGER NOT NULL DEFAULT 0,
+					updated_at TEXT NOT NULL
+				)`
+			)
+			.run();
+		await db
+			.prepare(
+				`CREATE TABLE IF NOT EXISTS swarm_checkin_records (
+					source_id TEXT PRIMARY KEY,
+					record_uri TEXT NOT NULL,
+					record_key TEXT NOT NULL,
+					created_at TEXT NOT NULL,
+					updated_at TEXT NOT NULL
+				)`
+			)
+			.run();
+		swarmTablesReady = true;
+	})();
+
+	try {
+		await swarmTablesPromise;
+	} finally {
+		swarmTablesPromise = null;
+	}
 }
 
 function getCookieOptions() {
@@ -354,10 +374,8 @@ async function fetchSwarmUser(accessToken: string) {
 	};
 }
 
-async function getStoredState(event: Pick<RequestEvent, 'platform'>): Promise<SwarmStoredState> {
-	await ensureSwarmTables(event);
-	const db = getDatabase(event);
-	const row = await db
+async function readStoredState(event: Pick<RequestEvent, 'platform'>): Promise<SwarmStoredState> {
+	const row = await getDatabase(event)
 		.prepare(
 			`SELECT access_token, user_id, first_name, last_name, photo_url, connected_at,
 				last_synced_at, last_error, last_source_checkin_id, sync_count
@@ -390,6 +408,11 @@ async function getStoredState(event: Pick<RequestEvent, 'platform'>): Promise<Sw
 		lastSourceCheckinId: row?.last_source_checkin_id || null,
 		syncCount: Number(row?.sync_count || 0)
 	};
+}
+
+async function getStoredState(event: Pick<RequestEvent, 'platform'>): Promise<SwarmStoredState> {
+	await ensureSwarmTables(event);
+	return await readStoredState(event);
 }
 
 async function getCheckinRecordMapping(
@@ -446,7 +469,7 @@ async function saveStoredState(
 ) {
 	await ensureSwarmTables(event);
 	const db = getDatabase(event);
-	const existing = await getStoredState(event);
+	const existing = await readStoredState(event);
 	const now = new Date().toISOString();
 
 	await db
