@@ -213,7 +213,9 @@
 						</h3>
 					{/if}
 
-					<p class="on-this-day-card__excerpt">{post.excerpt}</p>
+					<p class="on-this-day-card__excerpt">
+						<a href={post.path}>{post.excerpt}</a>
+					</p>
 				</article>
 			{/each}
 		</div>
@@ -380,7 +382,7 @@
 
 	.on-this-day-card__meta {
 		font-size: 0.82rem;
-		color: var(--muted);
+		color: var(--accent);
 	}
 
 	.on-this-day-card__image-link {
@@ -409,8 +411,16 @@
 
 	.on-this-day-card__excerpt {
 		margin: 0;
-		color: var(--muted);
 		line-height: 1.6;
+	}
+
+	.on-this-day-card__excerpt a {
+		color: var(--muted);
+		text-decoration: none;
+	}
+
+	.on-this-day-card__excerpt a:hover {
+		text-decoration: underline;
 	}
 
 	@media (max-width: 760px) {
