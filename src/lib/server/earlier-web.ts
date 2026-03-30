@@ -91,6 +91,10 @@ export type EarlierWebStreamHydratedPage = {
 	limit: number;
 };
 
+export type EarlierWebSeriesPost = EarlierWebPostSummary & {
+	bodyHtml: string;
+};
+
 export type EarlierWebOnThisDayPost = EarlierWebPostSummary;
 
 export const EARLIER_WEB_STREAM_PAGE_SIZE = 30;
@@ -704,5 +708,74 @@ export async function getEarlierWebStreamHydratedPage(
 			cursor: page.cursor,
 			limit: page.limit
 		};
+	}
+}
+
+export async function getEarlierWebSeriesPosts(
+	event: Pick<RequestEvent, 'platform'>,
+	{
+		minBodyLength = 500,
+		limit = 160
+	}: {
+		minBodyLength?: number;
+		limit?: number;
+	} = {}
+): Promise<EarlierWebSeriesPost[]> {
+	const db = getEarlierWebDb(event);
+	const bucket = getEarlierWebBucket(event);
+	const normalizedMinBodyLength = Math.max(1, Math.floor(minBodyLength || 500));
+	const normalizedLimit = Math.max(1, Math.min(Math.floor(limit || 160), 240));
+
+	if (!db || !bucket) {
+		return [];
+	}
+
+	try {
+		const result = await db
+			.prepare(
+				`SELECT
+					id,
+					slug,
+					year,
+					month,
+					title,
+					excerpt,
+					body_text,
+					path,
+					bundle_key,
+					cover_image,
+					has_images,
+					published_at,
+					source_path
+				FROM earlier_web_posts
+				WHERE LENGTH(TRIM(body_text)) >= ?
+				ORDER BY published_at DESC
+				LIMIT ?`
+			)
+			.bind(normalizedMinBodyLength, normalizedLimit)
+			.all<EarlierWebPostRow>();
+
+		const rows: EarlierWebPostRow[] = Array.isArray(result.results)
+			? (result.results as EarlierWebPostRow[])
+			: [];
+		const summaries = rows.map(toEarlierWebPostSummary);
+		const bundleKeys = [...new Set(rows.map((row: EarlierWebPostRow) => row.bundle_key))];
+		const bundles = await Promise.all(
+			bundleKeys.map((key: string) => getBundleFromR2(bucket, key))
+		);
+		const postsById = new Map<string, EarlierWebStoredPost>();
+
+		for (const bundle of bundles) {
+			for (const post of bundle?.posts || []) {
+				postsById.set(post.id, post);
+			}
+		}
+
+		return summaries.map((post: EarlierWebPostSummary) => ({
+			...post,
+			bodyHtml: renderEarlierWebBody(postsById.get(post.id)?.bodyMarkdown || post.excerpt)
+		}));
+	} catch {
+		return [];
 	}
 }
