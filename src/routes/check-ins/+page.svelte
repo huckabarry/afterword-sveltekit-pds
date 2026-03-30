@@ -22,15 +22,15 @@
 		<article class="card surface">
 			<a class="card__link-wrap" href={item.canonicalPath}>
 				<div class="card__media">
-					{#if item.coverImage}
-						<img class="card__image" src={item.coverImage} alt={item.name} loading="lazy" />
-					{:else if item.latitude !== null && item.longitude !== null}
+					{#if item.latitude !== null && item.longitude !== null}
 						<CheckinMap
 							latitude={item.latitude}
 							longitude={item.longitude}
 							name={item.name}
 							compact={true}
 						/>
+					{:else if item.coverImage}
+						<img class="card__image" src={item.coverImage} alt={item.name} loading="lazy" />
 					{/if}
 				</div>
 				<div class="card__copy">
@@ -69,7 +69,7 @@
 
 	.list {
 		display: grid;
-		gap: 1rem;
+		gap: 1.5rem;
 	}
 
 	.card {
@@ -79,7 +79,7 @@
 	.card__link-wrap {
 		display: grid;
 		grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
-		gap: 1.2rem;
+		gap: 1.5rem;
 		text-decoration: none;
 		align-items: stretch;
 	}
@@ -87,8 +87,8 @@
 	.card__copy {
 		display: grid;
 		align-content: start;
-		gap: 0.55rem;
-		padding: 0.15rem 0;
+		gap: 0.7rem;
+		padding: 0.3rem 0;
 	}
 
 	.card__meta {
@@ -133,7 +133,7 @@
 	}
 
 	.card__excerpt {
-		margin: 0.2rem 0 0;
+		margin: 0.35rem 0 0;
 		color: var(--muted);
 		line-height: 1.65;
 	}
