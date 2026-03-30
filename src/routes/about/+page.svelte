@@ -22,10 +22,6 @@
 	const aboutInterests = $derived.by(() =>
 		data.profile.aboutInterests?.length ? data.profile.aboutInterests : data.interests
 	);
-
-	function getInterestSearchHref(interest: string) {
-		return `/search?q=${encodeURIComponent(interest)}`;
-	}
 </script>
 
 <svelte:head>
@@ -45,8 +41,7 @@
 
 				<div class="about-interests" aria-label="Interests">
 					{#each aboutInterests as interest (interest)}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a class="tag-pill" href={getInterestSearchHref(interest)}>{interest}</a>
+						<span class="tag-pill">{interest}</span>
 					{/each}
 				</div>
 
