@@ -49,7 +49,25 @@
 						<a class="tag-pill" href={getInterestSearchHref(interest)}>{interest}</a>
 					{/each}
 				</div>
+
+				<p class="about-archive-link">
+					Some older fragments live in
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href="/earlier-web">From an Earlier Web</a>.
+				</p>
 			</section>
 		</div>
 	</article>
 </section>
+
+<style>
+	.about-archive-link {
+		margin-top: 1.5rem;
+		font-size: 0.95rem;
+		opacity: 0.8;
+	}
+
+	.about-archive-link a {
+		color: inherit;
+	}
+</style>

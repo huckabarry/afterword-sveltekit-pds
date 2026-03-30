@@ -1,4 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
+import { searchEarlierWebPosts } from '$lib/server/earlier-web';
 import { getBlogPosts, type BlogPost } from '$lib/server/ghost';
 import { getAlbums, getTracks } from '$lib/server/music';
 
@@ -320,6 +321,9 @@ export async function searchPosts(event: RequestEvent, query: string, limit = 8)
 	const db = getSearchDb(event);
 	const ftsQuery = buildFtsQuery(trimmed);
 	const musicResults = await searchMusic(event, trimmed, limit);
+	const earlierWebResults = (await searchEarlierWebPosts(event, trimmed, limit)).map((result) =>
+		rankSearchResult(result, trimmed)
+	);
 
 	if (db && ftsQuery) {
 		try {
@@ -364,12 +368,15 @@ export async function searchPosts(event: RequestEvent, query: string, limit = 8)
 					)
 				);
 
-				return mergeSearchResults([...dbResults, ...musicResults], limit);
+				return mergeSearchResults([...dbResults, ...musicResults, ...earlierWebResults], limit);
 			}
 		} catch {
 			// Fall back to live search if D1 is unavailable, uninitialized, or the FTS query errors.
 		}
 	}
 
-	return mergeSearchResults([...(await fallbackSearch(trimmed, limit)), ...musicResults], limit);
+	return mergeSearchResults(
+		[...(await fallbackSearch(trimmed, limit)), ...musicResults, ...earlierWebResults],
+		limit
+	);
 }
