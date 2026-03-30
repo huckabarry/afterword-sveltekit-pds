@@ -508,6 +508,14 @@ function pickVenueCategory(categories: unknown) {
 	return normalizeString(normalized?.shortName || normalized?.name);
 }
 
+function compactIsoString(date: Date) {
+	return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function joinIfPresent(parts: Array<string | null | undefined>, separator = ', ') {
+	return parts.map((part) => normalizeString(part)).filter(Boolean).join(separator);
+}
+
 function getPhotoUrl(photo: SwarmPhoto) {
 	const direct = normalizeString(photo.url);
 	if (direct) {
@@ -587,30 +595,35 @@ async function buildPdsCheckinRecord(
 	}
 
 	const primaryPhoto = uploadedPhotos[0] || null;
+	const region = visibility === 'private' ? '' : joinIfPresent([location.city, location.state]);
 	const record = {
 		$type: 'blog.afterword.checkin',
-		source: 'swarm',
-		sourceId,
-		sourceUrl: `https://www.swarmapp.com/user/checkin/${encodeURIComponent(sourceId)}`,
-		sourceCreatedAt: visitedAt.toISOString(),
 		slug,
-		canonicalPath: `/check-ins/${slug}/`,
 		name: normalizeString(venue.name) || 'Untitled place',
-		note: normalizeString(checkin.shout),
-		excerpt: normalizeString(checkin.shout),
-		address: visibility === 'private' ? '' : normalizeString(location.address),
-		locality: visibility === 'private' ? '' : normalizeString(location.city),
-		region: visibility === 'private' ? '' : normalizeString(location.state),
-		country: visibility === 'private' ? '' : normalizeString(location.country),
-		timezone: '',
-		latitude: visibility === 'private' ? null : latitude,
-		longitude: visibility === 'private' ? null : longitude,
-		website: normalizeString(venue.url),
-		venueCategory: pickVenueCategory(venue.categories),
+		...(normalizeString(checkin.shout) ? { note: normalizeString(checkin.shout) } : {}),
+		...(normalizeString(checkin.shout)
+			? { excerpt: normalizeString(checkin.shout).replace(/[.?!]+$/, '') }
+			: {}),
+		...(visibility !== 'private' && normalizeString(location.address)
+			? { address: normalizeString(location.address) }
+			: {}),
+		...(visibility !== 'private' && region ? { region } : {}),
+		...(visibility !== 'private' && normalizeString(location.country)
+			? { country: normalizeString(location.country) }
+			: {}),
+		...(visibility !== 'private' && normalizeString(location.city)
+			? { locality: normalizeString(location.city) }
+			: {}),
+		...(normalizeString(Intl.DateTimeFormat().resolvedOptions().timeZone || '')
+			? { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+			: {}),
+		...(visibility !== 'private' && latitude !== null ? { latitude: latitude.toFixed(6) } : {}),
+		...(visibility !== 'private' && longitude !== null ? { longitude: longitude.toFixed(6) } : {}),
+		...(normalizeString(venue.url) ? { website: normalizeString(venue.url) } : {}),
+		...(pickVenueCategory(venue.categories) ? { venueCategory: pickVenueCategory(venue.categories) } : {}),
 		visibility,
-		tags: ['swarm'],
-		createdAt: visitedAt.toISOString(),
-		visitedAt: visitedAt.toISOString(),
+		createdAt: compactIsoString(visitedAt),
+		visitedAt: compactIsoString(visitedAt),
 		...(primaryPhoto ? { photo: primaryPhoto } : {}),
 		...(uploadedPhotos.length ? { photos: uploadedPhotos } : {})
 	} satisfies Record<string, unknown>;
