@@ -89,6 +89,8 @@
 
 						{#if data.latestCheckin.venueCategory}
 							<p class="now-card__subhead">{data.latestCheckin.venueCategory}</p>
+						{:else}
+							<p class="now-card__subhead now-card__subhead--ghost" aria-hidden="true">&nbsp;</p>
 						{/if}
 					</div>
 
@@ -128,6 +130,8 @@
 						<h2 class="now-card__title">
 							<a href={data.latestPhoto.postPath}>{data.latestPhoto.postTitle}</a>
 						</h2>
+
+						<p class="now-card__subhead now-card__subhead--ghost" aria-hidden="true">&nbsp;</p>
 					</div>
 
 					<a class="now-photo" href={data.latestPhoto.postPath}>
@@ -263,6 +267,11 @@
 		font-size: 0.88rem;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
+		min-height: 1.1rem;
+	}
+
+	.now-card__subhead--ghost {
+		visibility: hidden;
 	}
 
 	.now-card__text {

@@ -312,6 +312,7 @@ function getSourceLink(sourceValue: unknown) {
 
 function toListenLinks(sourceValue: unknown, linksValue: unknown) {
 	const seen = new Set<string>();
+	const seenProviders = new Set<string>();
 	const links: ListenLink[] = [];
 	const sourceLink = getSourceLink(sourceValue);
 
@@ -322,6 +323,17 @@ function toListenLinks(sourceValue: unknown, linksValue: unknown) {
 	}
 
 	for (const link of normalizeLinkRecords(linksValue)) {
+		const provider =
+			(normalizeOptionalString(link.provider) || '').toLowerCase() ||
+			getLinkProvider(link.url, link.label);
+		if (
+			provider &&
+			(provider === 'apple_music' || provider === 'spotify' || provider === 'odesli') &&
+			seenProviders.has(provider)
+		) {
+			continue;
+		}
+
 		const key = `${link.label}::${link.url}`;
 
 		if (seen.has(key)) {
@@ -329,6 +341,9 @@ function toListenLinks(sourceValue: unknown, linksValue: unknown) {
 		}
 
 		seen.add(key);
+		if (provider) {
+			seenProviders.add(provider);
+		}
 		links.push({
 			label: link.label,
 			url: link.url
@@ -803,13 +818,23 @@ function buildSourceRecord(sourceUrl: string, fallbackProvider: string) {
 function buildLinkRecords(links: ListenLink[], sourceUrl: string) {
 	const source = normalizeString(sourceUrl);
 	const seen = new Set<string>();
+	const seenProviders = new Set<string>();
 	const records: MusicLinkRecord[] = [];
 
 	for (const link of links || []) {
 		const label = normalizeString(link.label);
 		const url = normalizeString(link.url);
+		const provider = getLinkProvider(url, label) || undefined;
 
 		if (!label || !url || url === source) {
+			continue;
+		}
+
+		if (
+			provider &&
+			(provider === 'apple_music' || provider === 'spotify' || provider === 'odesli') &&
+			seenProviders.has(provider)
+		) {
 			continue;
 		}
 
@@ -819,11 +844,14 @@ function buildLinkRecords(links: ListenLink[], sourceUrl: string) {
 		}
 
 		seen.add(key);
+		if (provider) {
+			seenProviders.add(provider);
+		}
 		records.push({
 			label,
 			url,
 			kind: getLinkKind(url, label),
-			provider: getLinkProvider(url, label) || undefined
+			provider
 		});
 	}
 
