@@ -16,7 +16,8 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"gen": "wrangler types",
-		"import:earlier-web": "node scripts/import-earlier-web.mjs"
+		"import:earlier-web": "node scripts/import-earlier-web.mjs",
+		"import:instagram-earlier-web": "node scripts/import-instagram-earlier-web.mjs"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.2",
