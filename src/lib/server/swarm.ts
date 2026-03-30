@@ -1,6 +1,11 @@
 import { env } from '$env/dynamic/private';
 import { error, redirect, type Cookies, type RequestEvent } from '@sveltejs/kit';
-import { getCheckinWriterSession, putCheckinRecord, uploadRemoteCheckinImage } from '$lib/server/pds-checkins';
+import {
+	createCheckinRecord,
+	getCheckinWriterSession,
+	putCheckinRecord,
+	uploadRemoteCheckinImage
+} from '$lib/server/pds-checkins';
 
 const FOURSQUARE_AUTH_BASE = 'https://foursquare.com/oauth2';
 const FOURSQUARE_API_BASE = 'https://api.foursquare.com/v2';
@@ -94,6 +99,12 @@ export type SwarmSyncResult = {
 	errors: Array<{ id: string; message: string }>;
 };
 
+type SwarmCheckinRecordMapping = {
+	sourceId: string;
+	recordUri: string;
+	recordKey: string;
+};
+
 function getDatabase(event: Pick<RequestEvent, 'platform'>) {
 	const db =
 		event.platform?.env?.D1_DATABASE ||
@@ -123,6 +134,17 @@ async function ensureSwarmTables(event: Pick<RequestEvent, 'platform'>) {
 				last_error TEXT,
 				last_source_checkin_id TEXT,
 				sync_count INTEGER NOT NULL DEFAULT 0,
+				updated_at TEXT NOT NULL
+			)`
+		)
+		.run();
+	await db
+		.prepare(
+			`CREATE TABLE IF NOT EXISTS swarm_checkin_records (
+				source_id TEXT PRIMARY KEY,
+				record_uri TEXT NOT NULL,
+				record_key TEXT NOT NULL,
+				created_at TEXT NOT NULL,
 				updated_at TEXT NOT NULL
 			)`
 		)
@@ -191,6 +213,10 @@ function getCallbackUrl(origin: string) {
 
 function getPushUrl(origin: string) {
 	return `${origin}/api/swarm/push`;
+}
+
+function getRecordKeyFromUri(uri: string) {
+	return String(uri || '').split('/').pop() || '';
 }
 
 function createStateToken() {
@@ -364,6 +390,54 @@ async function getStoredState(event: Pick<RequestEvent, 'platform'>): Promise<Sw
 		lastSourceCheckinId: row?.last_source_checkin_id || null,
 		syncCount: Number(row?.sync_count || 0)
 	};
+}
+
+async function getCheckinRecordMapping(
+	event: Pick<RequestEvent, 'platform'>,
+	sourceId: string
+): Promise<SwarmCheckinRecordMapping | null> {
+	await ensureSwarmTables(event);
+	const row = await getDatabase(event)
+		.prepare(
+			`SELECT source_id, record_uri, record_key
+			FROM swarm_checkin_records
+			WHERE source_id = ?`
+		)
+		.bind(sourceId)
+		.first<{
+			source_id?: string;
+			record_uri?: string;
+			record_key?: string;
+		}>();
+
+	if (!row?.source_id || !row.record_uri || !row.record_key) {
+		return null;
+	}
+
+	return {
+		sourceId: row.source_id,
+		recordUri: row.record_uri,
+		recordKey: row.record_key
+	};
+}
+
+async function saveCheckinRecordMapping(
+	event: Pick<RequestEvent, 'platform'>,
+	mapping: SwarmCheckinRecordMapping
+) {
+	await ensureSwarmTables(event);
+	const now = new Date().toISOString();
+	await getDatabase(event)
+		.prepare(
+			`INSERT INTO swarm_checkin_records (source_id, record_uri, record_key, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT(source_id) DO UPDATE SET
+				record_uri = excluded.record_uri,
+				record_key = excluded.record_key,
+				updated_at = excluded.updated_at`
+		)
+		.bind(mapping.sourceId, mapping.recordUri, mapping.recordKey, now, now)
+		.run();
 }
 
 async function saveStoredState(
@@ -629,7 +703,6 @@ async function buildPdsCheckinRecord(
 	} satisfies Record<string, unknown>;
 
 	return {
-		rkey: `swarm-${sourceId}`,
 		record,
 		sourceId
 	};
@@ -650,7 +723,35 @@ async function syncCheckinItems(
 
 		try {
 			const nextRecord = await buildPdsCheckinRecord(checkin, imageCache);
-			await putCheckinRecord(nextRecord);
+			const existingMapping = await getCheckinRecordMapping(event, nextRecord.sourceId);
+
+			if (existingMapping?.recordKey) {
+				const result = await putCheckinRecord({
+					rkey: existingMapping.recordKey,
+					record: nextRecord.record
+				});
+				const recordUri = normalizeString(result.uri) || existingMapping.recordUri;
+				const recordKey = getRecordKeyFromUri(recordUri) || existingMapping.recordKey;
+				await saveCheckinRecordMapping(event, {
+					sourceId: nextRecord.sourceId,
+					recordUri,
+					recordKey
+				});
+			} else {
+				const result = await createCheckinRecord(nextRecord.record);
+				const recordUri = normalizeString(result.uri);
+				const recordKey = getRecordKeyFromUri(recordUri);
+
+				if (!recordUri || !recordKey) {
+					throw new Error('Swarm sync created a check-in record without a usable URI.');
+				}
+
+				await saveCheckinRecordMapping(event, {
+					sourceId: nextRecord.sourceId,
+					recordUri,
+					recordKey
+				});
+			}
 			imported += 1;
 			lastSourceCheckinId = nextRecord.sourceId;
 		} catch (syncError) {

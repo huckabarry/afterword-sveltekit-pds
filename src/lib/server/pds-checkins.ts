@@ -5,6 +5,7 @@ import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-id
 const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 export const PDS_CHECKIN_COLLECTION = 'blog.afterword.checkin';
 const CREATE_SESSION_NSID = 'com.atproto.server.createSession';
+const CREATE_RECORD_NSID = 'com.atproto.repo.createRecord';
 const PUT_RECORD_NSID = 'com.atproto.repo.putRecord';
 const UPLOAD_BLOB_NSID = 'com.atproto.repo.uploadBlob';
 const IMAGE_FETCH_USER_AGENT = 'afterword-sveltekit-pds swarm-sync';
@@ -279,6 +280,29 @@ async function putRecord(
 	return (await response.json()) as PutRecordResponse;
 }
 
+async function createRecord(session: AtprotoSession, collection: string, record: Record<string, unknown>) {
+	const response = await fetch(`${session.serviceUrl}/xrpc/${CREATE_RECORD_NSID}`, {
+		method: 'POST',
+		headers: {
+			authorization: `Bearer ${session.accessJwt}`,
+			'content-type': 'application/json'
+		},
+		body: JSON.stringify({
+			repo: session.did,
+			collection,
+			record,
+			validate: false
+		})
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`ATProto createRecord failed for ${collection}: ${response.status} ${text}`);
+	}
+
+	return (await response.json()) as PutRecordResponse;
+}
+
 export async function uploadRemoteCheckinImage(
 	session: AtprotoSession,
 	url: string,
@@ -326,6 +350,11 @@ export async function uploadRemoteCheckinImage(
 export async function putCheckinRecord(input: CheckinRecordInput) {
 	const session = await createSession();
 	return await putRecord(session, PDS_CHECKIN_COLLECTION, input.rkey, input.record);
+}
+
+export async function createCheckinRecord(record: Record<string, unknown>) {
+	const session = await createSession();
+	return await createRecord(session, PDS_CHECKIN_COLLECTION, record);
 }
 
 export async function getCheckinWriterSession() {
