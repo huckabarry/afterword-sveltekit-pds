@@ -54,12 +54,27 @@
 					</div>
 				{/if}
 
-				{#if item.addedAt}
+				{#if item.activityAt}
 					<div>
 						<dt>{item.activityDateLabel}</dt>
 						<dd>
-							<time datetime={item.addedAt.toISOString()}>
+							<time datetime={item.activityAt.toISOString()}>
 								{item.activityDisplayDate || item.displayDate}
+							</time>
+						</dd>
+					</div>
+				{/if}
+
+				{#if item.addedAt && item.activityAt && item.addedAt.getTime() !== item.activityAt.getTime()}
+					<div>
+						<dt>Added</dt>
+						<dd>
+							<time datetime={item.addedAt.toISOString()}>
+								{item.addedAt.toLocaleDateString('en-GB', {
+									day: '2-digit',
+									month: 'short',
+									year: 'numeric'
+								})}
 							</time>
 						</dd>
 					</div>

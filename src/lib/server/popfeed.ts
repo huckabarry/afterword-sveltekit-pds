@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { resolveAtprotoService } from '$lib/server/atproto-identity';
+import { getCanonicalPopfeedItems } from '$lib/server/pds-popfeed-items';
 import {
 	getOpenLibraryBookSearchUrl,
 	getPopfeedImageOverrides,
@@ -39,6 +40,9 @@ export type PopfeedItem = {
 	activityLabel: string;
 	activityDateLabel: string;
 	addedAt: Date | null;
+	activityAt: Date | null;
+	startedAt: Date | null;
+	completedAt: Date | null;
 	releaseDate: Date | null;
 	date: Date;
 	displayDate: string;
@@ -430,6 +434,12 @@ function normalizeItem(
 		activityLabel: activity.label,
 		activityDateLabel: activity.dateLabel,
 		addedAt,
+		activityAt: addedAt,
+		startedAt: listType === 'currently_reading_books' ? addedAt : null,
+		completedAt:
+			listType === 'read_books' || listType === 'watched_movies' || listType === 'watched_tv_shows'
+				? addedAt
+				: null,
 		releaseDate,
 		date,
 		displayDate: formatDisplayDate(date),
@@ -495,7 +505,7 @@ export async function getPopfeedBaseItems(): Promise<PopfeedItem[]> {
 }
 
 export async function getPopfeedItems(): Promise<PopfeedItem[]> {
-	const items = await getPopfeedBaseItems();
+	const items = await getCanonicalPopfeedItems(await getPopfeedBaseItems());
 
 	const applyCoverRules = (overrides: Awaited<ReturnType<typeof getPopfeedImageOverrides>>) =>
 		items.map((item) => {
