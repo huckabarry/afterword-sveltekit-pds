@@ -184,8 +184,6 @@
 				<a class="site-foot-nav-item" href="/colophon">Colophon</a>
 				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/check-ins">Check-ins</a>
-				<span class="site-foot-separator">/</span>
-				<a class="site-foot-nav-item" href="/earlier-web">Earlier Web</a>
 				{#each profile.verificationLinks.filter((link) => link.url !== '/' && !['afterword', 'bluesky'].includes(link.label.toLowerCase())) as link}
 					<span class="site-foot-separator">/</span>
 					<a class="site-foot-nav-item" href={link.url} target="_blank" rel="noreferrer me">{link.label}</a>
