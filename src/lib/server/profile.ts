@@ -213,44 +213,49 @@ export async function getSiteProfile(event: Pick<RequestEvent, 'platform'>): Pro
 	const db = getDb(event);
 	if (!db) return DEFAULT_PROFILE;
 
-	await ensureActivityPubMoveStateTable(db);
-	await db.prepare(`ALTER TABLE site_profile ADD COLUMN migration_aliases_json TEXT`).run().catch(() => {});
-	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_body TEXT`).run().catch(() => {});
-	await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_interests_json TEXT`).run().catch(() => {});
-	await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_target_handle TEXT`).run().catch(() => {});
-	await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_target_actor_url TEXT`).run().catch(() => {});
-	await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_started_at TEXT`).run().catch(() => {});
+	try {
+		await ensureActivityPubMoveStateTable(db);
+		await db.prepare(`ALTER TABLE site_profile ADD COLUMN migration_aliases_json TEXT`).run().catch(() => {});
+		await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_body TEXT`).run().catch(() => {});
+		await db.prepare(`ALTER TABLE site_profile ADD COLUMN about_interests_json TEXT`).run().catch(() => {});
+		await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_target_handle TEXT`).run().catch(() => {});
+		await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_target_actor_url TEXT`).run().catch(() => {});
+		await db.prepare(`ALTER TABLE site_profile ADD COLUMN move_started_at TEXT`).run().catch(() => {});
 
-	const row = await db
-		.prepare(
-			`SELECT display_name, avatar_url, header_image_url, bio, about_body, about_interests_json, verification_links_json, migration_aliases_json,
-			        move_target_handle, move_target_actor_url, move_started_at
-			 FROM site_profile
-			 WHERE id = 1
-			 LIMIT 1`
-		)
-		.first<ProfileRow>();
-	const moveRow = await db
-		.prepare(
-			`SELECT target_handle, target_actor_url, move_started_at
-			 FROM activitypub_move_state
-			 WHERE id = 1
-			 LIMIT 1`
-		)
-		.first<ProfileRow>();
+		const row = await db
+			.prepare(
+				`SELECT display_name, avatar_url, header_image_url, bio, about_body, about_interests_json, verification_links_json, migration_aliases_json,
+				        move_target_handle, move_target_actor_url, move_started_at
+				 FROM site_profile
+				 WHERE id = 1
+				 LIMIT 1`
+			)
+			.first<ProfileRow>();
+		const moveRow = await db
+			.prepare(
+				`SELECT target_handle, target_actor_url, move_started_at
+				 FROM activitypub_move_state
+				 WHERE id = 1
+				 LIMIT 1`
+			)
+			.first<ProfileRow>();
 
-	const profile = mapProfile(row);
+		const profile = mapProfile(row);
 
-	if (!moveRow) {
-		return profile;
+		if (!moveRow) {
+			return profile;
+		}
+
+		return {
+			...profile,
+			moveTargetHandle: getString(moveRow.target_handle) ?? profile.moveTargetHandle,
+			moveTargetActorUrl: getString(moveRow.target_actor_url) ?? profile.moveTargetActorUrl,
+			moveStartedAt: getString(moveRow.move_started_at) ?? profile.moveStartedAt
+		};
+	} catch (error) {
+		console.warn('Falling back to default site profile.', error);
+		return DEFAULT_PROFILE;
 	}
-
-	return {
-		...profile,
-		moveTargetHandle: getString(moveRow.target_handle) ?? profile.moveTargetHandle,
-		moveTargetActorUrl: getString(moveRow.target_actor_url) ?? profile.moveTargetActorUrl,
-		moveStartedAt: getString(moveRow.move_started_at) ?? profile.moveStartedAt
-	};
 }
 
 export async function updateSiteProfile(
