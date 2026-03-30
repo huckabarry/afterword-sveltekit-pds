@@ -17,6 +17,10 @@
 					Older fragments, status updates, and weblog posts from earlier versions of my life online.
 					They vary in polish and mood. That is part of the point.
 				</p>
+				<p>
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href="/earlier-web/stream">Browse the full stream</a>
+				</p>
 
 				{#if data.years.length}
 					<div class="earlier-web-years">

@@ -72,6 +72,14 @@ export type EarlierWebSearchResult = {
 	publishedAt: string;
 };
 
+export type EarlierWebStreamPage = {
+	posts: EarlierWebPostSummary[];
+	cursor: string | null;
+	limit: number;
+};
+
+export const EARLIER_WEB_STREAM_PAGE_SIZE = 30;
+
 function getEarlierWebDb(event: Pick<RequestEvent, 'platform'>) {
 	return (
 		event.platform?.env?.D1_DATABASE ??
@@ -391,5 +399,96 @@ export async function searchEarlierWebPosts(
 		}));
 	} catch {
 		return [];
+	}
+}
+
+export async function getEarlierWebStreamPage(
+	event: Pick<RequestEvent, 'platform'>,
+	{
+		cursor = null,
+		limit = EARLIER_WEB_STREAM_PAGE_SIZE
+	}: {
+		cursor?: string | null;
+		limit?: number;
+	} = {}
+): Promise<EarlierWebStreamPage> {
+	const db = getEarlierWebDb(event);
+	const normalizedLimit = Math.max(1, Math.min(Number(limit) || EARLIER_WEB_STREAM_PAGE_SIZE, 60));
+
+	if (!db) {
+		return {
+			posts: [],
+			cursor: null,
+			limit: normalizedLimit
+		};
+	}
+
+	const cursorParts = String(cursor || '').split('|');
+	const cursorPublishedAt = cursorParts[0] || null;
+	const cursorId = cursorParts[1] || null;
+
+	try {
+		const statement = cursorPublishedAt && cursorId
+			? db
+					.prepare(
+						`SELECT
+							id,
+							slug,
+							year,
+							month,
+							title,
+							excerpt,
+							body_text,
+							path,
+							bundle_key,
+							cover_image,
+							has_images,
+							published_at,
+							source_path
+						FROM earlier_web_posts
+						WHERE published_at < ? OR (published_at = ? AND id < ?)
+						ORDER BY published_at DESC, id DESC
+						LIMIT ?`
+					)
+					.bind(cursorPublishedAt, cursorPublishedAt, cursorId, normalizedLimit + 1)
+			: db
+					.prepare(
+						`SELECT
+							id,
+							slug,
+							year,
+							month,
+							title,
+							excerpt,
+							body_text,
+							path,
+							bundle_key,
+							cover_image,
+							has_images,
+							published_at,
+							source_path
+						FROM earlier_web_posts
+						ORDER BY published_at DESC, id DESC
+						LIMIT ?`
+					)
+					.bind(normalizedLimit + 1);
+
+		const result = await statement.all<EarlierWebPostRow>();
+		const rows = Array.isArray(result.results) ? result.results : [];
+		const slice = rows.slice(0, normalizedLimit);
+		const posts = slice.map(toEarlierWebPostSummary);
+		const lastRow = slice.at(-1) || null;
+
+		return {
+			posts,
+			cursor: rows.length > normalizedLimit && lastRow ? `${lastRow.published_at}|${lastRow.id}` : null,
+			limit: normalizedLimit
+		};
+	} catch {
+		return {
+			posts: [],
+			cursor: null,
+			limit: normalizedLimit
+		};
 	}
 }
