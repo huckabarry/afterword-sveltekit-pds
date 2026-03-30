@@ -212,7 +212,31 @@ function getAppleMapsUrl({
 }
 
 function normalizePlace(parts: string[]) {
-	return parts.map((part) => String(part || '').trim()).filter(Boolean).join(', ');
+	const cleaned = parts.map((part) => String(part || '').trim()).filter(Boolean);
+	const normalized: string[] = [];
+
+	for (const part of cleaned) {
+		const previous = normalized.at(-1);
+		if (!previous) {
+			normalized.push(part);
+			continue;
+		}
+
+		const previousLower = previous.toLowerCase();
+		const partLower = part.toLowerCase();
+		if (partLower === previousLower) {
+			continue;
+		}
+
+		if (partLower.startsWith(`${previousLower},`)) {
+			normalized.push(part.slice(previous.length + 1).trim());
+			continue;
+		}
+
+		normalized.push(part);
+	}
+
+	return normalized.filter(Boolean).join(', ');
 }
 
 function getPhotoRefLink(value: unknown) {
