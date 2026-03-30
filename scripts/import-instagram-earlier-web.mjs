@@ -24,6 +24,7 @@ function parseArgs(argv) {
 		remote: true,
 		skipMonths: false,
 		skipImages: false,
+		skipVideos: false,
 		skipSql: false,
 		dryRun: false,
 		startImageAt: '',
@@ -51,6 +52,8 @@ function parseArgs(argv) {
 			options.skipMonths = true;
 		} else if (arg === '--skip-images') {
 			options.skipImages = true;
+		} else if (arg === '--skip-videos') {
+			options.skipVideos = true;
 		} else if (arg === '--skip-sql') {
 			options.skipSql = true;
 		} else if (arg === '--dry-run') {
@@ -248,7 +251,7 @@ async function readInstagramPosts(sourceRoot, postsJsonOverride) {
 	};
 }
 
-async function buildArchive(sourceRoot, postsJsonOverride) {
+async function buildArchive(sourceRoot, postsJsonOverride, options) {
 	const { postsJsonPath, posts } = await readInstagramPosts(sourceRoot, postsJsonOverride);
 	const relativePostsJsonPath = path.relative(sourceRoot, postsJsonPath).replace(/\\/g, '/');
 	const entries = [];
@@ -305,6 +308,13 @@ async function buildArchive(sourceRoot, postsJsonOverride) {
 				continue;
 			}
 
+			const ext = path.extname(uri).toLowerCase();
+			const isVideo = ext === '.mp4' || ext === '.mov' || ext === '.webm';
+
+			if (options.skipVideos && isVideo) {
+				continue;
+			}
+
 			const sourceMediaPath = path.join(sourceRoot, uri);
 
 			if (!existsSync(sourceMediaPath)) {
@@ -317,13 +327,12 @@ async function buildArchive(sourceRoot, postsJsonOverride) {
 			const assetUrl = `${ASSET_ROUTE_PREFIX}${objectKey}`;
 			assetUrls.push(assetUrl);
 
-			const ext = path.extname(uri).toLowerCase();
 			const mediaCaption = normalizeCaption(mediaItem?.title || '');
 			const alt =
 				singleLineSummary(mediaCaption || caption, 160) ||
-				`Instagram ${ext === '.mp4' || ext === '.mov' ? 'video' : 'photo'}`;
+				`Instagram ${isVideo ? 'video' : 'photo'}`;
 
-			if (ext === '.mp4' || ext === '.mov' || ext === '.webm') {
+			if (isVideo) {
 				bodyParts.push(`[Video ${mediaIndex + 1}](${assetUrl})`);
 			} else {
 				bodyParts.push(`![${alt}](${assetUrl})`);
@@ -332,6 +341,10 @@ async function buildArchive(sourceRoot, postsJsonOverride) {
 
 		const bodyMarkdown = bodyParts.join('\n\n').trim();
 		const plainText = stripMarkdown(bodyMarkdown);
+
+		if (!bodyMarkdown) {
+			continue;
+		}
 		const excerpt = plainText ? summarizeText(plainText, 220) : '';
 
 		entries.push({
@@ -553,7 +566,8 @@ async function main() {
 
 	const { postsJsonPath, entries, imageUploads, monthEntries } = await buildArchive(
 		path.resolve(options.source),
-		options.postsJson
+		options.postsJson,
+		options
 	);
 
 	await writeMergedMonthBundles(monthEntries);
