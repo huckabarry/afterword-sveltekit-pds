@@ -28,11 +28,14 @@ const CLASSIFICATION_TAGS = new Set([
 ]);
 const MEDIA_TIMELINE_CACHE_TTL_MS = 1000 * 60 * 5;
 export const MEDIA_TIMELINE_PAGE_SIZE = 20;
+const MEDIA_TIMELINE_R2_KEY = 'media/timeline.json';
 
 type MediaTimelineCacheEntry = {
 	expiresAt: number;
 	items: MediaTimelineItem[];
 };
+
+type BoundR2Bucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
 
 function getTimelineCache() {
 	const scope = globalThis as typeof globalThis & {
@@ -44,6 +47,17 @@ function getTimelineCache() {
 	}
 
 	return scope;
+}
+
+function getBucket(context?: MediaTimelineContext) {
+	return context?.platform?.env?.R2_BUCKET ?? null;
+}
+
+function getBucketCacheKey(bucket: BoundR2Bucket) {
+	const name =
+		typeof bucket === 'object' && bucket && 'name' in bucket ? String(bucket.name || '') : 'default';
+
+	return name || 'default';
 }
 
 function dedupePosts(posts: BlogPost[]) {
@@ -213,15 +227,7 @@ function toPopfeedTimelineItem(
 
 type MediaTimelineContext = Pick<RequestEvent, 'platform' | 'url'> | null | undefined;
 
-async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
-	const scope = getTimelineCache();
-	const cacheKey = context?.platform?.env?.R2_BUCKET ? 'r2' : 'default';
-	const cached = scope.__afterwordMediaTimelineCache?.get(cacheKey);
-
-	if (cached?.expiresAt && cached.expiresAt > Date.now()) {
-		return cached.items;
-	}
-
+async function buildAllMediaTimelineItems(context?: MediaTimelineContext) {
 	const [bookPosts, screenPosts, albums, tracks, popfeedItems] = await Promise.all([
 		getRecentTaggedPosts(BOOK_TAGS, 14),
 		getRecentTaggedPosts(SCREEN_TAGS, 14),
@@ -236,10 +242,88 @@ async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
 		...popfeedItems.map(toPopfeedTimelineItem)
 	].sort((left, right) => Date.parse(right.dateIso) - Date.parse(left.dateIso));
 
-	scope.__afterwordMediaTimelineCache?.set(cacheKey, {
+	return items;
+}
+
+function writeItemsToMemoryCache(cacheKey: string, items: MediaTimelineItem[]) {
+	getTimelineCache().__afterwordMediaTimelineCache?.set(cacheKey, {
 		expiresAt: Date.now() + MEDIA_TIMELINE_CACHE_TTL_MS,
 		items
 	});
+}
+
+async function readTimelineSnapshotFromR2(bucket: BoundR2Bucket) {
+	const object = await bucket.get(MEDIA_TIMELINE_R2_KEY);
+
+	if (!object) {
+		return null;
+	}
+
+	try {
+		const generatedAt =
+			String(
+				(typeof object === 'object' &&
+					object &&
+					'customMetadata' in object &&
+					(object.customMetadata as Record<string, string | undefined>)?.generatedAt) ||
+					object.uploaded?.toISOString?.() ||
+					''
+			).trim() || null;
+		const items = (await object.json()) as MediaTimelineItem[];
+
+		if (!Array.isArray(items)) {
+			return null;
+		}
+
+		return { generatedAt, items };
+	} catch {
+		return null;
+	}
+}
+
+async function writeTimelineSnapshotToR2(bucket: BoundR2Bucket, items: MediaTimelineItem[]) {
+	await bucket.put(MEDIA_TIMELINE_R2_KEY, JSON.stringify(items), {
+		customMetadata: {
+			generatedAt: new Date().toISOString()
+		},
+		httpMetadata: {
+			contentType: 'application/json; charset=utf-8'
+		}
+	});
+}
+
+async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
+	const scope = getTimelineCache();
+	const bucket = getBucket(context);
+	const cacheKey = bucket ? getBucketCacheKey(bucket) : 'default';
+	const cached = scope.__afterwordMediaTimelineCache?.get(cacheKey);
+
+	if (cached?.expiresAt && cached.expiresAt > Date.now()) {
+		return cached.items;
+	}
+
+	if (bucket) {
+		try {
+			const snapshot = await readTimelineSnapshotFromR2(bucket);
+			const generatedAt = snapshot?.generatedAt ? Date.parse(snapshot.generatedAt) : NaN;
+
+			if (snapshot && Number.isFinite(generatedAt) && generatedAt + MEDIA_TIMELINE_CACHE_TTL_MS > Date.now()) {
+				writeItemsToMemoryCache(cacheKey, snapshot.items);
+				return snapshot.items;
+			}
+		} catch {
+			// Fall through to a live rebuild below.
+		}
+	}
+
+	const items = await buildAllMediaTimelineItems(context);
+	writeItemsToMemoryCache(cacheKey, items);
+
+	if (bucket) {
+		void writeTimelineSnapshotToR2(bucket, items).catch(() => {
+			// A failed snapshot write should not block the timeline render.
+		});
+	}
 
 	return items;
 }
