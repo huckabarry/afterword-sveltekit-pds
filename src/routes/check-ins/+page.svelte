@@ -140,6 +140,7 @@
 
 	.card__media {
 		order: 2;
+		display: block;
 		overflow: hidden;
 		border-radius: 1rem;
 		background: color-mix(in srgb, var(--surface) 82%, white 18%);
@@ -151,6 +152,11 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+
+	:global(.card__media .checkin-map__frame) {
+		width: 100%;
+		height: 100%;
 	}
 
 	:global(.card__media .checkin-map__frame--compact) {
