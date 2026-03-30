@@ -183,39 +183,7 @@
 							</div>
 						{/if}
 
-						{#if item.kind === 'post'}
-							<div class="media-timeline__title-row">
-								<h2 class="media-timeline__title">
-									<a href={item.href}>{item.title}</a>
-								</h2>
-								<a class="media-timeline__jump" href={item.href} aria-label={`Open ${item.title}`}>
-									<svg viewBox="0 0 32 32" aria-hidden="true">
-										<path
-											d="M5.333 14.667v2.667h16L14 24.667l1.893 1.893L26.453 16 15.893 5.44 14 7.333l7.333 7.333h-16z"
-										></path>
-									</svg>
-								</a>
-							</div>
-
-							{#if item.summary}
-								<p class="media-timeline__lede">{item.summary}</p>
-							{/if}
-
-							{#if getItemImageUrl(item) && !hiddenImages[item.id]}
-								<figure class="media-timeline__feature">
-									<img
-										src={getItemImageUrl(item) || ''}
-										alt={item.imageAlt}
-										loading="lazy"
-										onerror={() => handleImageError(item)}
-									/>
-								</figure>
-							{/if}
-
-							<div class="media-timeline__actions">
-								<a class="tag-pill media-timeline__action" href={item.href}>Read note</a>
-							</div>
-						{:else if item.kind === 'track'}
+						{#if item.kind === 'track'}
 							<div class="media-entry media-entry--track">
 								<a class="media-entry__cover media-entry__cover--mini" href={item.href}>
 									{#if getItemImageUrl(item) && !hiddenImages[item.id]}

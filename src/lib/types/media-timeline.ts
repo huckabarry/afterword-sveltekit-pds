@@ -6,7 +6,7 @@ export type TimelineLink = {
 
 type BaseMediaTimelineItem = {
 	id: string;
-	kind: 'post' | 'track' | 'album' | 'popfeed';
+	kind: 'track' | 'album' | 'popfeed';
 	label: string;
 	title: string;
 	href: string;
@@ -17,10 +17,6 @@ type BaseMediaTimelineItem = {
 	fallbackImageUrl?: string | null;
 	imageAlt: string;
 	tags: string[];
-};
-
-export type PostTimelineItem = BaseMediaTimelineItem & {
-	kind: 'post';
 };
 
 export type TrackTimelineItem = BaseMediaTimelineItem & {
@@ -46,7 +42,6 @@ export type PopfeedTimelineItem = BaseMediaTimelineItem & {
 };
 
 export type MediaTimelineItem =
-	| PostTimelineItem
 	| TrackTimelineItem
 	| AlbumTimelineItem
 	| PopfeedTimelineItem;

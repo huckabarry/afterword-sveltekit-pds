@@ -1,5 +1,4 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import { getRecentTaggedPosts, type BlogPost } from '$lib/server/ghost';
 import { getAlbums, getTracks } from '$lib/server/music';
 import { getPopfeedItems } from '$lib/server/popfeed';
 import type {
@@ -7,25 +6,9 @@ import type {
 	MediaTimelineItem,
 	MediaTimelinePage,
 	PopfeedTimelineItem,
-	PostTimelineItem,
 	TimelineLink,
 	TrackTimelineItem
 } from '$lib/types/media-timeline';
-
-const BOOK_TAGS = ['books', 'book-reviews'];
-const SCREEN_TAGS = ['movie', 'movies', 'film', 'films', 'show', 'shows', 'tv', 'watching'];
-const CLASSIFICATION_TAGS = new Set([
-	'books',
-	'book-reviews',
-	'movie',
-	'movies',
-	'film',
-	'films',
-	'show',
-	'shows',
-	'tv',
-	'watching'
-]);
 const MEDIA_TIMELINE_CACHE_TTL_MS = 1000 * 60 * 5;
 export const MEDIA_TIMELINE_PAGE_SIZE = 20;
 const MEDIA_TIMELINE_R2_KEY = 'media/timeline.json';
@@ -60,12 +43,6 @@ function getBucketCacheKey(bucket: BoundR2Bucket) {
 	return name || 'default';
 }
 
-function dedupePosts(posts: BlogPost[]) {
-	return [...new Map(posts.map((post) => [post.id, post])).values()].sort(
-		(a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()
-	);
-}
-
 function stripHtml(value: string) {
 	return String(value || '')
 		.replace(/<[^>]+>/g, ' ')
@@ -96,57 +73,12 @@ function formatTimelineDate(value: Date) {
 	}).format(date);
 }
 
-function getPostTags(post: BlogPost) {
-	return (post.publicTags || [])
-		.filter((tag) => !CLASSIFICATION_TAGS.has(tag.slug))
-		.map((tag) => tag.label)
-		.slice(0, 4);
-}
-
-function getPostLabel(post: BlogPost) {
-	const tags = new Set(post.tags);
-
-	if (tags.has('books') || tags.has('book-reviews')) {
-		return 'Book';
-	}
-
-	if (tags.has('show') || tags.has('shows') || tags.has('tv')) {
-		return 'Show';
-	}
-
-	if (tags.has('movie') || tags.has('movies') || tags.has('film') || tags.has('films')) {
-		return 'Movie';
-	}
-
-	if (tags.has('watching')) {
-		return 'Watching';
-	}
-
-	return 'Media Note';
-}
-
 function toTimelineLinks(links: Array<{ label: string; url: string }>, limit = 3): TimelineLink[] {
 	return (links || []).slice(0, limit).map((link) => ({
 		label: link.label,
 		url: link.url,
 		external: true
 	}));
-}
-
-function toPostTimelineItem(post: BlogPost): PostTimelineItem {
-	return {
-		id: `post-${post.slug}`,
-		kind: 'post',
-		label: getPostLabel(post),
-		title: post.title,
-		href: post.path,
-		dateIso: post.publishedAt.toISOString(),
-		dateLabel: formatTimelineDate(post.publishedAt),
-		summary: post.excerpt || summarize(post.html),
-		imageUrl: post.coverImage || null,
-		imageAlt: post.title,
-		tags: getPostTags(post)
-	};
 }
 
 function toTrackTimelineItem(
@@ -228,15 +160,12 @@ function toPopfeedTimelineItem(
 type MediaTimelineContext = Pick<RequestEvent, 'platform' | 'url'> | null | undefined;
 
 async function buildAllMediaTimelineItems(context?: MediaTimelineContext) {
-	const [bookPosts, screenPosts, albums, tracks, popfeedItems] = await Promise.all([
-		getRecentTaggedPosts(BOOK_TAGS, 14),
-		getRecentTaggedPosts(SCREEN_TAGS, 14),
+	const [albums, tracks, popfeedItems] = await Promise.all([
 		getAlbums(context),
 		getTracks(context),
 		getPopfeedItems()
 	]);
 	const items = [
-		...dedupePosts([...bookPosts, ...screenPosts]).map(toPostTimelineItem),
 		...tracks.map(toTrackTimelineItem),
 		...albums.map(toAlbumTimelineItem),
 		...popfeedItems.map(toPopfeedTimelineItem)
