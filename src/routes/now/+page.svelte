@@ -24,6 +24,17 @@
 	const latestCheckinText = $derived.by(() =>
 		data.latestCheckin ? excerpt(data.latestCheckin.excerpt || data.latestCheckin.note, 180) : ''
 	);
+
+	function usesGeneratedMicroTitle(post: EarlierWebOnThisDayPost) {
+		const title = post.title.trim().toLowerCase();
+		const excerpt = post.excerpt.trim().toLowerCase();
+
+		if (!title || !excerpt) {
+			return false;
+		}
+
+		return title === excerpt || excerpt.startsWith(title) || title.startsWith(excerpt);
+	}
 </script>
 
 <svelte:head>
@@ -182,9 +193,11 @@
 						</a>
 					{/if}
 
-					<h3 class="on-this-day-card__title">
-						<a href={post.path}>{post.title}</a>
-					</h3>
+					{#if !usesGeneratedMicroTitle(post)}
+						<h3 class="on-this-day-card__title">
+							<a href={post.path}>{post.title}</a>
+						</h3>
+					{/if}
 
 					<p class="on-this-day-card__excerpt">{post.excerpt}</p>
 				</article>

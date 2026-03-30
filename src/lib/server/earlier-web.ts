@@ -349,11 +349,40 @@ export async function getEarlierWebOnThisDayPosts(
 				ORDER BY published_at DESC
 				LIMIT ?`
 			)
-			.bind(monthDay, normalizedLimit)
+			.bind(monthDay, Math.max(normalizedLimit * 8, 24))
 			.all<EarlierWebPostRow>();
 
 		const rows = Array.isArray(result.results) ? result.results : [];
-		return rows.map(toEarlierWebPostSummary);
+		const sorted = rows
+			.map(toEarlierWebPostSummary)
+			.sort(
+				(a: EarlierWebPostSummary, b: EarlierWebPostSummary) =>
+					a.year - b.year || a.publishedAt.localeCompare(b.publishedAt)
+			);
+
+		if (sorted.length <= normalizedLimit) {
+			return sorted;
+		}
+
+		const picks: EarlierWebPostSummary[] = [];
+
+		for (let index = 0; index < normalizedLimit; index += 1) {
+			const position = Math.floor((index * sorted.length) / normalizedLimit);
+			const candidate = sorted[Math.min(position, sorted.length - 1)];
+
+			if (candidate && !picks.some((entry) => entry.id === candidate.id)) {
+				picks.push(candidate);
+			}
+		}
+
+		for (const candidate of sorted) {
+			if (picks.length >= normalizedLimit) break;
+			if (!picks.some((entry) => entry.id === candidate.id)) {
+				picks.push(candidate);
+			}
+		}
+
+		return picks.sort((a, b) => a.year - b.year || a.publishedAt.localeCompare(b.publishedAt));
 	} catch {
 		return [];
 	}
