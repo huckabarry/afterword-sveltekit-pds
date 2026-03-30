@@ -180,9 +180,7 @@
 			<div class="site-foot-nav">
 				<a class="site-foot-nav-item" href="/check-ins">Check-ins</a>
 				<span class="site-foot-separator">/</span>
-				<a class="site-foot-nav-item" href="/field-notes">Field Notes</a>
-				<span class="site-foot-separator">/</span>
-				<a class="site-foot-nav-item" href="/planning">Planning</a>
+				<a class="site-foot-nav-item" href="/about">About</a>
 				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/earlier-web">Earlier Web</a>
 				<span class="site-foot-separator">/</span>
