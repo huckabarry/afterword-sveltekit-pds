@@ -157,7 +157,7 @@
 	<section class="section-block">
 		<h2 class="section-title">On This Date</h2>
 		<p class="page-head__lede">
-			A few notes from this day in earlier years, pulled from <a href="/earlier-web">From an Earlier
+			A few notes from this day in earlier years, pulled from <a href="/earlier-web">Earlier
 				Web</a>.
 		</p>
 
