@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CheckinMap from '$lib/components/CheckinMap.svelte';
+	import { shouldSurfaceEarlierWebTitle } from '$lib/earlier-web';
 	import { excerpt, formatDate } from '$lib/format';
 	import type { Checkin } from '$lib/server/atproto';
 	import type { EarlierWebOnThisDayPost } from '$lib/server/earlier-web';
@@ -25,16 +26,6 @@
 		data.latestCheckin ? excerpt(data.latestCheckin.excerpt || data.latestCheckin.note, 180) : ''
 	);
 
-	function usesGeneratedMicroTitle(post: EarlierWebOnThisDayPost) {
-		const title = post.title.trim().toLowerCase();
-		const excerpt = post.excerpt.trim().toLowerCase();
-
-		if (!title || !excerpt) {
-			return false;
-		}
-
-		return title === excerpt || excerpt.startsWith(title) || title.startsWith(excerpt);
-	}
 </script>
 
 <svelte:head>
@@ -193,7 +184,7 @@
 						</a>
 					{/if}
 
-					{#if !usesGeneratedMicroTitle(post)}
+					{#if shouldSurfaceEarlierWebTitle(post)}
 						<h3 class="on-this-day-card__title">
 							<a href={post.path}>{post.title}</a>
 						</h3>

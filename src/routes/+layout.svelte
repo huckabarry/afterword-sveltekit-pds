@@ -13,6 +13,7 @@
 		section: string;
 		coverImage: string | null;
 		publishedAt: string;
+		hideTitle?: boolean;
 	};
 
 	let searchOpen = $state(false);
@@ -245,7 +246,9 @@
 												})}
 											</time>
 										</div>
-										<h2 class="search-result__title">{result.title}</h2>
+										{#if !result.hideTitle}
+											<h2 class="search-result__title">{result.title}</h2>
+										{/if}
 										<p class="search-result__excerpt">{result.excerpt}</p>
 									</div>
 								</a>

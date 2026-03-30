@@ -1,22 +1,12 @@
 <script lang="ts">
+	import { shouldSurfaceEarlierWebTitle } from '$lib/earlier-web';
 	import type { EarlierWebPost } from '$lib/server/earlier-web';
 
 	let { data }: { data: { post: EarlierWebPost } } = $props();
-
-	function usesGeneratedMicroTitle(post: EarlierWebPost) {
-		const title = post.title.trim().toLowerCase();
-		const excerpt = post.excerpt.trim().toLowerCase();
-
-		if (!title || !excerpt) {
-			return false;
-		}
-
-		return title === excerpt || excerpt.startsWith(title) || title.startsWith(excerpt);
-	}
 </script>
 
 <svelte:head>
-	<title>{data.post.title} | From an Earlier Web</title>
+	<title>{shouldSurfaceEarlierWebTitle(data.post) ? data.post.title : 'From an Earlier Web'} | From an Earlier Web</title>
 </svelte:head>
 
 <section class="section-block">
@@ -30,7 +20,7 @@
 				</p>
 
 				<header class="earlier-web-post__header">
-					{#if !usesGeneratedMicroTitle(data.post)}
+					{#if shouldSurfaceEarlierWebTitle(data.post)}
 						<h2>{data.post.title}</h2>
 					{/if}
 					<p>

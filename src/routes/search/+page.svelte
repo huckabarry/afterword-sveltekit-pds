@@ -33,10 +33,12 @@
 						{#each data.results as result (result.id)}
 							<article class="search-page-result">
 								<p class="search-page-result__eyebrow">{result.section}</p>
-								<h2 class="search-page-result__title">
-									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-									<a href={result.path}>{result.title}</a>
-								</h2>
+								{#if !result.hideTitle}
+									<h2 class="search-page-result__title">
+										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+										<a href={result.path}>{result.title}</a>
+									</h2>
+								{/if}
 								<p class="search-page-result__excerpt">{result.excerpt}</p>
 							</article>
 						{/each}

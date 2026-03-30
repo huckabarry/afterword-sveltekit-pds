@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { shouldSurfaceEarlierWebTitle } from '$lib/earlier-web';
 	import type { EarlierWebPostSummary } from '$lib/server/earlier-web';
 
 	let {
@@ -29,16 +30,6 @@
 		return new Date(Date.UTC(data.year, month - 1, 1)).toLocaleString('en-US', { month: 'long' });
 	}
 
-	function usesGeneratedMicroTitle(post: EarlierWebPostSummary) {
-		const title = post.title.trim().toLowerCase();
-		const excerpt = post.excerpt.trim().toLowerCase();
-
-		if (!title || !excerpt) {
-			return false;
-		}
-
-		return title === excerpt || excerpt.startsWith(title) || title.startsWith(excerpt);
-	}
 </script>
 
 <svelte:head>
@@ -62,7 +53,7 @@
 						<div class="earlier-web-post-list">
 							{#each posts as post (post.id)}
 								<article class="earlier-web-post-list__item">
-									{#if usesGeneratedMicroTitle(post)}
+									{#if !shouldSurfaceEarlierWebTitle(post)}
 										<p class="earlier-web-post-list__micro-link">
 											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 											<a href={post.path}>{post.excerpt}</a>

@@ -1,4 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
+import { shouldSurfaceEarlierWebTitle } from '$lib/earlier-web';
 
 type EarlierWebBucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
 
@@ -54,6 +55,7 @@ export type EarlierWebPostSummary = {
 	hasImages: boolean;
 	publishedAt: string;
 	sourcePath: string;
+	bodyTextLength: number;
 };
 
 export type EarlierWebPost = EarlierWebPostSummary & {
@@ -70,6 +72,7 @@ export type EarlierWebSearchResult = {
 	section: string;
 	coverImage: string | null;
 	publishedAt: string;
+	hideTitle: boolean;
 };
 
 export type EarlierWebStreamPage = {
@@ -117,7 +120,8 @@ function toEarlierWebPostSummary(row: EarlierWebPostRow): EarlierWebPostSummary 
 		coverImage: row.cover_image || null,
 		hasImages: Boolean(row.has_images),
 		publishedAt: row.published_at,
-		sourcePath: row.source_path
+		sourcePath: row.source_path,
+		bodyTextLength: String(row.body_text || '').trim().length
 	};
 }
 
@@ -470,12 +474,13 @@ export async function searchEarlierWebPosts(
 				`SELECT
 					id,
 					slug,
-					path,
-					title,
-					excerpt,
-					cover_image AS coverImage,
-					published_at AS publishedAt
-				FROM earlier_web_posts
+				path,
+				title,
+				excerpt,
+				body_text AS bodyText,
+				cover_image AS coverImage,
+				published_at AS publishedAt
+			FROM earlier_web_posts
 				WHERE
 					title LIKE ? COLLATE NOCASE OR
 					excerpt LIKE ? COLLATE NOCASE OR
@@ -495,6 +500,7 @@ export async function searchEarlierWebPosts(
 				path: string;
 				title: string;
 				excerpt: string;
+				bodyText: string;
 				coverImage: string | null;
 				publishedAt: string;
 			}>();
@@ -507,6 +513,7 @@ export async function searchEarlierWebPosts(
 			path: string;
 			title: string;
 			excerpt: string;
+			bodyText: string;
 			coverImage: string | null;
 			publishedAt: string;
 		}) => ({
@@ -517,7 +524,12 @@ export async function searchEarlierWebPosts(
 			excerpt: row.excerpt,
 			section: 'From an Earlier Web',
 			coverImage: row.coverImage || null,
-			publishedAt: row.publishedAt
+			publishedAt: row.publishedAt,
+			hideTitle: !shouldSurfaceEarlierWebTitle({
+				title: row.title,
+				excerpt: row.excerpt,
+				bodyTextLength: String(row.bodyText || '').trim().length
+			})
 		}));
 	} catch {
 		return [];

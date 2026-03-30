@@ -14,6 +14,7 @@ export type SearchResult = {
 	section: string;
 	coverImage: string | null;
 	publishedAt: string;
+	hideTitle?: boolean;
 };
 
 type RankedSearchResult = SearchResult & {
