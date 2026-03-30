@@ -2,6 +2,7 @@
 	import CheckinMap from '$lib/components/CheckinMap.svelte';
 	import { excerpt, formatDate } from '$lib/format';
 	import type { Checkin } from '$lib/server/atproto';
+	import type { EarlierWebOnThisDayPost } from '$lib/server/earlier-web';
 	import type { BlogPost, PhotoItem } from '$lib/server/ghost';
 
 	let {
@@ -16,6 +17,7 @@
 			nowPosts: BlogPost[];
 			latestCheckin: Checkin | null;
 			latestPhoto: PhotoItem | null;
+			onThisDayPosts: EarlierWebOnThisDayPost[];
 		};
 	} = $props();
 
@@ -144,6 +146,49 @@
 					</div>
 				</article>
 			{/if}
+		</div>
+	</section>
+{/if}
+
+{#if data.onThisDayPosts.length}
+	<section class="section-block">
+		<h2 class="section-title">On This Date</h2>
+		<p class="page-head__lede">
+			A few notes from this day in earlier years, pulled from <a href="/earlier-web">From an Earlier
+				Web</a>.
+		</p>
+
+		<div class="on-this-day-list">
+			{#each data.onThisDayPosts as post}
+				<article class="on-this-day-card">
+					<div class="on-this-day-card__meta">
+						<time datetime={post.publishedAt}>
+							{new Date(post.publishedAt).toLocaleDateString('en-US', {
+								year: 'numeric',
+								month: 'long',
+								day: 'numeric'
+							})}
+						</time>
+					</div>
+
+					{#if post.coverImage}
+						<a class="on-this-day-card__image-link" href={post.path}>
+							<img
+								class="on-this-day-card__image"
+								src={post.coverImage}
+								alt={post.title}
+								loading="lazy"
+							/>
+						</a>
+					{/if}
+
+					<h3 class="on-this-day-card__title">
+						<a href={post.path}>{post.title}</a>
+					</h3>
+
+					<p class="on-this-day-card__excerpt">{post.excerpt}</p>
+				</article>
+			{/each}
 		</div>
 	</section>
 {/if}
@@ -277,8 +322,63 @@
 		white-space: nowrap;
 	}
 
+	.on-this-day-list {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.on-this-day-card {
+		display: grid;
+		gap: 0.8rem;
+		padding: 1rem;
+		border: 1px solid var(--border);
+		border-radius: 1rem;
+		background: color-mix(in srgb, var(--surface) 76%, transparent 24%);
+	}
+
+	.on-this-day-card__meta {
+		font-size: 0.82rem;
+		color: var(--muted);
+	}
+
+	.on-this-day-card__image-link {
+		display: block;
+	}
+
+	.on-this-day-card__image {
+		display: block;
+		width: 100%;
+		aspect-ratio: 4 / 3;
+		object-fit: cover;
+		border-radius: 0.85rem;
+		background: color-mix(in srgb, var(--surface) 82%, white 18%);
+	}
+
+	.on-this-day-card__title {
+		margin: 0;
+		font-size: 1.02rem;
+		line-height: 1.3;
+	}
+
+	.on-this-day-card__title a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.on-this-day-card__excerpt {
+		margin: 0;
+		color: var(--muted);
+		line-height: 1.6;
+	}
+
 	@media (max-width: 760px) {
 		.now-glance {
+			grid-template-columns: 1fr;
+		}
+
+		.on-this-day-list {
 			grid-template-columns: 1fr;
 		}
 	}

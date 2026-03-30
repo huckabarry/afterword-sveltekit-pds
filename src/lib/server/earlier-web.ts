@@ -88,6 +88,8 @@ export type EarlierWebStreamHydratedPage = {
 	limit: number;
 };
 
+export type EarlierWebOnThisDayPost = EarlierWebPostSummary;
+
 export const EARLIER_WEB_STREAM_PAGE_SIZE = 30;
 
 function getEarlierWebDb(event: Pick<RequestEvent, 'platform'>) {
@@ -300,6 +302,54 @@ export async function getEarlierWebYearPosts(
 				ORDER BY published_at DESC`
 			)
 			.bind(year)
+			.all<EarlierWebPostRow>();
+
+		const rows = Array.isArray(result.results) ? result.results : [];
+		return rows.map(toEarlierWebPostSummary);
+	} catch {
+		return [];
+	}
+}
+
+export async function getEarlierWebOnThisDayPosts(
+	event: Pick<RequestEvent, 'platform'>,
+	date = new Date(),
+	limit = 3
+): Promise<EarlierWebOnThisDayPost[]> {
+	const db = getEarlierWebDb(event);
+
+	if (!db) {
+		return [];
+	}
+
+	const month = String(date.getMonth() + 1).padStart(2, '0');
+	const day = String(date.getDate()).padStart(2, '0');
+	const monthDay = `${month}-${day}`;
+	const normalizedLimit = Math.max(1, Math.min(Number(limit) || 3, 12));
+
+	try {
+		const result = await db
+			.prepare(
+				`SELECT
+					id,
+					slug,
+					year,
+					month,
+					title,
+					excerpt,
+					body_text,
+					path,
+					bundle_key,
+					cover_image,
+					has_images,
+					published_at,
+					source_path
+				FROM earlier_web_posts
+				WHERE substr(published_at, 6, 5) = ?
+				ORDER BY published_at DESC
+				LIMIT ?`
+			)
+			.bind(monthDay, normalizedLimit)
 			.all<EarlierWebPostRow>();
 
 		const rows = Array.isArray(result.results) ? result.results : [];

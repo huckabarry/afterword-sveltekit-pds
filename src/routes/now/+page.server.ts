@@ -1,5 +1,6 @@
 import { getCheckins } from '$lib/server/atproto';
 import { getNowIntroContent } from '$lib/server/content';
+import { getEarlierWebOnThisDayPosts } from '$lib/server/earlier-web';
 import { getPhotoItems, getRecentTaggedPosts, type BlogPost, type PhotoItem } from '$lib/server/ghost';
 
 const MEDIA_TAGS = new Set([
@@ -29,12 +30,13 @@ function getLatestPhoto(photos: PhotoItem[]) {
 		})[0] || null;
 }
 
-export async function load() {
-	const [intro, rawNowPosts, checkins, photos] = await Promise.all([
+export async function load(event) {
+	const [intro, rawNowPosts, checkins, photos, onThisDayPosts] = await Promise.all([
 		getNowIntroContent(),
 		getRecentTaggedPosts(['now'], 12),
 		getCheckins(),
-		getPhotoItems()
+		getPhotoItems(),
+		getEarlierWebOnThisDayPosts(event)
 	]);
 
 	const nowPosts = rawNowPosts.filter((post) => !isMediaTagged(post));
@@ -47,6 +49,7 @@ export async function load() {
 		intro,
 		nowPosts,
 		latestCheckin,
-		latestPhoto: getLatestPhoto(photos)
+		latestPhoto: getLatestPhoto(photos),
+		onThisDayPosts
 	};
 }
