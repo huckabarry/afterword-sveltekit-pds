@@ -98,53 +98,59 @@
 
 {#if posts.length}
 	<section class="section-block">
-		<div class="earlier-web-stream" aria-label="Earlier web stream">
-			{#each posts as post (post.id)}
-				<article class="earlier-web-stream__entry">
-					{#if post.coverImage}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a class="earlier-web-stream__image-link" href={post.path}>
-							<img
-								class="earlier-web-stream__image"
-								src={post.coverImage}
-								alt={post.title}
-								loading="lazy"
-								decoding="async"
-							/>
-						</a>
-					{/if}
+		<article class="content content-page">
+			<div class="post-full-content">
+				<section class="content-body">
+					<div class="earlier-web-stream" aria-label="Earlier web stream">
+						{#each posts as post (post.id)}
+							<article class="earlier-web-stream__entry">
+								{#if post.coverImage}
+									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+									<a class="earlier-web-stream__image-link" href={post.path}>
+										<img
+											class="earlier-web-stream__image"
+											src={post.coverImage}
+											alt={post.title}
+											loading="lazy"
+											decoding="async"
+										/>
+									</a>
+								{/if}
 
-					<div class="earlier-web-stream__body">
-						<p class="earlier-web-stream__meta">
-							<time datetime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
-							<span>·</span>
-							<span>{post.year}</span>
-						</p>
-						<h2>
-							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-							<a href={post.path}>{post.title}</a>
-						</h2>
-						<p>{post.excerpt}</p>
+								<div class="earlier-web-stream__body">
+									<p class="earlier-web-stream__meta">
+										<time datetime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+										<span>·</span>
+										<span>{post.year}</span>
+									</p>
+									<h2>
+										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+										<a href={post.path}>{post.title}</a>
+									</h2>
+									<p>{post.excerpt}</p>
+								</div>
+							</article>
+						{/each}
 					</div>
-				</article>
-			{/each}
-		</div>
 
-		<div class="earlier-web-stream__footer">
-			<p>Showing {posts.length} posts</p>
+					<div class="earlier-web-stream__footer">
+						<p>Showing {posts.length} posts</p>
 
-			{#if nextCursor}
-				<div use:infiniteLoad>
-					<button class="tag-pill" type="button" disabled={isLoadingMore} onclick={loadMore}>
-						{isLoadingMore ? 'Loading more…' : 'Load older posts'}
-					</button>
-				</div>
-			{/if}
+						{#if nextCursor}
+							<div use:infiniteLoad>
+								<button class="tag-pill" type="button" disabled={isLoadingMore} onclick={loadMore}>
+									{isLoadingMore ? 'Loading more…' : 'Load older posts'}
+								</button>
+							</div>
+						{/if}
 
-			{#if loadError}
-				<p class="earlier-web-stream__error">{loadError}</p>
-			{/if}
-		</div>
+						{#if loadError}
+							<p class="earlier-web-stream__error">{loadError}</p>
+						{/if}
+					</div>
+				</section>
+			</div>
+		</article>
 	</section>
 {:else}
 	<section class="section-block">
