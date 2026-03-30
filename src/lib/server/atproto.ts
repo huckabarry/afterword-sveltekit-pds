@@ -255,7 +255,7 @@ function getPhotoRefLink(value: unknown) {
 	return null;
 }
 
-function normalizeCheckin(
+export function hydrateCheckinRecord(
 	record: {
 		uri?: string;
 		cid?: string;
@@ -604,7 +604,7 @@ export async function getCheckins() {
 
 			const data = (await response.json()) as { records?: Array<Record<string, unknown>> };
 			allRecords.push(
-				...(data.records || []).map((record) => normalizeCheckin(record, did, serviceUrl))
+				...(data.records || []).map((record) => hydrateCheckinRecord(record, did, serviceUrl))
 			);
 		}
 

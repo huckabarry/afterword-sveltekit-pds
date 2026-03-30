@@ -1,5 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { error, redirect, type Cookies, type RequestEvent } from '@sveltejs/kit';
+import { hydrateCheckinRecord, type Checkin } from '$lib/server/atproto';
+import { upsertLatestCheckinSnapshot } from '$lib/server/checkin-snapshot';
 import {
 	createCheckinRecord,
 	getCheckinWriterSession,
@@ -739,10 +741,12 @@ async function syncCheckinItems(
 	options: { includePhotos?: boolean } = {}
 ): Promise<SwarmSyncResult> {
 	const imageCache = new Map<string, any>();
+	const writerSession = await getCheckinWriterSession();
 	const errors: Array<{ id: string; message: string }> = [];
 	let imported = 0;
 	let failed = 0;
 	let lastSourceCheckinId: string | null = null;
+	let latestSyncedCheckin: Checkin | null = null;
 
 	for (const checkin of checkins) {
 		const sourceId = normalizeString(checkin.id) || 'unknown';
@@ -763,6 +767,21 @@ async function syncCheckinItems(
 					recordUri,
 					recordKey
 				});
+				const syncedCheckin = hydrateCheckinRecord(
+					{
+						uri: recordUri,
+						cid: normalizeString(result.cid),
+						value: nextRecord.record
+					},
+					writerSession.did,
+					writerSession.serviceUrl
+				);
+				if (
+					!latestSyncedCheckin ||
+					syncedCheckin.visitedAt.getTime() > latestSyncedCheckin.visitedAt.getTime()
+				) {
+					latestSyncedCheckin = syncedCheckin;
+				}
 			} else {
 				const result = await createCheckinRecord(nextRecord.record);
 				const recordUri = normalizeString(result.uri);
@@ -777,6 +796,21 @@ async function syncCheckinItems(
 					recordUri,
 					recordKey
 				});
+				const syncedCheckin = hydrateCheckinRecord(
+					{
+						uri: recordUri,
+						cid: normalizeString(result.cid),
+						value: nextRecord.record
+					},
+					writerSession.did,
+					writerSession.serviceUrl
+				);
+				if (
+					!latestSyncedCheckin ||
+					syncedCheckin.visitedAt.getTime() > latestSyncedCheckin.visitedAt.getTime()
+				) {
+					latestSyncedCheckin = syncedCheckin;
+				}
 			}
 			imported += 1;
 			lastSourceCheckinId = nextRecord.sourceId;
@@ -787,6 +821,10 @@ async function syncCheckinItems(
 				message: syncError instanceof Error ? syncError.message : 'Unable to sync Swarm check-in.'
 			});
 		}
+	}
+
+	if (latestSyncedCheckin) {
+		await upsertLatestCheckinSnapshot(event, latestSyncedCheckin);
 	}
 
 	const now = new Date().toISOString();
