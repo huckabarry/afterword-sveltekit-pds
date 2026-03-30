@@ -133,6 +133,7 @@
 		background: transparent;
 		cursor: pointer;
 		text-decoration: none;
+		text-align: left;
 		overflow: hidden;
 		border-radius: 0.25rem;
 	}
@@ -159,6 +160,7 @@
 		bottom: 0.8rem;
 		left: 0.8rem;
 		display: grid;
+		justify-items: start;
 		gap: 0.15rem;
 		color: #ffffff;
 		opacity: 0;
