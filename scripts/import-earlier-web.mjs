@@ -20,6 +20,7 @@ function parseArgs(argv) {
 		remote: true,
 		skipMonths: false,
 		skipImages: false,
+		skipSql: false,
 		dryRun: false,
 		startImageAt: '',
 		retries: 3
@@ -43,6 +44,8 @@ function parseArgs(argv) {
 			options.skipMonths = true;
 		} else if (arg === '--skip-images') {
 			options.skipImages = true;
+		} else if (arg === '--skip-sql') {
+			options.skipSql = true;
 		} else if (arg === '--dry-run') {
 			options.dryRun = true;
 		} else if (arg === '--start-image-at') {
@@ -578,7 +581,9 @@ async function main() {
 		await uploadImages(options, imageUploads);
 	}
 
-	await importSql(options, sqlPath);
+	if (!options.skipSql) {
+		await importSql(options, sqlPath);
+	}
 }
 
 main().catch((error) => {
