@@ -2,7 +2,7 @@ import type { Handle } from '@sveltejs/kit';
 import { hasValidAdminSecret } from '$lib/server/admin';
 
 const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const PUBLIC_CROSS_ORIGIN_FORM_PATHS = new Set(['/webmention']);
+const PUBLIC_CROSS_ORIGIN_FORM_PATHS = new Set(['/webmention', '/api/swarm/push']);
 
 function isFormContentType(request: Request) {
 	const contentType = request.headers.get('content-type') || '';

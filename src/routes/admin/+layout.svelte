@@ -6,6 +6,7 @@
 		{ href: '/admin', label: 'Home' },
 		{ href: '/admin/profile', label: 'Profile' },
 		{ href: '/admin/posts', label: 'Posts' },
+		{ href: '/admin/checkins', label: 'Check-ins' },
 		{ href: '/admin/media', label: 'Media' },
 		{ href: '/admin/photos', label: 'Images' },
 		{ href: '/admin/webmentions', label: 'Webmentions' },
@@ -76,6 +77,8 @@
 							Profile
 						{:else if data.pathname.startsWith('/admin/posts')}
 							Posts
+						{:else if data.pathname.startsWith('/admin/checkins')}
+							Check-ins
 						{:else if data.pathname === '/admin/media'}
 							Media
 						{:else if data.pathname === '/admin/photos'}

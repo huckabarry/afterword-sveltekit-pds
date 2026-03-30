@@ -40,6 +40,9 @@
 				stream.
 			</p>
 			<p>
+				<a href="/admin/checkins">Check-ins</a> can now sync Swarm activity into your own PDS records.
+			</p>
+			<p>
 				<a href="/admin/media">Media</a> runs PDS syncs that localize music artwork and Popfeed book covers.
 			</p>
 			<p>
