@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { data } = $props();
+	let { data, form } = $props();
 
 	function formatDate(value: string | Date) {
 		return new Date(value).toLocaleString();
@@ -18,6 +18,10 @@
 		<p class="admin-field-note">
 			This is a lightweight view of the Bluesky posts showing up on your public status pages.
 		</p>
+
+		{#if form?.message}
+			<p class:admin-status--error={form?.ok === false} class="admin-status">{form.message}</p>
+		{/if}
 
 		{#if data.posts.length}
 			<ul class="admin-social-list">
@@ -67,6 +71,32 @@
 									{post.replyCount} repl{post.replyCount === 1 ? 'y' : 'ies'} · {post.repostCount} repost{post.repostCount === 1 ? '' : 's'} · {post.likeCount} like{post.likeCount === 1 ? '' : 's'}
 								</span>
 							</div>
+
+							<form class="admin-status-editor" method="POST" action="?/update">
+								<input type="hidden" name="uri" value={post.uri} />
+								<label class="admin-status-editor__label" for={`status-${post.slug}`}>Edit text</label>
+								<textarea
+									id={`status-${post.slug}`}
+									class="admin-status-editor__textarea"
+									name="text"
+									rows="4"
+								>{post.contentText}</textarea>
+								<p class="admin-status-editor__note">
+									Editing clears old Bluesky link/mention facets, so plain text is safest here.
+								</p>
+								<div class="admin-status-editor__actions">
+									<button class="admin-pill-link admin-pill-link--button" type="submit">
+										Save changes
+									</button>
+								</div>
+							</form>
+
+							<form class="admin-status-delete" method="POST" action="?/delete">
+								<input type="hidden" name="uri" value={post.uri} />
+								<button class="admin-pill-link admin-pill-link--danger" type="submit">
+									Delete post
+								</button>
+							</form>
 						</div>
 					</li>
 				{/each}
@@ -76,3 +106,58 @@
 		{/if}
 	</div>
 </section>
+
+<style>
+	.admin-status-editor {
+		display: grid;
+		gap: 0.55rem;
+		margin-top: 0.9rem;
+	}
+
+	.admin-status-editor__label {
+		font-size: 0.82rem;
+		font-weight: 700;
+		color: var(--accent);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.admin-status-editor__textarea {
+		width: 100%;
+		min-height: 6.5rem;
+		padding: 0.8rem 0.9rem;
+		border-radius: 0.9rem;
+		border: 1px solid var(--border);
+		background: color-mix(in srgb, var(--surface) 82%, black 18%);
+		color: var(--text);
+		font: inherit;
+		line-height: 1.5;
+		resize: vertical;
+	}
+
+	.admin-status-editor__note {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--muted);
+		line-height: 1.45;
+	}
+
+	.admin-status-editor__actions,
+	.admin-status-delete {
+		display: flex;
+		justify-content: flex-start;
+		margin-top: 0.2rem;
+	}
+
+	.admin-pill-link--button {
+		cursor: pointer;
+		border: 0;
+	}
+
+	.admin-pill-link--danger {
+		cursor: pointer;
+		border-color: color-mix(in srgb, #d36b6b 45%, var(--border));
+		color: #f1c2c2;
+		background: color-mix(in srgb, #d36b6b 10%, transparent);
+	}
+</style>

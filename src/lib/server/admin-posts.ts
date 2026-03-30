@@ -2,6 +2,8 @@ import { getStatuses } from '$lib/server/atproto';
 
 export type AdminPostFeedItem = {
 	id: string;
+	uri: string;
+	slug: string;
 	source: 'bluesky';
 	publishedAt: string;
 	actorName: string;
@@ -24,6 +26,8 @@ export async function buildAdminPostFeed() {
 
 	return statuses.map((post) => ({
 		id: post.uri,
+		uri: post.uri,
+		slug: post.slug,
 		source: 'bluesky' as const,
 		publishedAt: post.date.toISOString(),
 		actorName: post.displayName,
