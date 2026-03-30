@@ -8,6 +8,16 @@ const CREATE_SESSION_NSID = 'com.atproto.server.createSession';
 const LIST_RECORDS_NSID = 'com.atproto.repo.listRecords';
 const PUT_RECORD_NSID = 'com.atproto.repo.putRecord';
 const PDS_POPFEED_ITEM_CACHE_TTL_MS = 1000 * 60 * 10;
+const MANUAL_ACTIVITY_OVERRIDES: Record<
+	string,
+	{ activityAt?: string; completedAt?: string; startedAt?: string }
+> = {
+	// Backfill one-off completion dates until upstream records carry lifecycle timestamps.
+	'at://did:plc:vt4k6d3e5rjw65cuzaf3nufq/social.popfeed.feed.listItem/3m5vd6qu5cs2w': {
+		activityAt: '2026-03-28T21:00:00-07:00',
+		completedAt: '2026-03-28T21:00:00-07:00'
+	}
+};
 
 type AtprotoSession = {
 	serviceUrl: string;
@@ -575,6 +585,7 @@ function isStartListType(listType: string) {
 function buildCanonicalRecord(source: PopfeedItem, existing: CanonicalPopfeedRecord | null) {
 	const now = new Date().toISOString();
 	const existingRecord = existing?.record || {};
+	const manualOverride = MANUAL_ACTIVITY_OVERRIDES[source.uri] || null;
 	const listChanged = normalizeString(existingRecord.listType) !== source.listType;
 	const sourceAddedAt = source.addedAt?.toISOString() || null;
 	let startedAt = normalizeOptionalString(existingRecord.startedAt);
@@ -603,6 +614,18 @@ function buildCanonicalRecord(source: PopfeedItem, existing: CanonicalPopfeedRec
 		activityAt = completedAt || startedAt || sourceAddedAt || now;
 	} else {
 		activityAt = activityAt || completedAt || startedAt || sourceAddedAt || now;
+	}
+
+	if (manualOverride?.startedAt) {
+		startedAt = manualOverride.startedAt;
+	}
+
+	if (manualOverride?.completedAt) {
+		completedAt = manualOverride.completedAt;
+	}
+
+	if (manualOverride?.activityAt) {
+		activityAt = manualOverride.activityAt;
 	}
 
 	const record = {
