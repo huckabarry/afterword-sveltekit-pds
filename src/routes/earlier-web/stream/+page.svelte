@@ -103,7 +103,9 @@
 				<section class="content-body">
 					<div class="earlier-web-stream" aria-label="Earlier web stream">
 						{#each posts as post (post.id)}
-							<article class="earlier-web-stream__entry">
+							<article
+								class={`earlier-web-stream__entry ${post.coverImage ? '' : 'earlier-web-stream__entry--no-image'}`}
+							>
 								{#if post.coverImage}
 									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 									<a class="earlier-web-stream__image-link" href={post.path}>
@@ -179,6 +181,10 @@
 
 	.earlier-web-stream__image-link {
 		display: block;
+	}
+
+	.earlier-web-stream__entry--no-image {
+		grid-template-columns: minmax(0, 1fr);
 	}
 
 	.earlier-web-stream__image {
