@@ -8,7 +8,7 @@ export async function POST(event) {
 		return json({ ok: true, queued: false });
 	}
 
-	const work = syncSingleSwarmCheckin(event, checkin).catch((pushError) => {
+	const work = syncSingleSwarmCheckin(event, checkin, { includePhotos: false }).catch((pushError) => {
 		console.error('[swarm] Push sync failed:', pushError);
 	});
 

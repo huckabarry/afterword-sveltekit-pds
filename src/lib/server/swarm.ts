@@ -633,7 +633,8 @@ function buildCheckinSlug(checkin: SwarmCheckin) {
 
 async function buildPdsCheckinRecord(
 	checkin: SwarmCheckin,
-	imageCache: Map<string, any>
+	imageCache: Map<string, any>,
+	options: { includePhotos?: boolean } = {}
 ) {
 	const sourceId = normalizeString(checkin.id);
 
@@ -650,7 +651,8 @@ async function buildPdsCheckinRecord(
 		typeof location.lat === 'number' && Number.isFinite(location.lat) ? location.lat : null;
 	const longitude =
 		typeof location.lng === 'number' && Number.isFinite(location.lng) ? location.lng : null;
-	const photoItems = Array.isArray(checkin.photos?.items) ? checkin.photos.items : [];
+	const includePhotos = options.includePhotos !== false;
+	const photoItems = includePhotos && Array.isArray(checkin.photos?.items) ? checkin.photos.items : [];
 	const photoUrls = photoItems.map(getPhotoUrl).filter(Boolean).slice(0, SWARM_MAX_PHOTOS);
 	const session = photoUrls.length ? await getCheckinWriterSession() : null;
 	const uploadedPhotos = [];
@@ -710,7 +712,8 @@ async function buildPdsCheckinRecord(
 
 async function syncCheckinItems(
 	event: Pick<RequestEvent, 'platform'>,
-	checkins: SwarmCheckin[]
+	checkins: SwarmCheckin[],
+	options: { includePhotos?: boolean } = {}
 ): Promise<SwarmSyncResult> {
 	const imageCache = new Map<string, any>();
 	const errors: Array<{ id: string; message: string }> = [];
@@ -722,7 +725,7 @@ async function syncCheckinItems(
 		const sourceId = normalizeString(checkin.id) || 'unknown';
 
 		try {
-			const nextRecord = await buildPdsCheckinRecord(checkin, imageCache);
+			const nextRecord = await buildPdsCheckinRecord(checkin, imageCache, options);
 			const existingMapping = await getCheckinRecordMapping(event, nextRecord.sourceId);
 
 			if (existingMapping?.recordKey) {
@@ -801,7 +804,7 @@ async function fetchRecentSwarmCheckins(accessToken: string, limit: number) {
 
 export async function syncRecentSwarmCheckins(
 	event: Pick<RequestEvent, 'platform'>,
-	options: { limit?: number } = {}
+	options: { limit?: number; includePhotos?: boolean } = {}
 ) {
 	const stored = await getStoredState(event);
 
@@ -810,14 +813,15 @@ export async function syncRecentSwarmCheckins(
 	}
 
 	const recentCheckins = await fetchRecentSwarmCheckins(stored.accessToken, options.limit || 50);
-	return await syncCheckinItems(event, recentCheckins);
+	return await syncCheckinItems(event, recentCheckins, options);
 }
 
 export async function syncSingleSwarmCheckin(
 	event: Pick<RequestEvent, 'platform'>,
-	checkin: SwarmCheckin
+	checkin: SwarmCheckin,
+	options: { includePhotos?: boolean } = {}
 ) {
-	return await syncCheckinItems(event, [checkin]);
+	return await syncCheckinItems(event, [checkin], options);
 }
 
 export async function handleSwarmPush(event: Pick<RequestEvent, 'request' | 'platform'>) {
