@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Check-ins | Afterword PDS Lab</title>
+	<title>Check-ins</title>
 </svelte:head>
 
 <section class="page-head">

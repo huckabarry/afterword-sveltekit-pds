@@ -178,11 +178,13 @@
 
 		<footer class="site-foot">
 			<div class="site-foot-nav">
-				<a class="site-foot-nav-item" href="/now">Now</a>
+				<a class="site-foot-nav-item" href="/check-ins">Check-ins</a>
 				<span class="site-foot-separator">/</span>
-				<a class="site-foot-nav-item" href="/media">Media</a>
+				<a class="site-foot-nav-item" href="/field-notes">Field Notes</a>
 				<span class="site-foot-separator">/</span>
-				<a class="site-foot-nav-item" href="/photos">Gallery</a>
+				<a class="site-foot-nav-item" href="/planning">Planning</a>
+				<span class="site-foot-separator">/</span>
+				<a class="site-foot-nav-item" href="/earlier-web">Earlier Web</a>
 				<span class="site-foot-separator">/</span>
 				<a class="site-foot-nav-item" href="/colophon">Colophon</a>
 				{#each profile.verificationLinks as link}
