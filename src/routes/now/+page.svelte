@@ -4,7 +4,8 @@
 	import { excerpt, formatDate } from '$lib/format';
 	import type { Checkin } from '$lib/server/atproto';
 	import type { EarlierWebOnThisDayPost } from '$lib/server/earlier-web';
-	import type { BlogPost, PhotoItem } from '$lib/server/ghost';
+	import type { GalleryPhotoItem } from '$lib/server/gallery-assets';
+	import type { BlogPost } from '$lib/server/ghost';
 
 	let {
 		data
@@ -17,7 +18,7 @@
 			};
 			nowPosts: BlogPost[];
 			latestCheckin: Checkin | null;
-			latestPhoto: PhotoItem | null;
+			latestPhoto: GalleryPhotoItem | null;
 			onThisDayPosts: EarlierWebOnThisDayPost[];
 		};
 	} = $props();
@@ -137,7 +138,7 @@
 					<a class="now-photo" href={data.latestPhoto.postPath}>
 						<img
 							class="now-photo__image"
-							src={data.latestPhoto.imageUrl}
+							src={data.latestPhoto.displayUrl}
 							alt={data.latestPhoto.alt || data.latestPhoto.postTitle}
 							loading="lazy"
 						/>
