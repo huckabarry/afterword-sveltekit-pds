@@ -46,18 +46,6 @@
 
 	<h1 class="entry__title">{data.item.name}</h1>
 
-	{#if data.item.coverImage}
-		<figure class="entry__figure">
-			<img src={data.item.coverImage} alt={data.item.name} />
-		</figure>
-	{/if}
-
-	{#if data.item.note}
-		<div class="entry__content">
-			<p>{data.item.note}</p>
-		</div>
-	{/if}
-
 	{#if data.item.mapEmbedUrl}
 		<section class="checkin-map" aria-label="Map">
 			<CheckinMap
@@ -83,6 +71,12 @@
 		</section>
 	{/if}
 
+	{#if data.item.coverImage}
+		<figure class="entry__figure">
+			<img src={data.item.coverImage} alt={data.item.name} />
+		</figure>
+	{/if}
+
 	{#if data.item.photoUrls.length > 1}
 		<section class="checkin-gallery" aria-label="More photos">
 			{#each data.item.photoUrls as photo}
@@ -91,6 +85,12 @@
 				{/if}
 			{/each}
 		</section>
+	{/if}
+
+	{#if data.item.note}
+		<div class="entry__content">
+			<p>{data.item.note}</p>
+		</div>
 	{/if}
 
 	<dl class="checkin-detail__meta">
