@@ -151,6 +151,32 @@ function renderImageLine(line: string) {
 	return `<figure class="earlier-web-post__figure"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" /></figure>`;
 }
 
+function renderImageBlock(block: string) {
+	const matches = [...block.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g)];
+
+	if (!matches.length) {
+		return null;
+	}
+
+	const leftover = block.replace(/!\[[^\]]*\]\([^)]+\)/g, '').trim();
+
+	if (leftover) {
+		return null;
+	}
+
+	const figures = matches.map((match) => {
+		const alt = match[1] || '';
+		const src = match[2] || '';
+		return `<figure class="earlier-web-post__figure"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" /></figure>`;
+	});
+
+	if (figures.length === 1) {
+		return figures[0];
+	}
+
+	return `<div class="earlier-web-post__gallery">${figures.join('')}</div>`;
+}
+
 export function renderEarlierWebBody(bodyMarkdown: string) {
 	const normalized = String(bodyMarkdown || '').replace(/\r\n/g, '\n').trim();
 
@@ -162,6 +188,13 @@ export function renderEarlierWebBody(bodyMarkdown: string) {
 	const rendered: string[] = [];
 
 	for (const block of blocks) {
+		const imageBlockHtml = renderImageBlock(block);
+
+		if (imageBlockHtml) {
+			rendered.push(imageBlockHtml);
+			continue;
+		}
+
 		const imageHtml = renderImageLine(block);
 
 		if (imageHtml) {

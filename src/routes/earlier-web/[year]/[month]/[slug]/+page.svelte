@@ -81,6 +81,16 @@
 		margin: 1.35rem 0;
 	}
 
+	.earlier-web-post__body :global(.earlier-web-post__gallery) {
+		display: grid;
+		gap: 0.9rem;
+		margin: 1.35rem 0;
+	}
+
+	.earlier-web-post__body :global(.earlier-web-post__gallery .earlier-web-post__figure) {
+		margin: 0;
+	}
+
 	.earlier-web-post__body :global(img) {
 		display: block;
 		max-width: 100%;

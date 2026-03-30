@@ -206,6 +206,16 @@
 		margin: 1rem 0 1.25rem;
 	}
 
+	.earlier-web-stream__content :global(.earlier-web-post__gallery) {
+		display: grid;
+		gap: 0.9rem;
+		margin: 1rem 0 1.25rem;
+	}
+
+	.earlier-web-stream__content :global(.earlier-web-post__gallery .earlier-web-post__figure) {
+		margin: 0;
+	}
+
 	.earlier-web-stream__content :global(img) {
 		display: block;
 		max-width: 100%;
