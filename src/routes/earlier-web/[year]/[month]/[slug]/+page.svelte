@@ -2,6 +2,17 @@
 	import type { EarlierWebPost } from '$lib/server/earlier-web';
 
 	let { data }: { data: { post: EarlierWebPost } } = $props();
+
+	function usesGeneratedMicroTitle(post: EarlierWebPost) {
+		const title = post.title.trim().toLowerCase();
+		const excerpt = post.excerpt.trim().toLowerCase();
+
+		if (!title || !excerpt) {
+			return false;
+		}
+
+		return title === excerpt || excerpt.startsWith(title) || title.startsWith(excerpt);
+	}
 </script>
 
 <svelte:head>
@@ -19,7 +30,9 @@
 				</p>
 
 				<header class="earlier-web-post__header">
-					<h2>{data.post.title}</h2>
+					{#if !usesGeneratedMicroTitle(data.post)}
+						<h2>{data.post.title}</h2>
+					{/if}
 					<p>
 						<time datetime={data.post.publishedAt}>
 							{new Date(data.post.publishedAt).toLocaleString('en-US', {

@@ -73,6 +73,17 @@
 			day: 'numeric'
 		});
 	}
+
+	function usesGeneratedMicroTitle(post: EarlierWebPostSummary) {
+		const title = post.title.trim().toLowerCase();
+		const excerpt = post.excerpt.trim().toLowerCase();
+
+		if (!title || !excerpt) {
+			return false;
+		}
+
+		return title === excerpt || excerpt.startsWith(title) || title.startsWith(excerpt);
+	}
 </script>
 
 <svelte:head>
@@ -125,11 +136,18 @@
 										<span>·</span>
 										<span>{post.year}</span>
 									</p>
-									<h2>
-										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-										<a href={post.path}>{post.title}</a>
-									</h2>
-									<p>{post.excerpt}</p>
+									{#if usesGeneratedMicroTitle(post)}
+										<p class="earlier-web-stream__micro-link">
+											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+											<a href={post.path}>{post.excerpt}</a>
+										</p>
+									{:else}
+										<h2>
+											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+											<a href={post.path}>{post.title}</a>
+										</h2>
+										<p>{post.excerpt}</p>
+									{/if}
 								</div>
 							</article>
 						{/each}
@@ -207,6 +225,20 @@
 	}
 
 	.earlier-web-stream__body h2 a:hover {
+		text-decoration: underline;
+	}
+
+	.earlier-web-stream__micro-link {
+		font-size: 1.02rem;
+		line-height: 1.55;
+	}
+
+	.earlier-web-stream__micro-link a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.earlier-web-stream__micro-link a:hover {
 		text-decoration: underline;
 	}
 

@@ -28,6 +28,17 @@
 	function formatMonth(month: number) {
 		return new Date(Date.UTC(data.year, month - 1, 1)).toLocaleString('en-US', { month: 'long' });
 	}
+
+	function usesGeneratedMicroTitle(post: EarlierWebPostSummary) {
+		const title = post.title.trim().toLowerCase();
+		const excerpt = post.excerpt.trim().toLowerCase();
+
+		if (!title || !excerpt) {
+			return false;
+		}
+
+		return title === excerpt || excerpt.startsWith(title) || title.startsWith(excerpt);
+	}
 </script>
 
 <svelte:head>
@@ -51,11 +62,18 @@
 						<div class="earlier-web-post-list">
 							{#each posts as post (post.id)}
 								<article class="earlier-web-post-list__item">
-									<h4>
-										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-										<a href={post.path}>{post.title}</a>
-									</h4>
-									<p>{post.excerpt}</p>
+									{#if usesGeneratedMicroTitle(post)}
+										<p class="earlier-web-post-list__micro-link">
+											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+											<a href={post.path}>{post.excerpt}</a>
+										</p>
+									{:else}
+										<h4>
+											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+											<a href={post.path}>{post.title}</a>
+										</h4>
+										<p>{post.excerpt}</p>
+									{/if}
 								</article>
 							{/each}
 						</div>
@@ -106,5 +124,18 @@
 	.earlier-web-post-list__item p {
 		margin: 0;
 		opacity: 0.82;
+	}
+
+	.earlier-web-post-list__micro-link {
+		margin: 0;
+	}
+
+	.earlier-web-post-list__micro-link a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.earlier-web-post-list__micro-link a:hover {
+		text-decoration: underline;
 	}
 </style>
