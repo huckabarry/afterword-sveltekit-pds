@@ -144,7 +144,6 @@
 				<div class="site-nav-row">
 					<nav class="site-nav" aria-label="Primary">
 						<ul class="site-nav-list">
-							<li class="site-nav-list-item"><a class="site-nav-item" href="/">Home</a></li>
 							<li class="site-nav-list-item"><a class="site-nav-item" href="/now">Now</a></li>
 							<li class="site-nav-list-item"><a class="site-nav-item" href="/media">Media</a></li>
 							<li class="site-nav-list-item"><a class="site-nav-item" href="/photos">Gallery</a></li>
