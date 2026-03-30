@@ -13,7 +13,7 @@
 <section class="page-head">
 	<h1 class="section-title">Check-ins</h1>
 	<p class="page-head__lede">
-		Places saved from your custom PDS collection, rendered live through SvelteKit.
+		Places I’ve saved along the way, with notes, maps, and a little context for why they mattered.
 	</p>
 </section>
 
@@ -21,32 +21,36 @@
 	{#each data.checkins as item}
 		<article class="card surface">
 			<a class="card__link-wrap" href={item.canonicalPath}>
+				<div class="card__media">
+					{#if item.coverImage}
+						<img class="card__image" src={item.coverImage} alt={item.name} loading="lazy" />
+					{:else if item.latitude !== null && item.longitude !== null}
+						<CheckinMap
+							latitude={item.latitude}
+							longitude={item.longitude}
+							name={item.name}
+							compact={true}
+						/>
+					{/if}
+				</div>
 				<div class="card__copy">
 					<div class="card__meta">
-						<span>{formatDate(item.visitedAt)}</span>
-						{#if item.place}
-							<span>{item.place}</span>
-						{/if}
+						<time datetime={item.visitedAt.toISOString()}>{formatDate(item.visitedAt)}</time>
 						{#if item.visibility}
-							<span>{item.visibility}</span>
+							<span class="card__meta-pill">{item.visibility}</span>
 						{/if}
 					</div>
-					<h2>{item.name}</h2>
+					<h2 class="card__title">{item.name}</h2>
+					{#if item.place}
+						<p class="card__place">{item.place}</p>
+					{/if}
 					{#if item.venueCategory}
 						<p class="card__kicker">{item.venueCategory}</p>
 					{/if}
 					{#if item.note || item.excerpt}
-						<p>{excerpt(item.excerpt || item.note, 220)}</p>
+						<p class="card__excerpt">{excerpt(item.excerpt || item.note, 220)}</p>
 					{/if}
 				</div>
-				{#if item.latitude !== null && item.longitude !== null}
-					<CheckinMap
-						latitude={item.latitude}
-						longitude={item.longitude}
-						name={item.name}
-						compact={true}
-					/>
-				{/if}
 			</a>
 		</article>
 	{/each}
@@ -74,14 +78,17 @@
 
 	.card__link-wrap {
 		display: grid;
-		grid-template-columns: 1.1fr 0.9fr;
-		gap: 1rem;
+		grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+		gap: 1.2rem;
 		text-decoration: none;
+		align-items: stretch;
 	}
 
 	.card__copy {
 		display: grid;
-		gap: 0.65rem;
+		align-content: start;
+		gap: 0.55rem;
+		padding: 0.15rem 0;
 	}
 
 	.card__meta {
@@ -89,37 +96,76 @@
 		flex-wrap: wrap;
 		gap: 0.5rem 0.9rem;
 		font-size: 0.82rem;
-		color: #b0b3ae;
+		color: var(--accent);
+		align-items: center;
 	}
 
-	.card__kicker {
-		margin: -0.1rem 0 0;
-		color: #b0b3ae;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
+	.card__meta-pill {
+		padding: 0.18rem 0.55rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+		background: color-mix(in srgb, var(--accent) 10%, transparent);
+		color: var(--muted);
+		text-transform: capitalize;
 	}
 
-	h2,
-	p {
+	.card__title {
 		margin: 0;
-	}
-
-	h2 {
+		font-size: clamp(1.35rem, 2vw, 1.75rem);
+		line-height: 1.08;
 		color: #ffffff;
 	}
 
-	p {
-		color: #b0b3ae;
+	.card__place {
+		margin: 0;
+		font-size: 1rem;
+		line-height: 1.45;
+		color: #d7d8d4;
 	}
 
-	:global(.card__link-wrap .checkin-map__frame--compact) {
-		min-height: 220px;
-		border-radius: 0.85rem;
+	.card__kicker {
+		margin: 0.1rem 0 0;
+		color: var(--muted);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		font-size: 0.76rem;
+		font-weight: 700;
+	}
+
+	.card__excerpt {
+		margin: 0.2rem 0 0;
+		color: var(--muted);
+		line-height: 1.65;
+	}
+
+	.card__media {
+		order: 2;
+		overflow: hidden;
+		border-radius: 1rem;
+		background: color-mix(in srgb, var(--surface) 82%, white 18%);
+		aspect-ratio: 16 / 10;
+	}
+
+	.card__image {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	:global(.card__media .checkin-map__frame--compact) {
+		min-height: 0;
+		height: 100%;
+		border-radius: 0;
 	}
 
 	@media (max-width: 800px) {
 		.card__link-wrap {
 			grid-template-columns: 1fr;
+		}
+
+		.card__media {
+			order: 0;
 		}
 	}
 </style>
