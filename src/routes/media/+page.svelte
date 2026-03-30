@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount } from 'svelte';
 	import type { MediaTimelineItem, MediaTimelinePage } from '$lib/types/media-timeline';
 
 	let {
@@ -11,19 +11,20 @@
 				description: string;
 				paragraphs: string[];
 			};
-			timeline: MediaTimelinePage;
 		};
 	} = $props();
 
-	let timelineItems = $state<MediaTimelineItem[]>(untrack(() => data.timeline.items));
-	let nextOffset = $state<number | null>(untrack(() => data.timeline.nextOffset));
+	const initialPageSize = 20;
+
+	let timelineItems = $state<MediaTimelineItem[]>([]);
+	let nextOffset = $state<number | null>(null);
+	let totalItems = $state<number | null>(null);
+	let pageSize = $state(initialPageSize);
+	let isLoadingInitial = $state(true);
 	let isLoadingMore = $state(false);
 	let loadError = $state('');
 	let imageOverrides = $state<Record<string, string | null>>({});
 	let hiddenImages = $state<Record<string, boolean>>({});
-
-	const totalItems = $derived(data.timeline.total);
-	const pageSize = $derived(data.timeline.limit);
 
 	function usesPosterRatio(item: MediaTimelineItem) {
 		return item.kind === 'popfeed' && (item.mediaType === 'movie' || item.mediaType === 'tv_show');
@@ -79,17 +80,21 @@
 		};
 	}
 
-	async function loadMore() {
-		if (isLoadingMore || nextOffset === null) {
+	async function fetchPage(offset: number, mode: 'initial' | 'more') {
+		if (mode === 'more' && (isLoadingMore || nextOffset === null)) {
 			return;
 		}
 
-		isLoadingMore = true;
+		if (mode === 'initial') {
+			isLoadingInitial = true;
+		} else {
+			isLoadingMore = true;
+		}
 		loadError = '';
 
 		try {
 			const response = await fetch(
-				`/media/timeline.json?offset=${encodeURIComponent(String(nextOffset))}&limit=${encodeURIComponent(String(pageSize))}`
+				`/media/timeline.json?offset=${encodeURIComponent(String(offset))}&limit=${encodeURIComponent(String(pageSize))}`
 			);
 
 			if (!response.ok) {
@@ -97,14 +102,37 @@
 			}
 
 			const page = (await response.json()) as MediaTimelinePage;
-			timelineItems = [...timelineItems, ...page.items];
+			timelineItems = mode === 'initial' ? page.items : [...timelineItems, ...page.items];
 			nextOffset = page.nextOffset;
+			totalItems = page.total;
+			pageSize = page.limit;
 		} catch (error) {
-			loadError = error instanceof Error ? error.message : 'Unable to load more media items.';
+			loadError =
+				error instanceof Error
+					? error.message
+					: mode === 'initial'
+						? 'Unable to load the media timeline.'
+						: 'Unable to load more media items.';
 		} finally {
-			isLoadingMore = false;
+			if (mode === 'initial') {
+				isLoadingInitial = false;
+			} else {
+				isLoadingMore = false;
+			}
 		}
 	}
+
+	async function loadMore() {
+		if (nextOffset === null) {
+			return;
+		}
+
+		await fetchPage(nextOffset, 'more');
+	}
+
+	onMount(() => {
+		void fetchPage(0, 'initial');
+	});
 </script>
 
 <svelte:head>
@@ -125,7 +153,11 @@
 	</article>
 </section>
 
-{#if timelineItems.length}
+{#if isLoadingInitial}
+	<section class="section-block">
+		<p class="page-head__lede">Loading media timeline…</p>
+	</section>
+{:else if timelineItems.length}
 	<section class="section-block">
 		<div class="media-timeline" aria-label="Media timeline">
 			{#each timelineItems as item (item.id)}
@@ -402,7 +434,9 @@
 		</div>
 
 		<div class="media-timeline__footer">
-			<p class="media-timeline__status">Showing {timelineItems.length} of {totalItems} items</p>
+			{#if totalItems !== null}
+				<p class="media-timeline__status">Showing {timelineItems.length} of {totalItems} items</p>
+			{/if}
 
 			{#if nextOffset !== null}
 				<div class="media-timeline__load-more" use:infiniteLoad>
@@ -424,7 +458,7 @@
 	</section>
 {:else}
 	<section class="section-block">
-		<p class="page-head__lede">No media notes are available yet.</p>
+		<p class="page-head__lede">{loadError || 'No media notes are available yet.'}</p>
 	</section>
 {/if}
 
