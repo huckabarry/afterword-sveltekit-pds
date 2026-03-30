@@ -18,8 +18,11 @@ function parseArgs(argv) {
 		bucket: process.env.EARLIER_WEB_BUCKET || DEFAULT_BUCKET,
 		database: process.env.EARLIER_WEB_D1 || 'D1_DATABASE',
 		remote: true,
+		skipMonths: false,
 		skipImages: false,
-		dryRun: false
+		dryRun: false,
+		startImageAt: '',
+		retries: 3
 	};
 
 	for (let index = 0; index < argv.length; index += 1) {
@@ -36,10 +39,18 @@ function parseArgs(argv) {
 			index += 1;
 		} else if (arg === '--local') {
 			options.remote = false;
+		} else if (arg === '--skip-months') {
+			options.skipMonths = true;
 		} else if (arg === '--skip-images') {
 			options.skipImages = true;
 		} else if (arg === '--dry-run') {
 			options.dryRun = true;
+		} else if (arg === '--start-image-at') {
+			options.startImageAt = argv[index + 1] || '';
+			index += 1;
+		} else if (arg === '--retries') {
+			options.retries = Math.max(1, Number.parseInt(argv[index + 1] || '3', 10) || 3);
+			index += 1;
 		}
 	}
 
@@ -180,10 +191,14 @@ function mimeTypeForFile(filePath) {
 	}
 }
 
-function runCommand(command, args) {
+function sleep(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function runCommand(command, args, { stdio = 'inherit' } = {}) {
 	return new Promise((resolve, reject) => {
 		const child = spawn(command, args, {
-			stdio: 'inherit'
+			stdio
 		});
 
 		child.on('exit', (code) => {
@@ -195,6 +210,28 @@ function runCommand(command, args) {
 			reject(new Error(`${command} ${args.join(' ')} exited with code ${code}`));
 		});
 	});
+}
+
+async function runCommandWithRetries(command, args, retries) {
+	let attempt = 0;
+
+	while (attempt < retries) {
+		attempt += 1;
+
+		try {
+			await runCommand(command, args);
+			return;
+		} catch (error) {
+			if (attempt >= retries) {
+				throw error;
+			}
+
+			console.warn(
+				`Command failed (attempt ${attempt} of ${retries}): ${command} ${args.join(' ')}`
+			);
+			await sleep(1000 * attempt);
+		}
+	}
 }
 
 async function buildArchive(sourceRoot) {
@@ -435,7 +472,9 @@ async function writeSql(entries) {
 async function uploadMonthBundles(options, monthBundles) {
 	for (const bundleKey of monthBundles.keys()) {
 		const filePath = path.join(TMP_ROOT, bundleKey);
-		await runCommand('npx', [
+		await runCommandWithRetries(
+			'npx',
+			[
 			'wrangler',
 			'r2',
 			'object',
@@ -446,24 +485,53 @@ async function uploadMonthBundles(options, monthBundles) {
 			filePath,
 			'--content-type',
 			'application/json; charset=utf-8'
-		]);
+			],
+			options.retries
+		);
 	}
 }
 
 async function uploadImages(options, imageUploads) {
+	let shouldUpload = !options.startImageAt;
+	const failures = [];
+
 	for (const [sourcePath, objectKey] of imageUploads.entries()) {
-		await runCommand('npx', [
-			'wrangler',
-			'r2',
-			'object',
-			'put',
-			`${options.bucket}/${objectKey}`,
-			options.remote ? '--remote' : '--local',
-			'--file',
-			sourcePath,
-			'--content-type',
-			mimeTypeForFile(sourcePath)
-		]);
+		if (!shouldUpload) {
+			if (objectKey === options.startImageAt) {
+				shouldUpload = true;
+			} else {
+				continue;
+			}
+		}
+
+		try {
+			await runCommandWithRetries(
+				'npx',
+				[
+					'wrangler',
+					'r2',
+					'object',
+					'put',
+					`${options.bucket}/${objectKey}`,
+					options.remote ? '--remote' : '--local',
+					'--file',
+					sourcePath,
+					'--content-type',
+					mimeTypeForFile(sourcePath)
+				],
+				options.retries
+			);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			failures.push({ objectKey, sourcePath, message });
+			console.error(`Skipping failed image upload for ${objectKey}`);
+		}
+	}
+
+	if (failures.length) {
+		const failuresPath = path.join(TMP_ROOT, 'image-upload-failures.json');
+		await writeFile(failuresPath, JSON.stringify(failures, null, 2));
+		console.warn(`Recorded ${failures.length} image upload failures in ${failuresPath}`);
 	}
 }
 
@@ -502,7 +570,9 @@ async function main() {
 		return;
 	}
 
-	await uploadMonthBundles(options, monthBundles);
+	if (!options.skipMonths) {
+		await uploadMonthBundles(options, monthBundles);
+	}
 
 	if (!options.skipImages) {
 		await uploadImages(options, imageUploads);
