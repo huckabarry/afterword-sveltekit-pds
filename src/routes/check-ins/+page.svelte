@@ -140,7 +140,7 @@
 
 	.card__media {
 		order: 2;
-		display: block;
+		display: grid;
 		overflow: hidden;
 		border-radius: 1rem;
 		background: color-mix(in srgb, var(--surface) 82%, white 18%);
@@ -157,6 +157,8 @@
 	:global(.card__media .checkin-map__frame) {
 		width: 100%;
 		height: 100%;
+		--checkin-map-compact-height: 100%;
+		--checkin-map-compact-min-height: 0;
 	}
 
 	:global(.card__media .checkin-map__frame--compact) {
