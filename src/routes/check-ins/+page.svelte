@@ -140,7 +140,7 @@
 
 	.card__media {
 		position: relative;
-		display: grid;
+		display: block;
 		overflow: hidden;
 		border-radius: 1rem;
 		background: color-mix(in srgb, var(--surface) 82%, white 18%);
@@ -155,16 +155,21 @@
 	}
 
 	:global(.card__media .checkin-map__frame) {
-		position: absolute;
-		inset: 0;
+		display: block;
 		width: 100%;
-		height: auto;
+		height: 100%;
 		--checkin-map-compact-height: 100%;
 		--checkin-map-compact-min-height: 0;
 	}
 
 	:global(.card__media .checkin-map__frame--compact) {
 		min-height: 0;
+		height: 100%;
+		border-radius: 0;
+	}
+
+	:global(.card__media .leaflet-container) {
+		width: 100%;
 		height: 100%;
 		border-radius: 0;
 	}
