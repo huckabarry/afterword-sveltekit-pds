@@ -197,7 +197,7 @@ function toPublicTag(slug: string): GhostTag | null {
 function normalizePost(post: Record<string, any>, siteUrl: string): BlogPost {
 	const title = String(post.title || '').trim() || 'Untitled';
 	const slug = String(post.slug || '').trim() || slugify(title);
-	const excerpt = stripHtml(post.excerpt || post.custom_excerpt || post.html || '');
+	const excerpt = stripHtml(post.excerpt || post.custom_excerpt || post.html || '') || title;
 	const html = absolutizeHtml(post.html || '', siteUrl);
 	const sourceUrl = String(post.url || '').trim() || `${siteUrl}/${slug}/`;
 	const publishedAt = new Date(post.published_at || post.updated_at || Date.now());
@@ -610,7 +610,7 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
 
 	const posts = rawPosts
 		.map((post: Record<string, unknown>) => normalizePost(post, siteUrl))
-		.filter((post: BlogPost) => post.title && post.excerpt && post.html)
+		.filter((post: BlogPost) => post.title && post.html)
 		.filter(shouldIncludePost)
 		.sort((a: BlogPost, b: BlogPost) => b.publishedAt.getTime() - a.publishedAt.getTime());
 
@@ -634,7 +634,7 @@ export async function getRecentBlogPosts(limit = 8): Promise<BlogPost[]> {
 
 	const posts = rawPosts
 		.map((post: Record<string, unknown>) => normalizePost(post, siteUrl))
-		.filter((post: BlogPost) => post.title && post.excerpt && post.html)
+		.filter((post: BlogPost) => post.title && post.html)
 		.filter(shouldIncludePost)
 		.sort((a: BlogPost, b: BlogPost) => b.publishedAt.getTime() - a.publishedAt.getTime())
 		.slice(0, limit);

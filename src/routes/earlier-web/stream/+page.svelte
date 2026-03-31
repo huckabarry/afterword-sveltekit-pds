@@ -103,22 +103,7 @@
 				<section class="content-body">
 					<div class="earlier-web-stream" aria-label="Earlier web stream">
 						{#each posts as post (post.id)}
-							<article
-								class={`earlier-web-stream__entry ${post.coverImage ? '' : 'earlier-web-stream__entry--no-image'}`}
-							>
-								{#if post.coverImage}
-									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-									<a class="earlier-web-stream__image-link" href={post.path}>
-										<img
-											class="earlier-web-stream__image"
-											src={post.coverImage}
-											alt={post.title}
-											loading="lazy"
-											decoding="async"
-										/>
-									</a>
-								{/if}
-
+							<article class="earlier-web-stream__entry">
 								<div class="earlier-web-stream__body">
 									<p class="earlier-web-stream__meta">
 										<time datetime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
@@ -175,27 +160,11 @@
 
 	.earlier-web-stream__entry {
 		display: grid;
-		grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+		grid-template-columns: minmax(0, 1fr);
 		gap: 1rem;
 		padding-top: 1.5rem;
 		border-top: 1px solid rgba(255, 255, 255, 0.08);
 		align-items: start;
-	}
-
-	.earlier-web-stream__image-link {
-		display: block;
-	}
-
-	.earlier-web-stream__entry--no-image {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
-	.earlier-web-stream__image {
-		display: block;
-		width: 100%;
-		height: auto;
-		border-radius: 0.25rem;
-		background: color-mix(in srgb, var(--surface) 82%, white 18%);
 	}
 
 	.earlier-web-stream__content :global(p) {
