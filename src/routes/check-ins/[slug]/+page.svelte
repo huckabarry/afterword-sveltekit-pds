@@ -106,7 +106,7 @@
 				<dd>{data.item.venueCategory}</dd>
 			</div>
 		{/if}
-		{#if data.item.visibility}
+		{#if data.item.visibility && data.item.visibility !== 'public'}
 			<div>
 				<dt>Visibility</dt>
 				<dd>{data.item.visibility}</dd>

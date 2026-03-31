@@ -36,7 +36,7 @@
 				<div class="card__copy">
 					<div class="card__meta">
 						<time datetime={item.visitedAt.toISOString()}>{formatDate(item.visitedAt)}</time>
-						{#if item.visibility}
+						{#if item.visibility && item.visibility !== 'public'}
 							<span class="card__meta-pill">{item.visibility}</span>
 						{/if}
 					</div>
@@ -172,6 +172,12 @@
 		width: 100%;
 		height: 100%;
 		border-radius: 0;
+	}
+
+	:global(.card__media .checkin-map__frame--compact),
+	:global(.card__media .leaflet-container),
+	:global(.card__media .leaflet-control-container) {
+		pointer-events: none;
 	}
 
 </style>

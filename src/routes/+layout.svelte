@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { afterNavigate } from '$app/navigation';
 	import { tick } from 'svelte';
 	import '../app.css';
 
@@ -69,6 +70,17 @@
 		}
 	}
 
+	function blurActiveHeaderControl() {
+		if (!browser) return;
+
+		const activeElement = document.activeElement;
+		if (!(activeElement instanceof HTMLElement)) return;
+
+		if (activeElement.closest('.site-nav-row, .site-title-row')) {
+			activeElement.blur();
+		}
+	}
+
 	function isCurrentPath(href: string) {
 		if (href === '/') {
 			return data.pathname === '/';
@@ -116,6 +128,11 @@
 			window.removeEventListener('keydown', onKeydown);
 			window.removeEventListener('pointerdown', onPointerDown);
 		};
+	});
+
+	afterNavigate(() => {
+		closeNavMenu();
+		blurActiveHeaderControl();
 	});
 
 	$effect(() => {
