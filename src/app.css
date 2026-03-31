@@ -119,6 +119,7 @@ p:last-child {
 
 .site-title__name {
 	display: inline-block;
+	text-transform: uppercase;
 }
 
 .site-subtitle {
