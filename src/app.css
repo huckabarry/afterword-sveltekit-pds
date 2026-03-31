@@ -169,6 +169,14 @@ p:last-child {
 	-webkit-tap-highlight-color: transparent;
 }
 
+.site-nav-item:hover,
+.site-nav-item:focus,
+.site-nav-item:focus-visible,
+.site-nav-item:active {
+	color: var(--accent);
+	text-decoration-color: rgba(242, 247, 183, 0.45);
+}
+
 .site-nav-search {
 	display: inline-flex;
 	align-items: center;
@@ -217,10 +225,17 @@ p:last-child {
 	-webkit-tap-highlight-color: transparent;
 }
 
+.site-nav-menu__button:hover,
+.site-nav-menu__button:focus,
+.site-nav-menu__button:focus-visible,
+.site-nav-menu__button:active {
+	color: var(--accent);
+}
+
 .site-nav-menu__panel {
 	position: absolute;
 	top: calc(100% + 0.55rem);
-	right: -0.2rem;
+	right: -0.8rem;
 	z-index: 30;
 	display: grid;
 	gap: 0.2rem;
