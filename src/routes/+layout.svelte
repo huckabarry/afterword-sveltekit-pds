@@ -17,15 +17,31 @@
 	};
 
 	let searchOpen = $state(false);
+	let navMenuOpen = $state(false);
 	let searchQuery = $state('');
 	let searchResults = $state<SearchResult[]>([]);
 	let searchState = $state<'idle' | 'loading' | 'ready' | 'empty'>('idle');
 	let searchInput = $state<HTMLInputElement | null>(null);
+	let navMenu = $state<HTMLElement | null>(null);
 	let searchRequest = 0;
 	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
 	const profile = $derived(data.profile);
+	const primaryNavLinks = [
+		{ href: '/', label: 'Home' },
+		{ href: '/now', label: 'Now' },
+		{ href: '/media', label: 'Media' },
+		{ href: '/photos', label: 'Gallery' }
+	];
+	const secondaryNavLinks = [
+		{ href: '/hello', label: 'Hello' },
+		{ href: '/check-ins', label: 'Check-ins' },
+		{ href: '/status', label: 'Status' },
+		{ href: '/about', label: 'About' },
+		{ href: '/colophon', label: 'Colophon' }
+	];
 
 	async function openSearch() {
+		navMenuOpen = false;
 		searchOpen = true;
 		await tick();
 		searchInput?.focus();
@@ -37,6 +53,18 @@
 		searchQuery = '';
 		searchResults = [];
 		searchState = 'idle';
+	}
+
+	function closeNavMenu() {
+		navMenuOpen = false;
+	}
+
+	function isCurrentPath(href: string) {
+		if (href === '/') {
+			return data.pathname === '/';
+		}
+
+		return data.pathname === href || data.pathname.startsWith(`${href}/`);
 	}
 
 	$effect(() => {
@@ -57,11 +85,27 @@
 			if (event.key === 'Escape' && searchOpen) {
 				event.preventDefault();
 				closeSearch();
+			} else if (event.key === 'Escape' && navMenuOpen) {
+				event.preventDefault();
+				closeNavMenu();
+			}
+		}
+
+		function onPointerDown(event: PointerEvent) {
+			if (!navMenuOpen || !navMenu) return;
+
+			const target = event.target;
+			if (target instanceof Node && !navMenu.contains(target)) {
+				closeNavMenu();
 			}
 		}
 
 		window.addEventListener('keydown', onKeydown);
-		return () => window.removeEventListener('keydown', onKeydown);
+		window.addEventListener('pointerdown', onPointerDown);
+		return () => {
+			window.removeEventListener('keydown', onKeydown);
+			window.removeEventListener('pointerdown', onPointerDown);
+		};
 	});
 
 	$effect(() => {
@@ -139,20 +183,9 @@
 							<span class="site-title__name">{profile.displayName}</span>
 						</a>
 					</div>
-				</div>
-
-				<div class="site-nav-row">
-					<nav class="site-nav" aria-label="Primary">
-						<ul class="site-nav-list">
-							<li class="site-nav-list-item"><a class="site-nav-item" href="/hello">Hello</a></li>
-							<li class="site-nav-list-item"><a class="site-nav-item" href="/now">Now</a></li>
-							<li class="site-nav-list-item"><a class="site-nav-item" href="/media">Media</a></li>
-							<li class="site-nav-list-item"><a class="site-nav-item" href="/photos">Gallery</a></li>
-						</ul>
-					</nav>
 
 					<button
-						class="site-nav-search"
+						class="site-nav-search site-nav-search--title"
 						type="button"
 						onclick={() => void openSearch()}
 						aria-label="Open search"
@@ -163,6 +196,53 @@
 							<path d="M16 16l4.5 4.5" />
 						</svg>
 					</button>
+				</div>
+
+				<div class="site-nav-row">
+					<nav class="site-nav" aria-label="Primary">
+						<ul class="site-nav-list">
+							{#each primaryNavLinks as link}
+								<li class="site-nav-list-item">
+									<a
+										class="site-nav-item"
+										href={link.href}
+										aria-current={isCurrentPath(link.href) ? 'page' : undefined}
+									>
+										{link.label}
+									</a>
+								</li>
+							{/each}
+							<li class="site-nav-list-item site-nav-list-item--menu">
+								<div class="site-nav-menu" bind:this={navMenu}>
+									<button
+										class="site-nav-item site-nav-menu__button"
+										type="button"
+										aria-haspopup="menu"
+										aria-expanded={navMenuOpen}
+										onclick={() => (navMenuOpen = !navMenuOpen)}
+									>
+										Menu
+									</button>
+
+									{#if navMenuOpen}
+										<div class="site-nav-menu__panel" role="menu" aria-label="More pages">
+											{#each secondaryNavLinks as link}
+												<a
+													class="site-nav-menu__link"
+													href={link.href}
+													role="menuitem"
+													aria-current={isCurrentPath(link.href) ? 'page' : undefined}
+													onclick={closeNavMenu}
+												>
+													{link.label}
+												</a>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							</li>
+						</ul>
+					</nav>
 				</div>
 			</div>
 		</header>

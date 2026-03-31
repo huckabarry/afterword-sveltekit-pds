@@ -133,7 +133,7 @@ p:last-child {
 
 .site-nav-list {
 	display: flex;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	gap: 0.55rem;
 	margin: 0;
 	padding: 0;
@@ -141,16 +141,19 @@ p:last-child {
 }
 
 .site-nav-row {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 1rem;
 	margin-top: 0.16rem;
 }
 
 .site-nav {
-	flex: 1 1 auto;
-	min-width: 0;
+	width: 100%;
+}
+
+.site-nav-list-item {
+	flex: 0 0 auto;
+}
+
+.site-nav-list-item--menu {
+	position: relative;
 }
 
 .site-nav-item {
@@ -162,6 +165,11 @@ p:last-child {
 	font-family: 'IBM Plex Mono', monospace;
 	font-style: italic;
 	text-decoration: none;
+	white-space: nowrap;
+}
+
+.site-nav-item[aria-current='page'] {
+	color: #ffffff;
 }
 
 .site-nav-search {
@@ -169,12 +177,11 @@ p:last-child {
 	align-items: center;
 	justify-content: center;
 	flex: 0 0 auto;
-	padding: 0 1.25rem 0 0;
+	padding: 0;
 	border: 0;
 	background: transparent;
 	color: #ffffff;
 	cursor: pointer;
-	transform: translateY(0.14rem);
 }
 
 .site-nav-search svg {
@@ -185,6 +192,53 @@ p:last-child {
 	stroke-width: 1.8;
 	stroke-linecap: round;
 	stroke-linejoin: round;
+}
+
+.site-nav-search--title {
+	margin-top: 0.12rem;
+}
+
+.site-nav-menu {
+	position: relative;
+}
+
+.site-nav-menu__button {
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+}
+
+.site-nav-menu__panel {
+	position: absolute;
+	top: calc(100% + 0.55rem);
+	right: 0;
+	z-index: 30;
+	display: grid;
+	gap: 0.2rem;
+	min-width: 11.5rem;
+	padding: 0.5rem;
+	border: 1px solid var(--border);
+	border-radius: 0.75rem;
+	background: color-mix(in srgb, var(--surface) 94%, black 6%);
+	box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.3);
+}
+
+.site-nav-menu__link {
+	display: block;
+	padding: 0.45rem 0.55rem;
+	border-radius: 0.45rem;
+	color: var(--text);
+	font-family: 'IBM Plex Mono', monospace;
+	font-size: 0.9rem;
+	font-style: italic;
+	text-decoration: none;
+}
+
+.site-nav-menu__link:hover,
+.site-nav-menu__link:focus-visible,
+.site-nav-menu__link[aria-current='page'] {
+	background: rgba(255, 255, 255, 0.08);
+	color: #ffffff;
 }
 
 .search-modal {
@@ -1603,8 +1657,23 @@ p:last-child {
 		align-items: flex-start;
 	}
 
-	.site-nav-row {
-		align-items: flex-start;
+	.site-title {
+		font-size: 1.45rem;
+	}
+
+	.site-nav-list {
+		justify-content: space-between;
+		gap: 0.4rem;
+	}
+
+	.site-nav-item,
+	.site-nav-menu__button {
+		font-size: 0.86rem;
+	}
+
+	.site-nav-menu__panel {
+		right: -0.1rem;
+		min-width: 10.5rem;
 	}
 
 	.search-modal {
