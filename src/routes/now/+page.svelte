@@ -425,11 +425,17 @@
 	}
 
 	.now-card__action-button {
+		appearance: none;
+		-webkit-appearance: none;
 		cursor: pointer;
-		font: inherit;
+		border: none;
+		padding: 0.2rem 0.55rem;
 		color: inherit;
 		background: transparent;
-		border: 1px solid currentColor;
+		font-size: 0.85rem;
+		font-style: normal;
+		font-weight: 500;
+		line-height: 1.2;
 	}
 
 	.now-post-list {
