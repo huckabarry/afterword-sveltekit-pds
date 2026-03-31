@@ -100,8 +100,8 @@ export async function ensureGalleryPhotoAsset(photo: PhotoItem, bucket: BoundR2B
 	if (existing && existingWidth && existingHeight) {
 		return {
 			...toGalleryUrls(photo, assetKey, true),
-			width: existingWidth,
-			height: existingHeight
+			width: existingWidth || photo.width || null,
+			height: existingHeight || photo.height || null
 		};
 	}
 
@@ -139,15 +139,15 @@ export async function ensureGalleryPhotoAsset(photo: PhotoItem, bucket: BoundR2B
 
 		return {
 			...toGalleryUrls(photo, assetKey, true),
-			width: dimensions?.width || existingWidth || null,
-			height: dimensions?.height || existingHeight || null
+			width: dimensions?.width || existingWidth || photo.width || null,
+			height: dimensions?.height || existingHeight || photo.height || null
 		};
 	} catch (error) {
 		if (existing) {
 			return {
 				...toGalleryUrls(photo, assetKey, true),
-				width: existingWidth,
-				height: existingHeight
+				width: existingWidth || photo.width || null,
+				height: existingHeight || photo.height || null
 			};
 		}
 
@@ -160,8 +160,8 @@ export async function attachGalleryAssetUrls(photos: PhotoItem[], bucket?: Bound
 		return photos.map((photo) => ({
 			...photo,
 			...toGalleryUrls(photo, getGalleryAssetKey(photo), false),
-			width: null,
-			height: null
+			width: photo.width || null,
+			height: photo.height || null
 		})) satisfies GalleryPhotoItem[];
 	}
 
@@ -174,8 +174,8 @@ export async function attachGalleryAssetUrls(photos: PhotoItem[], bucket?: Bound
 		return {
 			...photo,
 			...toGalleryUrls(photo, assetKey, isSyncedToR2),
-			width: null,
-			height: null
+			width: photo.width || null,
+			height: photo.height || null
 		};
 	}) satisfies GalleryPhotoItem[];
 }

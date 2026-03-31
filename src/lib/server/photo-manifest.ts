@@ -3,7 +3,12 @@ import {
 	ensureGalleryPhotoAsset,
 	type GalleryPhotoItem
 } from '$lib/server/gallery-assets';
-import { getBlogPostBySlug, getPhotoItems, getPostImages } from '$lib/server/ghost';
+import {
+	getBlogPostBySlug,
+	getPhotoItems,
+	getPostImages,
+	type PhotoItem
+} from '$lib/server/ghost';
 
 type GalleryDb = NonNullable<App.Platform['env']['D1_DATABASE']>;
 type GalleryBucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
@@ -65,6 +70,13 @@ export type PhotoSyncState = {
 type SyncPhotoManifestBatchOptions = {
 	offset?: number;
 	limit?: number;
+};
+
+type SyncManifestPhotosResult = {
+	processed: number;
+	syncedCount: number;
+	failures: Array<{ id: string; postTitle: string; error: string }>;
+	synced: GalleryPhotoItem[];
 };
 
 function getGalleryDb(event: Pick<RequestEvent, 'platform'>) {
@@ -257,6 +269,40 @@ async function upsertGalleryPhotoManifestRow(
 			photo.height
 		)
 		.run();
+}
+
+async function syncManifestPhotos(
+	db: GalleryDb,
+	bucket: GalleryBucket,
+	photos: PhotoItem[]
+): Promise<SyncManifestPhotosResult> {
+	const synced: GalleryPhotoItem[] = [];
+	const failures: Array<{ id: string; postTitle: string; error: string }> = [];
+
+	for (const photo of photos) {
+		try {
+			const asset = await ensureGalleryPhotoAsset(photo, bucket);
+			const manifestItem: GalleryPhotoItem = {
+				...photo,
+				...asset
+			};
+			await upsertGalleryPhotoManifestRow(db, manifestItem);
+			synced.push(manifestItem);
+		} catch (error) {
+			failures.push({
+				id: photo.id,
+				postTitle: photo.postTitle,
+				error: error instanceof Error ? error.message : 'Unexpected sync error.'
+			});
+		}
+	}
+
+	return {
+		processed: photos.length,
+		syncedCount: synced.length,
+		failures,
+		synced
+	};
 }
 
 export async function getGalleryManifestSummary(
@@ -483,34 +529,15 @@ export async function syncPhotoManifestBatch(
 	const limit = Math.min(toPositiveInteger(options.limit, 20), 50);
 	const allPhotos = await getSortedGhostPhotoItems();
 	const batch = allPhotos.slice(offset, offset + limit);
-	const synced: GalleryPhotoItem[] = [];
-	const failures: Array<{ id: string; postTitle: string; error: string }> = [];
-
-	for (const photo of batch) {
-		try {
-			const asset = await ensureGalleryPhotoAsset(photo, bucket as GalleryBucket);
-			const manifestItem: GalleryPhotoItem = {
-				...photo,
-				...asset
-			};
-			await upsertGalleryPhotoManifestRow(db, manifestItem);
-			synced.push(manifestItem);
-		} catch (error) {
-			failures.push({
-				id: photo.id,
-				postTitle: photo.postTitle,
-				error: error instanceof Error ? error.message : 'Unexpected sync error.'
-			});
-		}
-	}
+	const result = await syncManifestPhotos(db, bucket as GalleryBucket, batch);
 
 	return {
 		totalAvailable: allPhotos.length,
 		offset,
 		limit,
-		processed: batch.length,
-		syncedCount: synced.length,
-		failures,
+		processed: result.processed,
+		syncedCount: result.syncedCount,
+		failures: result.failures,
 		nextOffset: offset + batch.length < allPhotos.length ? offset + batch.length : null
 	};
 }
@@ -601,32 +628,13 @@ export async function syncRecentPhotoManifestBatch(
 
 	const limit = Math.min(toPositiveInteger(options.limit, 18), 60);
 	const photos = await getRecentGhostPhotoItems(limit);
-	const synced: GalleryPhotoItem[] = [];
-	const failures: Array<{ id: string; postTitle: string; error: string }> = [];
-
-	for (const photo of photos) {
-		try {
-			const asset = await ensureGalleryPhotoAsset(photo, bucket as GalleryBucket);
-			const manifestItem: GalleryPhotoItem = {
-				...photo,
-				...asset
-			};
-			await upsertGalleryPhotoManifestRow(db, manifestItem);
-			synced.push(manifestItem);
-		} catch (error) {
-			failures.push({
-				id: photo.id,
-				postTitle: photo.postTitle,
-				error: error instanceof Error ? error.message : 'Unexpected sync error.'
-			});
-		}
-	}
+	const result = await syncManifestPhotos(db, bucket as GalleryBucket, photos);
 
 	return {
 		limit,
-		processed: photos.length,
-		syncedCount: synced.length,
-		failures
+		processed: result.processed,
+		syncedCount: result.syncedCount,
+		failures: result.failures
 	};
 }
 
@@ -660,31 +668,41 @@ export async function syncGhostPostPhotoManifestBySlug(
 	}
 
 	const photos = getPostImages(post);
-	const synced: GalleryPhotoItem[] = [];
-	const failures: Array<{ id: string; postTitle: string; error: string }> = [];
-
-	for (const photo of photos) {
-		try {
-			const asset = await ensureGalleryPhotoAsset(photo, bucket as GalleryBucket);
-			const manifestItem: GalleryPhotoItem = {
-				...photo,
-				...asset
-			};
-			await upsertGalleryPhotoManifestRow(db, manifestItem);
-			synced.push(manifestItem);
-		} catch (error) {
-			failures.push({
-				id: photo.id,
-				postTitle: photo.postTitle,
-				error: error instanceof Error ? error.message : 'Unexpected sync error.'
-			});
-		}
-	}
+	const result = await syncManifestPhotos(db, bucket as GalleryBucket, photos);
 
 	return {
 		slug: normalizedSlug,
-		processed: photos.length,
-		syncedCount: synced.length,
-		failures
+		processed: result.processed,
+		syncedCount: result.syncedCount,
+		failures: result.failures
+	};
+}
+
+export async function syncGalleryPhotoManifestForItems(
+	event: Pick<RequestEvent, 'platform'>,
+	photos: PhotoItem[]
+) {
+	const db = getGalleryDb(event);
+	const bucket = getGalleryBucket(event);
+
+	if (!db || !bucket) {
+		return {
+			processed: 0,
+			syncedCount: 0,
+			failures: [] satisfies Array<{ id: string; postTitle: string; error: string }>
+		};
+	}
+
+	await ensureGalleryPhotoManifestSchema(db);
+
+	const uniquePhotos = Array.from(
+		new Map((photos || []).map((photo) => [photo.id, photo] as const)).values()
+	);
+	const result = await syncManifestPhotos(db, bucket as GalleryBucket, uniquePhotos);
+
+	return {
+		processed: result.processed,
+		syncedCount: result.syncedCount,
+		failures: result.failures
 	};
 }

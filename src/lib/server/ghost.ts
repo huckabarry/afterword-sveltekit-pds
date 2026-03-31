@@ -47,6 +47,8 @@ export type BlogPost = {
 	publishedAt: Date;
 	updatedAt: Date;
 	coverImage: string | null;
+	coverImageWidth: number | null;
+	coverImageHeight: number | null;
 	coverImageCaption: string | null;
 	tags: string[];
 	primaryTag: string | null;
@@ -63,6 +65,8 @@ export type PhotoItem = {
 	imageUrl: string;
 	alt: string;
 	index: number;
+	width: number | null;
+	height: number | null;
 };
 
 export type GhostStandardSiteWriteback = {
@@ -146,6 +150,22 @@ function extractCoverImage(post: Record<string, any>) {
 	return html.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] || null;
 }
 
+function parsePositiveInt(value: unknown) {
+	const parsed = Number.parseInt(String(value ?? ''), 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getImageTagAttribute(tag: string, attribute: string) {
+	const escaped = attribute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const quotedMatch = tag.match(new RegExp(`\\b${escaped}=["']([^"']+)["']`, 'i'));
+	if (quotedMatch?.[1]) {
+		return quotedMatch[1];
+	}
+
+	const unquotedMatch = tag.match(new RegExp(`\\b${escaped}=([^\\s>]+)`, 'i'));
+	return unquotedMatch?.[1] || '';
+}
+
 function normalizeSourceUrl(value: string) {
 	try {
 		const url = new URL(String(value || ''));
@@ -218,6 +238,8 @@ function normalizePost(post: Record<string, any>, siteUrl: string): BlogPost {
 		publishedAt,
 		updatedAt,
 		coverImage: extractCoverImage(post),
+		coverImageWidth: parsePositiveInt(post.feature_image_width),
+		coverImageHeight: parsePositiveInt(post.feature_image_height),
 		coverImageCaption: stripHtml(post.feature_image_caption || '') || null,
 		tags: Array.isArray(post.tags)
 			? post.tags.map((tag: Record<string, any>) => String(tag.slug || '').trim()).filter(Boolean)
@@ -233,15 +255,18 @@ function shouldIncludeGalleryPost(post: BlogPost) {
 }
 
 function extractPhotoItems(post: BlogPost): PhotoItem[] {
-	const imagePattern = /<img[^>]+src=["']([^"']+)["'][^>]*alt=["']([^"']*)["'][^>]*>|<img[^>]+alt=["']([^"']*)["'][^>]*src=["']([^"']+)["'][^>]*>|<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+	const imagePattern = /<img\b[^>]*>/gi;
 	const seen = new Set<string>();
 	const items: PhotoItem[] = [];
 	let match: RegExpExecArray | null = null;
 	let index = 0;
 
 	while ((match = imagePattern.exec(post.html))) {
-		const imageUrl = match[1] || match[4] || match[5] || '';
-		const alt = match[2] || match[3] || post.title;
+		const tag = match[0] || '';
+		const imageUrl = getImageTagAttribute(tag, 'src');
+		const alt = getImageTagAttribute(tag, 'alt') || post.title;
+		const width = parsePositiveInt(getImageTagAttribute(tag, 'width'));
+		const height = parsePositiveInt(getImageTagAttribute(tag, 'height'));
 
 		if (!imageUrl || seen.has(imageUrl)) {
 			continue;
@@ -257,7 +282,9 @@ function extractPhotoItems(post: BlogPost): PhotoItem[] {
 			postPublishedAt: post.publishedAt,
 			imageUrl,
 			alt,
-			index
+			index,
+			width,
+			height
 		});
 		index += 1;
 	}
@@ -272,7 +299,9 @@ function extractPhotoItems(post: BlogPost): PhotoItem[] {
 			postPublishedAt: post.publishedAt,
 			imageUrl: post.coverImage,
 			alt: post.title,
-			index: -1
+			index: -1,
+			width: post.coverImageWidth,
+			height: post.coverImageHeight
 		});
 	}
 
