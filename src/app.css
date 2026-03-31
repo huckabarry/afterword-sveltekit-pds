@@ -232,6 +232,10 @@ p:last-child {
 	color: var(--accent);
 }
 
+.site-nav-menu__button[aria-expanded='true'] {
+	color: #ffffff;
+}
+
 .site-nav-menu__panel {
 	position: absolute;
 	top: calc(100% + 0.55rem);
