@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { error, json } from '@sveltejs/kit';
-import { getMusicImportEntries } from '$lib/server/music';
+import { getRemoteMusicImportEntries } from '$lib/server/music';
 import { importMusicToPds } from '$lib/server/pds-music';
 
 function getSubmittedSyncToken(request: Request) {
@@ -55,7 +55,7 @@ export async function POST(event) {
 	const offset = normalizeOffset(body?.offset);
 
 	try {
-		const music = await getMusicImportEntries(event);
+		const music = await getRemoteMusicImportEntries();
 		const tracks = collections.includes('tracks') ? music.tracks : [];
 		const albums = collections.includes('albums') ? music.albums : [];
 		const result = await importMusicToPds({
@@ -67,7 +67,7 @@ export async function POST(event) {
 		});
 
 		return json({
-			archiveDigest: music.archiveDigest,
+			source: 'remote',
 			...result
 		});
 	} catch (syncError) {

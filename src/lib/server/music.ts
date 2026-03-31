@@ -5,6 +5,7 @@ import { getMusicSnapshotFromR2, writeMusicSnapshotToR2 } from '$lib/server/musi
 import { getPdsAlbums, getPdsTracks } from '$lib/server/pds-music';
 
 const ALBUMWHALE_LIST_URL = 'https://albumwhale.com/bryan/listening-now';
+const ALBUMWHALE_FEED_URL = 'https://albumwhale.com/bryan/listening-now.atom';
 const CRUCIAL_TRACKS_FEED_URL = 'https://www.crucialtracks.org/profile/bryan/feed.json';
 const REMOTE_MUSIC_CACHE_TTL_MS = 1000 * 60 * 10;
 const albumArchiveFiles = import.meta.glob('/archive/albumwhale/**/*.md', {
@@ -448,6 +449,24 @@ function extractTrackNoteHtmlFromContentHtml(value: string) {
 	return noteMatch?.[1]?.trim() || null;
 }
 
+function extractAlbumFeedBody(contentHtml: string) {
+	const decoded = decodeHtmlEntities(String(contentHtml || ''));
+	const imageMatch = decoded.match(/<img\b[^>]*src="([^"]+)"[^>]*>/i);
+	const noteMatches = [...decoded.matchAll(/<p>([\s\S]*?)<\/p>/gi)];
+	const noteHtml = noteMatches
+		.map((match) => String(match[1] || '').trim())
+		.filter(Boolean)
+		.join('\n')
+		.trim();
+	const note = stripHtml(noteHtml);
+
+	return {
+		coverImage: imageMatch?.[1] || null,
+		note,
+		noteHtml: noteHtml || null
+	};
+}
+
 function createTrackSlugFromPublishedAt(date: Date, trackTitle: string, artist: string) {
 	return `${slugify(formatPacificArchiveTimestamp(date))}-${slugify(`${trackTitle}-${artist}`)}`;
 }
@@ -800,6 +819,70 @@ export async function getArchiveTracks(): Promise<TrackEntry[]> {
 		.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
 }
 
+async function getRemoteAlbums({
+	includeListenLinks = true
+}: {
+	includeListenLinks?: boolean;
+} = {}): Promise<AlbumEntry[]> {
+	const listenLinksByAlbumId = includeListenLinks
+		? await getAlbumWhaleListenLinks()
+		: new Map<string, ListenLink[]>();
+
+	try {
+		const response = await fetch(ALBUMWHALE_FEED_URL, {
+			headers: {
+				'User-Agent': 'afterword-sveltekit-pds music sync'
+			}
+		});
+
+		if (!response.ok) {
+			return [];
+		}
+
+		const xml = await response.text();
+		const entries = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/gi)];
+
+		return entries
+			.map((match) => {
+				const entry = match[1] || '';
+				const title = decodeHtmlEntities(
+					entry.match(/<title>([\s\S]*?)<\/title>/i)?.[1] || 'Untitled'
+				).trim();
+				const sourceUrl = decodeHtmlEntities(
+					entry.match(/<link[^>]+rel="alternate"[^>]+href="([^"]+)"/i)?.[1] || ''
+				).trim();
+				const publishedAtValue =
+					entry.match(/<published>([\s\S]*?)<\/published>/i)?.[1] || String(Date.now());
+				const publishedAt = new Date(decodeHtmlEntities(publishedAtValue));
+				const contentHtml = entry.match(/<content[^>]*type="html"[^>]*>([\s\S]*?)<\/content>/i)?.[1] || '';
+				const albumId = getAlbumIdFromOriginalUrl(sourceUrl) || slugify(title);
+				const { title: albumTitle, artist } = splitTitleAndArtist(title);
+				const body = extractAlbumFeedBody(contentHtml);
+
+				return {
+					id: albumId,
+					slug: albumId,
+					title,
+					albumTitle,
+					artist,
+					note: body.note,
+					noteHtml: body.noteHtml,
+					excerpt: body.note,
+					coverImage: body.coverImage,
+					publishedAt,
+					displayDate: formatDisplayDate(publishedAt),
+					sourceUrl,
+					localPath: `/music/${albumId}`,
+					listenLinks: listenLinksByAlbumId.get(albumId) || []
+				} satisfies AlbumEntry;
+			})
+			.filter((entry) => entry.sourceUrl && !Number.isNaN(entry.publishedAt.getTime()))
+			.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+	} catch {
+		return [];
+	}
+}
+
 async function getLegacyTracks() {
 	const [trackDetails, archivedTracks] = await Promise.all([
 		getCrucialTrackDetails(),
@@ -994,6 +1077,18 @@ export async function getMusicImportEntries(context?: MusicReadContext) {
 	return {
 		archiveDigest,
 		tracks,
+		albums
+	};
+}
+
+export async function getRemoteMusicImportEntries() {
+	const [trackDetails, albums] = await Promise.all([
+		getCrucialTrackDetails(),
+		getRemoteAlbums({ includeListenLinks: false })
+	]);
+
+	return {
+		tracks: trackDetails.items,
 		albums
 	};
 }
