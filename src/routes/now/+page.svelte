@@ -335,7 +335,7 @@
 		display: block;
 		overflow: hidden;
 		border-radius: 0.85rem;
-		aspect-ratio: 16 / 10;
+		aspect-ratio: 1 / 1;
 	}
 
 	.now-card__map :global(.checkin-map__frame--compact) {
