@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { excerpt, formatDate } from '$lib/format';
 	import type { Checkin } from '$lib/server/atproto';
-	import CheckinMap from '$lib/components/CheckinMap.svelte';
 
 	let { data }: { data: { checkins: Checkin[] } } = $props();
 </script>
@@ -24,19 +23,11 @@
 				<span class="sr-only">Open {item.name}</span>
 			</a>
 			<div class="card__link-wrap">
-				<div class="card__media">
-					{#if item.latitude !== null && item.longitude !== null}
-						<CheckinMap
-							latitude={item.latitude}
-							longitude={item.longitude}
-							name={item.name}
-							compact={true}
-							variant="preview"
-						/>
-					{:else if item.coverImage}
+				{#if item.coverImage}
+					<div class="card__media">
 						<img class="card__image" src={item.coverImage} alt={item.name} loading="lazy" />
-					{/if}
-				</div>
+					</div>
+				{/if}
 				<div class="card__copy">
 					<div class="card__meta">
 						<time datetime={item.visitedAt.toISOString()}>{formatDate(item.visitedAt)}</time>
@@ -169,33 +160,6 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-	}
-
-	:global(.card__media .checkin-map__frame) {
-		display: block;
-		width: 100%;
-		height: 100%;
-		--checkin-map-compact-height: 100%;
-		--checkin-map-compact-min-height: 0;
-		pointer-events: none;
-	}
-
-	:global(.card__media .checkin-map__frame--compact) {
-		min-height: 0;
-		height: 100%;
-		border-radius: 0;
-	}
-
-	:global(.card__media .leaflet-container) {
-		width: 100%;
-		height: 100%;
-		border-radius: 0;
-		pointer-events: none;
-	}
-
-	:global(.card__media .leaflet-control-container),
-	:global(.card__media .leaflet-tooltip-pane) {
-		display: none;
 	}
 
 	.sr-only {
