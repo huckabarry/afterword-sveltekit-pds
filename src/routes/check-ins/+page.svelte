@@ -139,6 +139,7 @@
 	}
 
 	.card__media {
+		position: relative;
 		display: grid;
 		overflow: hidden;
 		border-radius: 1rem;
@@ -154,8 +155,10 @@
 	}
 
 	:global(.card__media .checkin-map__frame) {
+		position: absolute;
+		inset: 0;
 		width: 100%;
-		height: 100%;
+		height: auto;
 		--checkin-map-compact-height: 100%;
 		--checkin-map-compact-min-height: 0;
 	}

@@ -204,9 +204,18 @@ p:last-child {
 }
 
 .site-nav-menu__button {
+	appearance: none;
+	margin: 0;
 	border: 0;
+	padding: 0;
 	background: transparent;
+	color: inherit;
 	cursor: pointer;
+	font: inherit;
+	font-style: italic;
+	font-weight: 500;
+	line-height: inherit;
+	vertical-align: baseline;
 }
 
 .site-nav-menu__panel {
@@ -1663,24 +1672,24 @@ p:last-child {
 	}
 
 	.site-nav-list {
-		display: grid;
-		grid-template-columns: repeat(5, minmax(0, 1fr));
-		align-items: start;
-		gap: 0.3rem;
-		padding-right: 0.3rem;
+		display: flex;
+		align-items: baseline;
+		justify-content: flex-start;
+		gap: 0.18rem;
+		padding-right: 0.35rem;
 	}
 
 	.site-nav-list-item {
 		min-width: 0;
-		text-align: center;
+		text-align: left;
 	}
 
 	.site-nav-item,
 	.site-nav-menu__button {
-		display: block;
-		width: 100%;
-		font-size: 0.82rem;
-		text-align: center;
+		display: inline-block;
+		width: auto;
+		font-size: 0.8rem;
+		text-align: left;
 	}
 
 	.site-nav-menu__panel {
@@ -1689,7 +1698,7 @@ p:last-child {
 	}
 
 	.site-nav-search--title {
-		margin-right: 0.28rem;
+		margin-right: 0.56rem;
 	}
 
 	.search-modal {

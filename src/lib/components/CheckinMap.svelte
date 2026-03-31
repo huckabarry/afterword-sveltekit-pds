@@ -26,6 +26,16 @@
 
 		let map: any;
 		let cancelled = false;
+		let resizeObserver: ResizeObserver | null = null;
+
+		function refreshSize() {
+			if (!map || cancelled) return;
+
+			requestAnimationFrame(() => {
+				if (!map || cancelled) return;
+				map.invalidateSize(false);
+			});
+		}
 
 		async function boot() {
 			const leaflet = await loadLeaflet();
@@ -57,12 +67,22 @@
 				.bindTooltip(name, {
 					direction: 'top'
 				});
+
+			refreshSize();
+			window.setTimeout(refreshSize, 120);
+			window.setTimeout(refreshSize, 320);
+
+			if (typeof ResizeObserver !== 'undefined') {
+				resizeObserver = new ResizeObserver(() => refreshSize());
+				resizeObserver.observe(mapEl);
+			}
 		}
 
 		boot();
 
 		return () => {
 			cancelled = true;
+			resizeObserver?.disconnect();
 			if (map) map.remove();
 		};
 	});
