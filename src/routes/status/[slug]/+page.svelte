@@ -191,7 +191,6 @@
 
 	.status-reply {
 		display: grid;
-		grid-template-columns: auto 1fr;
 		gap: 0.85rem;
 		align-items: start;
 		padding-left: 0.9rem;
