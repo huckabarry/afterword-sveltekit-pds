@@ -166,6 +166,7 @@ p:last-child {
 	font-style: italic;
 	text-decoration: none;
 	white-space: nowrap;
+	-webkit-tap-highlight-color: transparent;
 }
 
 .site-nav-item[aria-current='page'] {
@@ -182,6 +183,7 @@ p:last-child {
 	background: transparent;
 	color: #ffffff;
 	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
 }
 
 .site-nav-search svg {
@@ -216,6 +218,7 @@ p:last-child {
 	font-weight: 500;
 	line-height: inherit;
 	vertical-align: baseline;
+	-webkit-tap-highlight-color: transparent;
 }
 
 .site-nav-menu__panel {
@@ -242,6 +245,7 @@ p:last-child {
 	font-size: 0.9rem;
 	font-style: italic;
 	text-decoration: none;
+	-webkit-tap-highlight-color: transparent;
 }
 
 .site-nav-menu__link:hover,

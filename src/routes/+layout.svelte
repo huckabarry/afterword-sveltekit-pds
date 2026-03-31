@@ -23,6 +23,7 @@
 	let searchState = $state<'idle' | 'loading' | 'ready' | 'empty'>('idle');
 	let searchInput = $state<HTMLInputElement | null>(null);
 	let navMenu = $state<HTMLElement | null>(null);
+	let navMenuButton = $state<HTMLButtonElement | null>(null);
 	let searchRequest = 0;
 	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
 	const profile = $derived(data.profile);
@@ -57,6 +58,15 @@
 
 	function closeNavMenu() {
 		navMenuOpen = false;
+
+		if (!browser) return;
+
+		const activeElement = document.activeElement;
+		if (!(activeElement instanceof HTMLElement)) return;
+
+		if (activeElement === navMenuButton || navMenu?.contains(activeElement)) {
+			activeElement.blur();
+		}
 	}
 
 	function isCurrentPath(href: string) {
@@ -216,6 +226,7 @@
 								<div class="site-nav-menu" bind:this={navMenu}>
 									<button
 										class="site-nav-item site-nav-menu__button"
+										bind:this={navMenuButton}
 										type="button"
 										aria-haspopup="menu"
 										aria-expanded={navMenuOpen}
