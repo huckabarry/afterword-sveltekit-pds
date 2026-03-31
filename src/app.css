@@ -76,6 +76,7 @@ p:last-child {
 	display: flex;
 	align-items: center;
 	gap: 1rem;
+	z-index: 50;
 }
 
 .site-header-avatar-link {
@@ -245,7 +246,7 @@ p:last-child {
 	position: absolute;
 	top: calc(100% + 0.55rem);
 	right: -0.8rem;
-	z-index: 30;
+	z-index: 2000;
 	display: grid;
 	gap: 0.2rem;
 	min-width: 11.5rem;

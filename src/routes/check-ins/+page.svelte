@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { excerpt, formatDate } from '$lib/format';
+	import CheckinMap from '$lib/components/CheckinMap.svelte';
 	import type { Checkin } from '$lib/server/atproto';
 
 	let { data }: { data: { checkins: Checkin[] } } = $props();
@@ -23,6 +24,17 @@
 				<span class="sr-only">Open {item.name}</span>
 			</a>
 			<div class="card__link-wrap">
+				{#if item.latitude !== null && item.longitude !== null}
+					<div class="card__map">
+						<CheckinMap
+							latitude={item.latitude}
+							longitude={item.longitude}
+							name={item.name}
+							compact={true}
+							variant="preview"
+						/>
+					</div>
+				{/if}
 				<div class="card__copy">
 					<div class="card__meta">
 						<time datetime={item.visitedAt.toISOString()}>{formatDate(item.visitedAt)}</time>
@@ -105,6 +117,19 @@
 		padding: 0.3rem 0;
 	}
 
+	.card__map {
+		display: block;
+		overflow: hidden;
+		border-radius: 1rem;
+		aspect-ratio: 16 / 10;
+		background: color-mix(in srgb, var(--surface) 82%, white 18%);
+	}
+
+	.card__map :global(.checkin-map__frame--compact) {
+		min-height: 0;
+		height: 100%;
+	}
+
 	.card__meta {
 		display: flex;
 		flex-wrap: wrap;
@@ -162,6 +187,12 @@
 		clip: rect(0, 0, 0, 0);
 		white-space: nowrap;
 		border: 0;
+	}
+
+	@media (max-width: 640px) {
+		.card__map {
+			display: none;
+		}
 	}
 
 </style>
