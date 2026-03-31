@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { excerpt, formatDate } from '$lib/format';
 	import type { Checkin } from '$lib/server/atproto';
-	import CheckinMap from '$lib/components/CheckinMap.svelte';
 
 	let { data }: { data: { checkins: Checkin[] } } = $props();
 </script>
@@ -20,15 +19,20 @@
 <section class="list">
 	{#each data.checkins as item}
 		<article class="card surface">
-			<a class="card__link-wrap" href={item.canonicalPath}>
+			<a class="card__overlay-link" href={item.canonicalPath} aria-label={`Open check-in for ${item.name}`}>
+				<span class="sr-only">Open {item.name}</span>
+			</a>
+			<div class="card__link-wrap">
 				<div class="card__media">
-					{#if item.latitude !== null && item.longitude !== null}
-						<CheckinMap
-							latitude={item.latitude}
-							longitude={item.longitude}
-							name={item.name}
-							compact={true}
-						/>
+					{#if item.mapEmbedUrl}
+						<iframe
+							class="card__map-embed"
+							src={item.mapEmbedUrl}
+							title={`Map showing ${item.name}`}
+							loading="lazy"
+							aria-hidden="true"
+							tabindex="-1"
+						></iframe>
 					{:else if item.coverImage}
 						<img class="card__image" src={item.coverImage} alt={item.name} loading="lazy" />
 					{/if}
@@ -51,7 +55,7 @@
 						<p class="card__excerpt">{excerpt(item.excerpt || item.note, 220)}</p>
 					{/if}
 				</div>
-			</a>
+			</div>
 		</article>
 	{/each}
 </section>
@@ -74,6 +78,7 @@
 
 	.card {
 		display: grid;
+		position: relative;
 	}
 
 	.card__link-wrap {
@@ -82,6 +87,18 @@
 		gap: 1rem;
 		text-decoration: none;
 		align-items: stretch;
+	}
+
+	.card__overlay-link {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		border-radius: 1rem;
+	}
+
+	.card__overlay-link:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 4px;
 	}
 
 	.card__copy {
@@ -154,30 +171,24 @@
 		object-fit: cover;
 	}
 
-	:global(.card__media .checkin-map__frame) {
+	.card__map-embed {
 		display: block;
 		width: 100%;
 		height: 100%;
-		--checkin-map-compact-height: 100%;
-		--checkin-map-compact-min-height: 0;
-	}
-
-	:global(.card__media .checkin-map__frame--compact) {
-		min-height: 0;
-		height: 100%;
-		border-radius: 0;
-	}
-
-	:global(.card__media .leaflet-container) {
-		width: 100%;
-		height: 100%;
-		border-radius: 0;
-	}
-
-	:global(.card__media .checkin-map__frame--compact),
-	:global(.card__media .leaflet-container),
-	:global(.card__media .leaflet-control-container) {
+		border: 0;
 		pointer-events: none;
+	}
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 </style>
