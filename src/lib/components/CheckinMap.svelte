@@ -6,12 +6,14 @@
 		latitude,
 		longitude,
 		name,
-		compact = false
+		compact = false,
+		variant = 'default'
 	}: {
 		latitude: number | null;
 		longitude: number | null;
 		name: string;
 		compact?: boolean;
+		variant?: 'default' | 'preview';
 	} = $props();
 
 	let mapEl = $state<HTMLDivElement | null>(null);
@@ -37,28 +39,34 @@
 		async function boot() {
 			const { default: leaflet } = await import('leaflet');
 			if (!leaflet || cancelled || !mapEl) return;
+			const isPreview = variant === 'preview';
+			const tileUrl = isPreview
+				? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+				: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
 			map = leaflet.map(mapEl, {
 				scrollWheelZoom: false,
-				zoomControl: !compact,
-				dragging: !compact,
-				touchZoom: !compact,
-				doubleClickZoom: !compact,
-				boxZoom: !compact,
-				keyboard: !compact,
-				attributionControl: !compact,
-				tapHold: !compact
+				zoomControl: !compact && !isPreview,
+				dragging: !compact && !isPreview,
+				touchZoom: !compact && !isPreview,
+				doubleClickZoom: !compact && !isPreview,
+				boxZoom: !compact && !isPreview,
+				keyboard: !compact && !isPreview,
+				attributionControl: !compact && !isPreview,
+				tapHold: !compact && !isPreview,
+				zoomAnimation: !compact,
+				fadeAnimation: !compact,
+				markerZoomAnimation: !compact
 			}).setView([lat, lng], compact ? 15 : 16);
 
 			leaflet
-				.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+				.tileLayer(tileUrl, {
 					attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
 					maxZoom: 19
 				})
 				.addTo(map);
 
-			leaflet
-				.marker([lat, lng], {
+			const marker = leaflet.marker([lat, lng], {
 					icon: leaflet.divIcon({
 						className: 'afterword-map-pin-wrapper',
 						html: '<span class="afterword-map-pin"></span>',
@@ -66,12 +74,14 @@
 						iconAnchor: [12, 24],
 						popupAnchor: [0, -20]
 					})
-				})
-				.addTo(map)
-				.bindTooltip(name, {
+				}).addTo(map);
+
+			if (!isPreview) {
+				marker.bindTooltip(name, {
 					direction: 'top',
 					permanent: false
 				});
+			}
 
 			refreshSize();
 			window.setTimeout(refreshSize, 120);

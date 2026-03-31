@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { excerpt, formatDate } from '$lib/format';
 	import type { Checkin } from '$lib/server/atproto';
+	import CheckinMap from '$lib/components/CheckinMap.svelte';
 
 	let { data }: { data: { checkins: Checkin[] } } = $props();
 </script>
@@ -24,15 +25,14 @@
 			</a>
 			<div class="card__link-wrap">
 				<div class="card__media">
-					{#if item.mapEmbedUrl}
-						<iframe
-							class="card__map-embed"
-							src={item.mapEmbedUrl}
-							title={`Map showing ${item.name}`}
-							loading="lazy"
-							aria-hidden="true"
-							tabindex="-1"
-						></iframe>
+					{#if item.latitude !== null && item.longitude !== null}
+						<CheckinMap
+							latitude={item.latitude}
+							longitude={item.longitude}
+							name={item.name}
+							compact={true}
+							variant="preview"
+						/>
 					{:else if item.coverImage}
 						<img class="card__image" src={item.coverImage} alt={item.name} loading="lazy" />
 					{/if}
@@ -171,12 +171,31 @@
 		object-fit: cover;
 	}
 
-	.card__map-embed {
+	:global(.card__media .checkin-map__frame) {
 		display: block;
 		width: 100%;
 		height: 100%;
-		border: 0;
+		--checkin-map-compact-height: 100%;
+		--checkin-map-compact-min-height: 0;
 		pointer-events: none;
+	}
+
+	:global(.card__media .checkin-map__frame--compact) {
+		min-height: 0;
+		height: 100%;
+		border-radius: 0;
+	}
+
+	:global(.card__media .leaflet-container) {
+		width: 100%;
+		height: 100%;
+		border-radius: 0;
+		pointer-events: none;
+	}
+
+	:global(.card__media .leaflet-control-container),
+	:global(.card__media .leaflet-tooltip-pane) {
+		display: none;
 	}
 
 	.sr-only {
