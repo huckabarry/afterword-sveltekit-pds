@@ -17,12 +17,14 @@
 	};
 
 	let syncing = $state(false);
+	let syncingSlug = $state(false);
 	let processed = $state(0);
 	let total = $state<number | null>(null);
 	let synced = $state(0);
 	let failures = $state<string[]>([]);
 	let message = $state('');
 	let copiedUrl = $state('');
+	let syncSlug = $state('');
 
 	function getCopyUrl(photo: (typeof data.photos)[number]) {
 		const source = photo.originalUrl || photo.displayUrl || photo.imageUrl;
@@ -108,6 +110,39 @@
 			: `Synced ${synced} of ${total} gallery photos into the manifest.`;
 		syncing = false;
 	}
+
+	async function syncPhotoSlug() {
+		const slug = syncSlug.trim().replace(/^\/+|\/+$/g, '');
+		if (!slug || syncing || syncingSlug) return;
+
+		syncingSlug = true;
+		failures = [];
+		message = '';
+
+		try {
+			const response: Response = await fetch('/admin/api/photos-sync', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({ slug })
+			});
+			const payload: PhotoSyncPayload | null = await response.json().catch(() => null);
+
+			if (!response.ok || !payload?.ok) {
+				failures = [payload?.error || `Slug sync failed with ${response.status}`];
+				message = 'Unable to sync that Ghost post.';
+				return;
+			}
+
+			message = `Synced gallery images for “${slug}”.`;
+		} catch (error) {
+			failures = [error instanceof Error ? error.message : 'Unexpected sync error.'];
+			message = 'Unable to sync that Ghost post.';
+		} finally {
+			syncingSlug = false;
+		}
+	}
 </script>
 
 <section class="admin-panel">
@@ -143,6 +178,35 @@
 					Sync photos from Ghost
 				{/if}
 			</button>
+		</div>
+
+		<div class="admin-link-list">
+			<p><strong>Repair one post</strong></p>
+			<p class="admin-field-note">
+				Use a Ghost slug like <code>lake-tahoe-2</code> to sync one gallery post without rerunning the full manifest import.
+			</p>
+			<div class="admin-form-actions">
+				<input
+					class="admin-input"
+					type="text"
+					name="slug"
+					bind:value={syncSlug}
+					placeholder="lake-tahoe-2"
+					autocomplete="off"
+				/>
+				<button
+					class="admin-button admin-button--secondary"
+					type="button"
+					onclick={syncPhotoSlug}
+					disabled={syncing || syncingSlug || !syncSlug.trim()}
+				>
+					{#if syncingSlug}
+						Syncing slug…
+					{:else}
+						Sync this post
+					{/if}
+				</button>
+			</div>
 		</div>
 
 		{#if message}
