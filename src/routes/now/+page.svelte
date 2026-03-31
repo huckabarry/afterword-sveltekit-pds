@@ -39,6 +39,17 @@
 					data.onThisDayPosts.length]
 			: null
 	);
+	const currentOnThisDayHasTitle = $derived.by(() =>
+		currentOnThisDayPost ? shouldSurfaceEarlierWebTitle(currentOnThisDayPost) : false
+	);
+	const currentOnThisDayTitle = $derived.by(() => {
+		if (!currentOnThisDayPost) return '';
+		if (currentOnThisDayHasTitle) return currentOnThisDayPost.title;
+		return `A note from ${new Date(currentOnThisDayPost.publishedAt).getFullYear()}`;
+	});
+	const currentOnThisDayText = $derived.by(() =>
+		currentOnThisDayPost ? excerpt(currentOnThisDayPost.excerpt, 180) : ''
+	);
 
 	function showPreviousOnThisDay() {
 		if (data.onThisDayPosts.length > 1) onThisDayIndex -= 1;
@@ -244,11 +255,9 @@
 							{/if}
 						</div>
 
-						{#if shouldSurfaceEarlierWebTitle(currentOnThisDayPost)}
-							<h2 class="now-card__title">
-								<a href={currentOnThisDayPost.path}>{currentOnThisDayPost.title}</a>
-							</h2>
-						{/if}
+						<h2 class="now-card__title">
+							<a href={currentOnThisDayPost.path}>{currentOnThisDayTitle}</a>
+						</h2>
 
 						<p class="now-card__subhead">Earlier Web</p>
 					</div>
@@ -264,11 +273,13 @@
 						</a>
 					{/if}
 
-					<p class="now-card__text">
-						<a class="now-card__text-link" href={currentOnThisDayPost.path}>
-							{currentOnThisDayPost.excerpt}
-						</a>
-					</p>
+					{#if currentOnThisDayText}
+						<p class="now-card__text">
+							<a class="now-card__text-link" href={currentOnThisDayPost.path}>
+								{currentOnThisDayText}
+							</a>
+						</p>
+					{/if}
 
 					<div class="now-card__actions">
 						{#if data.onThisDayPosts.length > 1}
