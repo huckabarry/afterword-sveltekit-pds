@@ -20,7 +20,7 @@ const PLANNING_TAGS = new Set(['urbanism', 'housing', 'transportation', 'public-
 export type FeedEntry = {
 	id: string;
 	url: string;
-	title: string;
+	title?: string;
 	summary: string;
 	contentHtml: string;
 	datePublished: Date;
@@ -36,7 +36,7 @@ type FeedDocument = {
 	items: Array<{
 		id: string;
 		url: string;
-		title: string;
+		title?: string;
 		summary: string;
 		content_html: string;
 		date_published: string;
@@ -64,7 +64,7 @@ function toAbsoluteUrl(origin: string, value: string) {
 function toRssItem(entry: FeedEntry) {
 	return [
 		'    <item>',
-		`      <title>${escapeXml(entry.title)}</title>`,
+		...(entry.title ? [`      <title>${escapeXml(entry.title)}</title>`] : []),
 		`      <link>${escapeXml(entry.url)}</link>`,
 		`      <guid>${escapeXml(entry.id || entry.url)}</guid>`,
 		`      <pubDate>${entry.datePublished.toUTCString()}</pubDate>`,
@@ -123,10 +123,10 @@ export function createJsonFeed({
 		items: items.map((item) => ({
 			id: item.id,
 			url: item.url,
-			title: item.title,
 			summary: item.summary,
 			content_html: item.contentHtml,
 			date_published: item.datePublished.toISOString(),
+			...(item.title ? { title: item.title } : {}),
 			...(item.image ? { image: item.image } : {})
 		}))
 	};
@@ -169,7 +169,6 @@ export async function getStatusFeedEntries(origin: string) {
 	return page.statuses.map((status) => ({
 		id: status.uri || status.id,
 		url: toAbsoluteUrl(origin, `/status/${status.slug}`),
-		title: normalizeDescription(status.text).slice(0, 80) || 'Status update',
 		summary: normalizeDescription(status.text),
 		contentHtml: status.html || `<p>${escapeXml(status.text)}</p>`,
 		datePublished: status.date,
