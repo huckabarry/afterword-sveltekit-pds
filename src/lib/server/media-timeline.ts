@@ -219,6 +219,12 @@ async function rebuildMediaTimelineItems(
 	return refresh;
 }
 
+export async function refreshMediaTimelineSnapshot(context?: MediaTimelineContext) {
+	const bucket = getBucket(context);
+	const cacheKey = bucket ? getBucketCacheKey(bucket) : 'default';
+	return rebuildMediaTimelineItems(cacheKey, context);
+}
+
 async function readTimelineSnapshotFromR2(bucket: BoundR2Bucket) {
 	const object = await bucket.get(MEDIA_TIMELINE_R2_KEY);
 

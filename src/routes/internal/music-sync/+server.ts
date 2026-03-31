@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { error, json } from '@sveltejs/kit';
+import { refreshMediaTimelineSnapshot } from '$lib/server/media-timeline';
 import { getAlbums, getMusicArchiveDigest, getRemoteMusicImportEntries, getTracks } from '$lib/server/music';
 import { writeMusicSnapshotToR2 } from '$lib/server/music-r2';
 import { importMusicToPds } from '$lib/server/pds-music';
@@ -84,6 +85,8 @@ export async function POST(event) {
 				archiveDigest
 			});
 		}
+
+		await refreshMediaTimelineSnapshot(event);
 
 		return json({
 			source: 'remote',
