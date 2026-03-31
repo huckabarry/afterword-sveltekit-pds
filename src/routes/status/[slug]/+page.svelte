@@ -9,6 +9,10 @@
 			post: StatusPost;
 		};
 	} = $props();
+
+	function socialRepostCount(post: StatusPost) {
+		return (post.repostCount || 0) + (post.quoteCount || 0);
+	}
 </script>
 
 <svelte:head>
@@ -127,15 +131,7 @@
 								<path d="M5.05 4.86a.75.75 0 0 1 1.06 0l2.76 2.76a.75.75 0 1 1-1.06 1.06L6.33 7.2v7.05c0 .7.17 1.12.45 1.39.27.27.69.45 1.39.45h5.5a.75.75 0 0 1 0 1.5h-5.5c-1.02 0-1.87-.28-2.45-.86-.58-.58-.89-1.43-.89-2.48V7.2L3.99 8.68a.75.75 0 1 1-1.06-1.06l2.12-2.12Zm13.9 10.46a.75.75 0 0 1 1.06 1.06l-2.76 2.76a.75.75 0 0 1-1.06 0l-2.76-2.76a.75.75 0 1 1 1.06-1.06l1.48 1.48V9.75c0-.7-.17-1.12-.45-1.39-.27-.27-.69-.45-1.39-.45h-5.5a.75.75 0 0 1 0-1.5h5.5c1.02 0 1.87.28 2.45.86.58.58.89 1.43.89 2.48v7.05l1.48-1.48Z"></path>
 							</svg>
 						</span>
-						<span>{data.post.repostCount}</span>
-					</a>
-					<a class="status-row__action" href={data.post.blueskyUrl} target="_blank" rel="noreferrer">
-						<span class="status-row__icon" aria-hidden="true">
-							<svg viewBox="0 0 24 24" focusable="false">
-								<path d="M6.5 4.75A2.75 2.75 0 0 1 9.25 2h8A2.75 2.75 0 0 1 20 4.75v8a2.75 2.75 0 0 1-2.75 2.75H13.7l-4.92 4.1a.75.75 0 0 1-1.23-.58V15.5H6.75A2.75 2.75 0 0 1 4 12.75v-8A2.75 2.75 0 0 1 6.75 2h.5a.75.75 0 0 1 0 1.5h-.5c-.69 0-1.25.56-1.25 1.25v8c0 .69.56 1.25 1.25 1.25H8.3a.75.75 0 0 1 .75.75v2.68l3.87-3.23a.75.75 0 0 1 .48-.17h3.85c.69 0 1.25-.56 1.25-1.25v-8c0-.69-.56-1.25-1.25-1.25h-8c-.69 0-1.25.56-1.25 1.25V9a.75.75 0 0 1-1.5 0V4.75Z"></path>
-							</svg>
-						</span>
-						<span>{data.post.quoteCount}</span>
+						<span>{socialRepostCount(data.post)}</span>
 					</a>
 					<a class="status-row__action" href={data.post.blueskyUrl} target="_blank" rel="noreferrer">
 						<span class="status-row__icon" aria-hidden="true">

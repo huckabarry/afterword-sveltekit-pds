@@ -69,6 +69,10 @@
 			isLoadingMore = false;
 		}
 	}
+
+	function socialRepostCount(post: StatusPost) {
+		return (post.repostCount || 0) + (post.quoteCount || 0);
+	}
 </script>
 
 <svelte:head>
@@ -209,15 +213,7 @@
 									></path>
 								</svg>
 							</span>
-							<span>{post.repostCount}</span>
-						</a>
-						<a class="status-row__action" href={`/status/${post.slug}`}>
-							<span class="status-row__icon" aria-hidden="true">
-								<svg viewBox="0 0 24 24" focusable="false">
-									<path d="M6.5 4.75A2.75 2.75 0 0 1 9.25 2h8A2.75 2.75 0 0 1 20 4.75v8a2.75 2.75 0 0 1-2.75 2.75H13.7l-4.92 4.1a.75.75 0 0 1-1.23-.58V15.5H6.75A2.75 2.75 0 0 1 4 12.75v-8A2.75 2.75 0 0 1 6.75 2h.5a.75.75 0 0 1 0 1.5h-.5c-.69 0-1.25.56-1.25 1.25v8c0 .69.56 1.25 1.25 1.25H8.3a.75.75 0 0 1 .75.75v2.68l3.87-3.23a.75.75 0 0 1 .48-.17h3.85c.69 0 1.25-.56 1.25-1.25v-8c0-.69-.56-1.25-1.25-1.25h-8c-.69 0-1.25.56-1.25 1.25V9a.75.75 0 0 1-1.5 0V4.75Z"></path>
-								</svg>
-							</span>
-							<span>{post.quoteCount}</span>
+							<span>{socialRepostCount(post)}</span>
 						</a>
 						<a class="status-row__action" href={`/status/${post.slug}`}>
 							<span class="status-row__icon" aria-hidden="true">
