@@ -81,10 +81,6 @@
 
 <section class="section-block">
 	<h2 class="section-title">Life Lately</h2>
-	<p class="page-head__lede">
-		A few recent notes about whatever currently has my attention. Books, music, movies, and shows
-		live over on <a href="/media">Media</a>.
-	</p>
 
 	{#if data.nowPosts.length}
 		<div class="now-post-list">
