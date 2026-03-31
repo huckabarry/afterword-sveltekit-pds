@@ -3,6 +3,7 @@ import { getLatestCheckinSnapshot } from '$lib/server/checkin-snapshot';
 import { getNowIntroContent } from '$lib/server/content';
 import { getEarlierWebOnThisDayPosts } from '$lib/server/earlier-web';
 import { getNowPosts, type BlogPost } from '$lib/server/ghost';
+import { getTracks, type TrackEntry } from '$lib/server/music';
 import { getRecentManifestGalleryPhotos } from '$lib/server/photo-manifest';
 
 const MEDIA_TAGS = new Set([
@@ -23,12 +24,13 @@ function isMediaTagged(post: BlogPost) {
 }
 
 export async function load(event) {
-	const [intro, rawNowPosts, latestCheckinSnapshot, recentPhotos, onThisDayPosts] = await Promise.all([
+	const [intro, rawNowPosts, latestCheckinSnapshot, recentPhotos, onThisDayPosts, tracks] = await Promise.all([
 		getNowIntroContent(),
 		getNowPosts(),
 		getLatestCheckinSnapshot(event),
 		getRecentManifestGalleryPhotos(event, 1),
-		getEarlierWebOnThisDayPosts(event, new Date(), 3, { sourceType: 'instagram' })
+		getEarlierWebOnThisDayPosts(event, new Date(), 3, { sourceType: 'instagram' }),
+		getTracks(event)
 	]);
 
 	const nowPosts = rawNowPosts.filter((post: BlogPost) => !isMediaTagged(post)).slice(0, 12);
@@ -42,6 +44,7 @@ export async function load(event) {
 	return {
 		intro,
 		nowPosts,
+		latestTrack: tracks[0] || null,
 		latestCheckin,
 		latestPhoto: recentPhotos[0] || null,
 		onThisDayPosts

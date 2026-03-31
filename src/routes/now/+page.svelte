@@ -6,6 +6,7 @@
 	import type { EarlierWebOnThisDayPost } from '$lib/server/earlier-web';
 	import type { GalleryPhotoItem } from '$lib/server/gallery-assets';
 	import type { BlogPost } from '$lib/server/ghost';
+	import type { TrackEntry } from '$lib/server/music';
 
 	let {
 		data
@@ -17,6 +18,7 @@
 				paragraphs: string[];
 			};
 			nowPosts: BlogPost[];
+			latestTrack: TrackEntry | null;
 			latestCheckin: Checkin | null;
 			latestPhoto: GalleryPhotoItem | null;
 			onThisDayPosts: EarlierWebOnThisDayPost[];
@@ -25,6 +27,9 @@
 
 	const latestCheckinText = $derived.by(() =>
 		data.latestCheckin ? excerpt(data.latestCheckin.excerpt || data.latestCheckin.note, 180) : ''
+	);
+	const latestTrackText = $derived.by(() =>
+		data.latestTrack ? excerpt(data.latestTrack.note || data.latestTrack.excerpt, 180) : ''
 	);
 
 </script>
@@ -70,9 +75,55 @@
 	{/if}
 </section>
 
-{#if data.latestCheckin || data.latestPhoto}
+{#if data.latestTrack || data.latestCheckin || data.latestPhoto}
 	<section class="section-block">
 		<div class="now-glance">
+			{#if data.latestTrack}
+				<article class="now-card">
+					<p class="now-card__kicker">Latest Track</p>
+
+					<div class="now-card__copy">
+						<div class="now-card__meta">
+							<time datetime={data.latestTrack.publishedAt.toISOString()}>
+								{formatDate(data.latestTrack.publishedAt)}
+							</time>
+						</div>
+
+						<h2 class="now-card__title">
+							<a href={data.latestTrack.localPath}>{data.latestTrack.trackTitle}</a>
+						</h2>
+
+						{#if data.latestTrack.artist}
+							<p class="now-card__subhead">{data.latestTrack.artist}</p>
+						{:else}
+							<p class="now-card__subhead now-card__subhead--ghost" aria-hidden="true">&nbsp;</p>
+						{/if}
+					</div>
+
+					{#if data.latestTrack.artworkUrl}
+						<a class="now-photo now-photo--artwork" href={data.latestTrack.localPath}>
+							<img
+								class="now-photo__image"
+								src={data.latestTrack.artworkUrl}
+								alt={data.latestTrack.artist
+									? `${data.latestTrack.trackTitle} by ${data.latestTrack.artist}`
+									: data.latestTrack.trackTitle}
+								loading="lazy"
+							/>
+						</a>
+					{/if}
+
+					{#if latestTrackText}
+						<p class="now-card__text">{latestTrackText}</p>
+					{/if}
+
+					<div class="now-card__actions">
+						<a class="tag-pill now-card__action" href={data.latestTrack.localPath}>View track</a>
+						<a class="tag-pill now-card__action" href="/listening">Listening</a>
+					</div>
+				</article>
+			{/if}
+
 			{#if data.latestCheckin}
 				<article class="now-card">
 					<p class="now-card__kicker">Latest Check-In</p>
@@ -298,6 +349,10 @@
 		aspect-ratio: 16 / 10;
 		overflow: hidden;
 		border-radius: 0.85rem;
+	}
+
+	.now-photo--artwork {
+		aspect-ratio: 1 / 1;
 	}
 
 	.now-photo__image {
