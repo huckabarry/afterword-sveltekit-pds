@@ -456,15 +456,19 @@
 
 	.now-post-row__title {
 		margin: 0;
+		font-family: 'IBM Plex Mono', monospace;
 		font-size: 1rem;
-		font-weight: 700;
+		font-style: italic;
+		font-weight: 500;
 		line-height: 1.3;
 		text-align: left;
 	}
 
 	.now-post-row__date {
 		color: var(--accent);
-		font-size: 0.92rem;
+		font-family: 'IBM Plex Mono', monospace;
+		font-size: 0.94rem;
+		font-style: italic;
 		white-space: nowrap;
 		text-align: left;
 	}
