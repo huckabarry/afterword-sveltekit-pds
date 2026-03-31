@@ -739,6 +739,46 @@ export async function getLatestNowPost(): Promise<BlogPost | null> {
 	return posts[0] || null;
 }
 
+function toNowPath(post: BlogPost): BlogPost {
+	return {
+		...post,
+		path: `/now/${post.slug}`
+	};
+}
+
+export async function getNowPosts(): Promise<BlogPost[]> {
+	const siteUrl = getGhostUrl();
+	const livePosts = await loadLivePosts(siteUrl, NOW_FILTER);
+	const rawPosts = livePosts.length ? livePosts : loadNowFallbackPosts();
+
+	const posts = rawPosts
+		.map((post: Record<string, unknown>) => normalizePost(post, siteUrl))
+		.filter((post: BlogPost) => {
+			const tags = new Set((post.tags || []).filter(Boolean));
+			return tags.has('now');
+		})
+		.sort((a: BlogPost, b: BlogPost) => b.publishedAt.getTime() - a.publishedAt.getTime());
+
+	const sourceMap = new Map<string, string>(
+		posts.map((post: BlogPost) => [normalizeSourceUrl(post.sourceUrl), `/now/${post.slug}`])
+	);
+
+	return posts.map((post: BlogPost) =>
+		toNowPath({
+			...post,
+			html: rewriteInternalLinks(post.html, sourceMap, siteUrl),
+			publicTags: post.tags
+				.map((tag: string) => toPublicTag(tag))
+				.filter((tag: GhostTag | null): tag is GhostTag => Boolean(tag))
+		})
+	);
+}
+
+export async function getNowPostBySlug(slug: string): Promise<BlogPost | null> {
+	const posts = await getNowPosts();
+	return posts.find((post: BlogPost) => post.slug === slug) || null;
+}
+
 export async function getPublicTags() {
 	const posts = await getBlogPosts();
 	const tags = new Map<string, GhostTag>();
