@@ -8,8 +8,14 @@ function getSubmittedSyncToken(request: Request) {
 	const bearer = authorization.toLowerCase().startsWith('bearer ')
 		? authorization.slice(7).trim()
 		: '';
+	const url = new URL(request.url);
 
-	return request.headers.get('x-music-sync-token')?.trim() || bearer || '';
+	return (
+		url.searchParams.get('token')?.trim() ||
+		request.headers.get('x-music-sync-token')?.trim() ||
+		bearer ||
+		''
+	);
 }
 
 function requireMusicSyncToken(request: Request) {
