@@ -39,7 +39,8 @@
 		{ href: '/check-ins', label: 'Check-ins' },
 		{ href: '/status', label: 'Status' },
 		{ href: '/about', label: 'About' },
-		{ href: '/colophon', label: 'Colophon' }
+		{ href: '/colophon', label: 'Colophon' },
+		{ href: '/subscribe', label: 'Subscribe' }
 	];
 
 	async function openSearch() {
