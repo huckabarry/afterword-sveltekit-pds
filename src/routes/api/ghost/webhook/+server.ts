@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
+import { clearGhostLivePostsCache } from '$lib/server/ghost';
 import {
 	syncGhostPostPhotoManifestBySlug,
 	syncRecentPhotoManifestBatch
@@ -119,6 +120,7 @@ export async function POST(event) {
 	}
 
 	const slug = extractGhostPostSlug(parsedPayload);
+	clearGhostLivePostsCache();
 
 	event.platform?.ctx.waitUntil(
 		(slug

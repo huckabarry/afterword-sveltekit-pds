@@ -72,6 +72,10 @@ export type GhostStandardSiteWriteback = {
 	syncedAt?: string;
 };
 
+export function clearGhostLivePostsCache() {
+	livePostsCache.clear();
+}
+
 export function stripImagesFromHtml(html: string) {
 	return String(html || '')
 		.replace(/<figure\b[^>]*>[\s\S]*?<img[\s\S]*?<\/figure>/gi, '')
