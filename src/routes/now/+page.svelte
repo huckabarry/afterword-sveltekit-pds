@@ -457,7 +457,7 @@
 	.now-post-row__title {
 		margin: 0;
 		font-size: 1rem;
-		font-weight: 400;
+		font-weight: 700;
 		line-height: 1.3;
 		text-align: left;
 	}
