@@ -148,4 +148,8 @@
 	.hello-page__list li {
 		line-height: 1.65;
 	}
+
+	.hello-page__body a {
+		color: var(--accent);
+	}
 </style>

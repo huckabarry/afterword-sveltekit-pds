@@ -58,10 +58,10 @@
 		<div class="now-post-list">
 			{#each data.nowPosts as post}
 				<a class="now-post-row" href={post.path}>
-					<h3 class="now-post-row__title">{post.title}</h3>
 					<time class="now-post-row__date" datetime={post.publishedAt.toISOString()}>
 						{formatDate(post.publishedAt)}
 					</time>
+					<h3 class="now-post-row__title">{post.title}</h3>
 				</a>
 			{/each}
 		</div>
@@ -328,7 +328,7 @@
 
 	.now-post-row {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-columns: auto minmax(0, 1fr);
 		gap: 1rem;
 		align-items: baseline;
 		padding: 0.95rem 0;
@@ -339,14 +339,19 @@
 
 	.now-post-row__title {
 		margin: 0;
-		font-size: 1.05rem;
+		font-family: 'IBM Plex Mono', monospace;
+		font-size: 1rem;
+		font-style: italic;
+		font-weight: 500;
 		line-height: 1.3;
-		font-weight: 600;
+		text-align: right;
 	}
 
 	.now-post-row__date {
-		color: var(--muted);
-		font-size: 0.84rem;
+		color: var(--accent);
+		font-family: 'IBM Plex Mono', monospace;
+		font-size: 0.94rem;
+		font-style: italic;
 		white-space: nowrap;
 	}
 
