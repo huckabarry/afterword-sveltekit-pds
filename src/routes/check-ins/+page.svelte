@@ -70,6 +70,17 @@
 	.card {
 		display: grid;
 		position: relative;
+		padding-bottom: 1.2rem;
+	}
+
+	.card::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		border-bottom: 1px dotted color-mix(in srgb, var(--border) 72%, transparent);
+		opacity: 0.6;
 	}
 
 	.card__link-wrap {
