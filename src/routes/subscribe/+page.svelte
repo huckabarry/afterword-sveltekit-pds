@@ -39,19 +39,6 @@
 					options. RSS is usually the safest choice, but I’ve included JSON feeds too.
 				</p>
 
-				<div class="subscribe-feed-list">
-					{#each feeds as feed}
-						<section class="subscribe-feed-card">
-							<h2>{feed.title}</h2>
-							<p>{feed.description}</p>
-							<div class="subscribe-feed-links">
-								<a href={feed.rssUrl}>RSS</a>
-								<a href={feed.jsonUrl}>JSON</a>
-							</div>
-						</section>
-					{/each}
-				</div>
-
 				<section class="subscribe-planning">
 					<h2>Planning via Low Velocity</h2>
 					<p>
@@ -76,6 +63,19 @@
 						</div>
 					</div>
 				</section>
+
+				<div class="subscribe-feed-list">
+					{#each feeds as feed}
+						<section class="subscribe-feed-card">
+							<h2>{feed.title}</h2>
+							<p>{feed.description}</p>
+							<div class="subscribe-feed-links">
+								<a href={feed.rssUrl}>RSS</a>
+								<a href={feed.jsonUrl}>JSON</a>
+							</div>
+						</section>
+					{/each}
+				</div>
 			</section>
 		</div>
 	</article>
