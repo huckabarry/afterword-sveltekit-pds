@@ -169,10 +169,6 @@ p:last-child {
 	-webkit-tap-highlight-color: transparent;
 }
 
-.site-nav-item[aria-current='page'] {
-	color: #ffffff;
-}
-
 .site-nav-search {
 	display: inline-flex;
 	align-items: center;
@@ -219,10 +215,6 @@ p:last-child {
 	line-height: inherit;
 	vertical-align: baseline;
 	-webkit-tap-highlight-color: transparent;
-}
-
-.site-nav-menu__button[aria-expanded='true'] {
-	color: #ffffff;
 }
 
 .site-nav-menu__panel {
