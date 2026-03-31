@@ -372,6 +372,11 @@
 	.now-card__text {
 		font-size: 0.97rem;
 		line-height: 1.6;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 4;
+		line-clamp: 4;
+		overflow: hidden;
 	}
 
 	.now-card__text-link {
