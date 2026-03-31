@@ -304,7 +304,6 @@
 		<button class="search-modal__backdrop" type="button" onclick={closeSearch} aria-label="Close search"></button>
 		<div class="search-modal__panel" role="dialog" aria-modal="true" aria-label="Search the site" tabindex="-1">
 			<div class="search-modal__head">
-				<label class="search-modal__label" for="site-search">Search</label>
 				<button class="search-modal__close" type="button" onclick={closeSearch} aria-label="Close search">
 					×
 				</button>
@@ -321,7 +320,6 @@
 					autocomplete="off"
 					placeholder="Search posts, places, tags, and ideas"
 				/>
-				<span class="search-modal__hint">Press `/` to search</span>
 			</div>
 
 			<div class="search-modal__results" aria-live="polite">
