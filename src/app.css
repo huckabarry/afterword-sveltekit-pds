@@ -228,11 +228,12 @@ p:last-child {
 .site-nav-menu__panel {
 	position: absolute;
 	top: calc(100% + 0.55rem);
-	right: 0;
+	right: -0.2rem;
 	z-index: 30;
 	display: grid;
 	gap: 0.2rem;
 	min-width: 11.5rem;
+	max-width: calc(100vw - 1.5rem);
 	padding: 0.5rem;
 	border: 1px solid var(--border);
 	border-radius: 0.75rem;
@@ -1701,8 +1702,9 @@ p:last-child {
 	}
 
 	.site-nav-menu__panel {
-		right: 0.15rem;
+		right: -0.35rem;
 		min-width: 10.5rem;
+		max-width: calc(100vw - 1.25rem);
 	}
 
 	.site-nav-search--title {
