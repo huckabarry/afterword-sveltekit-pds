@@ -80,7 +80,7 @@
 </section>
 
 <section class="section-block">
-	<h2 class="section-title">Recent Now Posts</h2>
+	<h2 class="section-title">Life Lately</h2>
 	<p class="page-head__lede">
 		A few recent notes about whatever currently has my attention. Books, music, movies, and shows
 		live over on <a href="/media">Media</a>.
@@ -104,6 +104,7 @@
 
 {#if data.latestTrack || data.latestCheckin || data.latestPhoto || currentOnThisDayPost}
 	<section class="section-block">
+		<h2 class="section-title">Signals</h2>
 		<div class="now-glance">
 			{#if data.latestTrack}
 				<article class="now-card">
