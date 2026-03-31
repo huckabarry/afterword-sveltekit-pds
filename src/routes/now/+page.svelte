@@ -183,10 +183,10 @@
 							<a href={data.latestPhoto.postPath}>{data.latestPhoto.postTitle}</a>
 						</h2>
 
-						<p class="now-card__subhead now-card__subhead--ghost" aria-hidden="true">&nbsp;</p>
+						<p class="now-card__subhead">Gallery</p>
 					</div>
 
-					<a class="now-photo" href={data.latestPhoto.postPath}>
+					<a class="now-photo now-photo--artwork" href={data.latestPhoto.postPath}>
 						<img
 							class="now-photo__image"
 							src={data.latestPhoto.displayUrl}
