@@ -330,7 +330,6 @@ p:last-child {
 	display: grid;
 	gap: 0.5rem;
 	padding: 0 1rem 0.95rem;
-	border-bottom: 1px solid rgba(28, 30, 31, 0.1);
 }
 
 .search-modal__field {

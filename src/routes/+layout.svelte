@@ -327,9 +327,7 @@
 			</div>
 
 			<div class="search-modal__results" aria-live="polite">
-				{#if searchState === 'idle'}
-					<p class="search-modal__empty">Start typing to search across field notes, planning, and other writing.</p>
-				{:else if searchState === 'loading'}
+				{#if searchState === 'loading'}
 					<p class="search-modal__empty">Searching…</p>
 				{:else if searchState === 'empty'}
 					<p class="search-modal__empty">No posts matched that search.</p>
