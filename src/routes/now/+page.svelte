@@ -344,7 +344,7 @@
 		font-style: italic;
 		font-weight: 500;
 		line-height: 1.3;
-		text-align: right;
+		text-align: left;
 	}
 
 	.now-post-row__date {

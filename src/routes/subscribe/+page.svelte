@@ -34,11 +34,6 @@
 	<article class="content content-page">
 		<div class="post-full-content">
 			<section class="content-body subscribe-page">
-				<p>
-					If you’d rather follow this site from your own reader, these are the cleanest feed
-					options. RSS is usually the safest choice, but I’ve included JSON feeds too.
-				</p>
-
 				<section class="subscribe-planning">
 					<h2>Planning via Low Velocity</h2>
 					<p>
@@ -63,6 +58,11 @@
 						</div>
 					</div>
 				</section>
+
+				<p>
+					If you’d rather follow this site from your own reader, these are the cleanest feed
+					options. RSS is usually the safest choice, but I’ve included JSON feeds too.
+				</p>
 
 				<div class="subscribe-feed-list">
 					{#each feeds as feed}
