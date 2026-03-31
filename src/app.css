@@ -1675,7 +1675,7 @@ p:last-child {
 		display: flex;
 		align-items: baseline;
 		justify-content: flex-start;
-		gap: 0.46rem;
+		gap: 0.58rem;
 		padding-right: 0.35rem;
 	}
 
@@ -1688,7 +1688,7 @@ p:last-child {
 	.site-nav-menu__button {
 		display: inline-block;
 		width: auto;
-		font-size: 0.8rem;
+		font-size: 0.87rem;
 		text-align: left;
 	}
 
