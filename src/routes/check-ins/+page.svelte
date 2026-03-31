@@ -23,11 +23,6 @@
 				<span class="sr-only">Open {item.name}</span>
 			</a>
 			<div class="card__link-wrap">
-				{#if item.coverImage}
-					<div class="card__media">
-						<img class="card__image" src={item.coverImage} alt={item.name} loading="lazy" />
-					</div>
-				{/if}
 				<div class="card__copy">
 					<div class="card__meta">
 						<time datetime={item.visitedAt.toISOString()}>{formatDate(item.visitedAt)}</time>
@@ -155,22 +150,6 @@
 		margin: 0.35rem 0 0;
 		color: var(--muted);
 		line-height: 1.65;
-	}
-
-	.card__media {
-		position: relative;
-		display: block;
-		overflow: hidden;
-		border-radius: 1rem;
-		background: color-mix(in srgb, var(--surface) 82%, white 18%);
-		aspect-ratio: 16 / 10;
-	}
-
-	.card__image {
-		display: block;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
 	}
 
 	.sr-only {
