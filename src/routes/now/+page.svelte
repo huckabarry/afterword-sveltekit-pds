@@ -292,7 +292,7 @@
 <style>
 	.now-glance {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 1rem;
 	}
 
@@ -454,12 +454,6 @@
 		font-style: italic;
 		white-space: nowrap;
 		text-align: left;
-	}
-
-	@media (max-width: 1200px) {
-		.now-glance {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
 	}
 
 	@media (max-width: 760px) {
