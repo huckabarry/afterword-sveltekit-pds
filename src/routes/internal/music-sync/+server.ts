@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { error, json } from '@sveltejs/kit';
-import { getRemoteMusicImportEntries } from '$lib/server/music';
+import { getAlbums, getMusicArchiveDigest, getRemoteMusicImportEntries, getTracks } from '$lib/server/music';
+import { writeMusicSnapshotToR2 } from '$lib/server/music-r2';
 import { importMusicToPds } from '$lib/server/pds-music';
 
 function getSubmittedSyncToken(request: Request) {
@@ -72,8 +73,21 @@ export async function POST(event) {
 			offset
 		});
 
+		let snapshot: Awaited<ReturnType<typeof writeMusicSnapshotToR2>> | null = null;
+
+		if (event.platform?.env?.R2_BUCKET) {
+			const archiveDigest = getMusicArchiveDigest();
+			const [mergedTracks, mergedAlbums] = await Promise.all([getTracks(event), getAlbums(event)]);
+			snapshot = await writeMusicSnapshotToR2(event, {
+				tracks: mergedTracks,
+				albums: mergedAlbums,
+				archiveDigest
+			});
+		}
+
 		return json({
 			source: 'remote',
+			snapshot,
 			...result
 		});
 	} catch (syncError) {
