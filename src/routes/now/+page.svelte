@@ -442,7 +442,6 @@
 
 	.now-post-list {
 		margin-top: 1rem;
-		border-top: 1px solid var(--border);
 	}
 
 	.now-post-row {
@@ -453,7 +452,6 @@
 		padding: 0.95rem 0;
 		text-decoration: none;
 		color: inherit;
-		border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent 25%);
 	}
 
 	.now-post-row__title {
