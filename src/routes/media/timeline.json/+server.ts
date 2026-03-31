@@ -15,7 +15,7 @@ export async function GET(event) {
 
 	return json(attachMediaCoverDelivery(page, event), {
 		headers: {
-			'cache-control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
+			'cache-control': 'public, max-age=15, s-maxage=30, stale-while-revalidate=300'
 		}
 	});
 }
