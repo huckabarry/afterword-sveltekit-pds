@@ -177,6 +177,10 @@ p:last-child {
 	text-decoration-color: rgba(242, 247, 183, 0.45);
 }
 
+.site-nav-item[aria-current='page'] {
+	color: #ffffff;
+}
+
 .site-nav-search {
 	display: inline-flex;
 	align-items: center;
