@@ -974,3 +974,26 @@ export async function getTrackBySlug(
 	const tracks = await getTracks(context);
 	return tracks.find((track) => track.slug === slug) || null;
 }
+
+export async function getMusicImportEntries(context?: MusicReadContext) {
+	const archiveDigest = getMusicArchiveDigest();
+
+	if (context?.platform?.env?.R2_BUCKET) {
+		try {
+			await ensureMusicSnapshotInR2(context, archiveDigest);
+		} catch {
+			// Ignore snapshot refresh failures here so import flows can continue with enriched source data.
+		}
+	}
+
+	const [tracks, albums] = await Promise.all([
+		getArchiveTracks(),
+		getArchiveAlbums({ includeListenLinks: false })
+	]);
+
+	return {
+		archiveDigest,
+		tracks,
+		albums
+	};
+}
