@@ -230,26 +230,30 @@
 						</time>
 					</div>
 
-					{#if post.coverImage}
-						<a class="on-this-day-card__image-link" href={post.path}>
-							<img
-								class="on-this-day-card__image"
-								src={post.coverImage}
-								alt={post.title}
-								loading="lazy"
-							/>
-						</a>
-					{/if}
+					<div class="on-this-day-card__body">
+						{#if post.coverImage}
+							<a class="on-this-day-card__image-link" href={post.path}>
+								<img
+									class="on-this-day-card__image"
+									src={post.coverImage}
+									alt={post.title}
+									loading="lazy"
+								/>
+							</a>
+						{/if}
 
-					{#if shouldSurfaceEarlierWebTitle(post)}
-						<h3 class="on-this-day-card__title">
-							<a href={post.path}>{post.title}</a>
-						</h3>
-					{/if}
+						<div class="on-this-day-card__copy">
+							{#if shouldSurfaceEarlierWebTitle(post)}
+								<h3 class="on-this-day-card__title">
+									<a href={post.path}>{post.title}</a>
+								</h3>
+							{/if}
 
-					<p class="on-this-day-card__excerpt">
-						<a href={post.path}>{post.excerpt}</a>
-					</p>
+							<p class="on-this-day-card__excerpt">
+								<a href={post.path}>{post.excerpt}</a>
+							</p>
+						</div>
+					</div>
 				</article>
 			{/each}
 		</div>
@@ -301,7 +305,6 @@
 		margin: 0;
 		font-size: clamp(1.2rem, 2vw, 1.45rem);
 		line-height: 1.14;
-		min-height: 2.8rem;
 	}
 
 	.now-card__title a {
@@ -413,14 +416,13 @@
 
 	.on-this-day-list {
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 1rem;
+		gap: 0.85rem;
 		margin-top: 1rem;
 	}
 
 	.on-this-day-card {
 		display: grid;
-		gap: 0.8rem;
+		gap: 0.7rem;
 		padding: 1rem;
 		border: 1px solid var(--border);
 		border-radius: 1rem;
@@ -434,15 +436,29 @@
 
 	.on-this-day-card__image-link {
 		display: block;
+		flex: 0 0 8.5rem;
 	}
 
 	.on-this-day-card__image {
 		display: block;
 		width: 100%;
-		aspect-ratio: 4 / 3;
+		aspect-ratio: 1 / 1;
 		object-fit: cover;
 		border-radius: 0.85rem;
 		background: color-mix(in srgb, var(--surface) 82%, white 18%);
+	}
+
+	.on-this-day-card__body {
+		display: flex;
+		gap: 1rem;
+		align-items: flex-start;
+	}
+
+	.on-this-day-card__copy {
+		display: grid;
+		gap: 0.55rem;
+		min-width: 0;
+		flex: 1;
 	}
 
 	.on-this-day-card__title {
@@ -471,8 +487,13 @@
 			grid-template-columns: 1fr;
 		}
 
-		.on-this-day-list {
-			grid-template-columns: 1fr;
+		.on-this-day-card__body {
+			flex-direction: column;
+		}
+
+		.on-this-day-card__image-link {
+			flex-basis: auto;
+			width: 100%;
 		}
 	}
 </style>
