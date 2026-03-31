@@ -160,7 +160,7 @@ p:last-child {
 	display: inline-block;
 	padding: 0;
 	color: var(--accent);
-	font-size: 0.94rem;
+	font-size: 1rem;
 	font-weight: 500;
 	font-family: 'IBM Plex Mono', monospace;
 	font-style: italic;
@@ -1719,7 +1719,7 @@ p:last-child {
 	.site-nav-menu__button {
 		display: inline-block;
 		width: auto;
-		font-size: 0.9rem;
+		font-size: 0.96rem;
 		text-align: left;
 	}
 
