@@ -328,7 +328,7 @@
 
 	.now-post-row {
 		display: grid;
-		grid-template-columns: auto minmax(0, 1fr);
+		grid-template-columns: 7.75rem minmax(0, 1fr);
 		gap: 1rem;
 		align-items: baseline;
 		padding: 0.95rem 0;
@@ -353,6 +353,7 @@
 		font-size: 0.94rem;
 		font-style: italic;
 		white-space: nowrap;
+		text-align: left;
 	}
 
 	.on-this-day-list {
