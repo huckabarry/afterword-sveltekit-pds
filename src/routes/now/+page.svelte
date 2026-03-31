@@ -25,12 +25,28 @@
 		};
 	} = $props();
 
+	let onThisDayIndex = $state(0);
+
 	const latestCheckinText = $derived.by(() =>
 		data.latestCheckin ? excerpt(data.latestCheckin.excerpt || data.latestCheckin.note, 180) : ''
 	);
 	const latestTrackText = $derived.by(() =>
 		data.latestTrack ? excerpt(data.latestTrack.note || data.latestTrack.excerpt, 180) : ''
 	);
+	const currentOnThisDayPost = $derived.by(() =>
+		data.onThisDayPosts.length
+			? data.onThisDayPosts[((onThisDayIndex % data.onThisDayPosts.length) + data.onThisDayPosts.length) %
+					data.onThisDayPosts.length]
+			: null
+	);
+
+	function showPreviousOnThisDay() {
+		if (data.onThisDayPosts.length > 1) onThisDayIndex -= 1;
+	}
+
+	function showNextOnThisDay() {
+		if (data.onThisDayPosts.length > 1) onThisDayIndex += 1;
+	}
 
 </script>
 
@@ -75,7 +91,7 @@
 	{/if}
 </section>
 
-{#if data.latestTrack || data.latestCheckin || data.latestPhoto}
+{#if data.latestTrack || data.latestCheckin || data.latestPhoto || currentOnThisDayPost}
 	<section class="section-block">
 		<div class="now-glance">
 			{#if data.latestTrack}
@@ -205,57 +221,70 @@
 					</div>
 				</article>
 			{/if}
-		</div>
-	</section>
-{/if}
 
-{#if data.onThisDayPosts.length}
-	<section class="section-block">
-		<h2 class="section-title">On This Date</h2>
-		<p class="page-head__lede">
-			A few notes from this day in earlier years, pulled from <a href="/earlier-web">Earlier
-				Web</a>.
-		</p>
+			{#if currentOnThisDayPost}
+				<article class="now-card">
+					<p class="now-card__kicker">On This Date</p>
 
-		<div class="on-this-day-list">
-			{#each data.onThisDayPosts as post}
-				<article class="on-this-day-card">
-					<div class="on-this-day-card__meta">
-						<time datetime={post.publishedAt}>
-							{new Date(post.publishedAt).toLocaleDateString('en-US', {
-								year: 'numeric',
-								month: 'long',
-								day: 'numeric'
-							})}
-						</time>
-					</div>
+					<div class="now-card__copy">
+						<div class="now-card__meta">
+							<time datetime={currentOnThisDayPost.publishedAt}>
+								{new Date(currentOnThisDayPost.publishedAt).toLocaleDateString('en-US', {
+									year: 'numeric',
+									month: 'long',
+									day: 'numeric'
+								})}
+							</time>
+							{#if data.onThisDayPosts.length > 1}
+								<span>
+									{((onThisDayIndex % data.onThisDayPosts.length) + data.onThisDayPosts.length) %
+										data.onThisDayPosts.length + 1}
+									of {data.onThisDayPosts.length}
+								</span>
+							{/if}
+						</div>
 
-					<div class="on-this-day-card__body">
-						{#if post.coverImage}
-							<a class="on-this-day-card__image-link" href={post.path}>
-								<img
-									class="on-this-day-card__image"
-									src={post.coverImage}
-									alt={post.title}
-									loading="lazy"
-								/>
-							</a>
+						{#if shouldSurfaceEarlierWebTitle(currentOnThisDayPost)}
+							<h2 class="now-card__title">
+								<a href={currentOnThisDayPost.path}>{currentOnThisDayPost.title}</a>
+							</h2>
 						{/if}
 
-						<div class="on-this-day-card__copy">
-							{#if shouldSurfaceEarlierWebTitle(post)}
-								<h3 class="on-this-day-card__title">
-									<a href={post.path}>{post.title}</a>
-								</h3>
-							{/if}
+						<p class="now-card__subhead">Earlier Web</p>
+					</div>
 
-							<p class="on-this-day-card__excerpt">
-								<a href={post.path}>{post.excerpt}</a>
-							</p>
-						</div>
+					{#if currentOnThisDayPost.coverImage}
+						<a class="now-photo now-photo--artwork" href={currentOnThisDayPost.path}>
+							<img
+								class="now-photo__image"
+								src={currentOnThisDayPost.coverImage}
+								alt={currentOnThisDayPost.title}
+								loading="lazy"
+							/>
+						</a>
+					{/if}
+
+					<p class="now-card__text">
+						<a class="now-card__text-link" href={currentOnThisDayPost.path}>
+							{currentOnThisDayPost.excerpt}
+						</a>
+					</p>
+
+					<div class="now-card__actions">
+						{#if data.onThisDayPosts.length > 1}
+							<button class="tag-pill now-card__action now-card__action-button" type="button" onclick={showPreviousOnThisDay}>
+								Previous
+							</button>
+							<button class="tag-pill now-card__action now-card__action-button" type="button" onclick={showNextOnThisDay}>
+								Next
+							</button>
+						{:else}
+							<a class="tag-pill now-card__action" href={currentOnThisDayPost.path}>View post</a>
+							<a class="tag-pill now-card__action" href="/earlier-web">Earlier Web</a>
+						{/if}
 					</div>
 				</article>
-			{/each}
+			{/if}
 		</div>
 	</section>
 {/if}
@@ -263,7 +292,7 @@
 <style>
 	.now-glance {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 1rem;
 	}
 
@@ -334,6 +363,11 @@
 		line-height: 1.6;
 	}
 
+	.now-card__text-link {
+		color: inherit;
+		text-decoration: none;
+	}
+
 	.now-card__map {
 		display: block;
 		overflow: hidden;
@@ -379,6 +413,14 @@
 		text-align: center;
 	}
 
+	.now-card__action-button {
+		cursor: pointer;
+		font: inherit;
+		color: inherit;
+		background: transparent;
+		border: 1px solid currentColor;
+	}
+
 	.now-post-list {
 		margin-top: 1rem;
 		border-top: 1px solid var(--border);
@@ -414,86 +456,15 @@
 		text-align: left;
 	}
 
-	.on-this-day-list {
-		display: grid;
-		gap: 0.85rem;
-		margin-top: 1rem;
-	}
-
-	.on-this-day-card {
-		display: grid;
-		gap: 0.7rem;
-		padding: 1rem;
-		border: 1px solid var(--border);
-		border-radius: 1rem;
-		background: color-mix(in srgb, var(--surface) 76%, transparent 24%);
-	}
-
-	.on-this-day-card__meta {
-		font-size: 0.82rem;
-		color: var(--accent);
-	}
-
-	.on-this-day-card__image-link {
-		display: block;
-		flex: 0 0 8.5rem;
-	}
-
-	.on-this-day-card__image {
-		display: block;
-		width: 100%;
-		aspect-ratio: 1 / 1;
-		object-fit: cover;
-		border-radius: 0.85rem;
-		background: color-mix(in srgb, var(--surface) 82%, white 18%);
-	}
-
-	.on-this-day-card__body {
-		display: flex;
-		gap: 1rem;
-		align-items: flex-start;
-	}
-
-	.on-this-day-card__copy {
-		display: grid;
-		gap: 0.55rem;
-		min-width: 0;
-		flex: 1;
-	}
-
-	.on-this-day-card__title {
-		margin: 0;
-		font-size: 1.02rem;
-		line-height: 1.3;
-	}
-
-	.on-this-day-card__title a {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.on-this-day-card__excerpt {
-		margin: 0;
-		line-height: 1.6;
-	}
-
-	.on-this-day-card__excerpt a {
-		color: var(--muted);
-		text-decoration: none;
+	@media (max-width: 1200px) {
+		.now-glance {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
 	}
 
 	@media (max-width: 760px) {
 		.now-glance {
 			grid-template-columns: 1fr;
-		}
-
-		.on-this-day-card__body {
-			flex-direction: column;
-		}
-
-		.on-this-day-card__image-link {
-			flex-basis: auto;
-			width: 100%;
 		}
 	}
 </style>
