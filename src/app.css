@@ -196,6 +196,7 @@ p:last-child {
 
 .site-nav-search--title {
 	margin-top: 0.12rem;
+	margin-right: 0.18rem;
 }
 
 .site-nav-menu {
@@ -1662,18 +1663,33 @@ p:last-child {
 	}
 
 	.site-nav-list {
-		justify-content: space-between;
-		gap: 0.4rem;
+		display: grid;
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+		align-items: start;
+		gap: 0.3rem;
+		padding-right: 0.3rem;
+	}
+
+	.site-nav-list-item {
+		min-width: 0;
+		text-align: center;
 	}
 
 	.site-nav-item,
 	.site-nav-menu__button {
-		font-size: 0.86rem;
+		display: block;
+		width: 100%;
+		font-size: 0.82rem;
+		text-align: center;
 	}
 
 	.site-nav-menu__panel {
-		right: -0.1rem;
+		right: 0.15rem;
 		min-width: 10.5rem;
+	}
+
+	.site-nav-search--title {
+		margin-right: 0.28rem;
 	}
 
 	.search-modal {
