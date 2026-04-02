@@ -70,7 +70,7 @@
 					height={photo.height || undefined}
 					loading="lazy"
 					decoding="async"
-					sizes="(max-width: 640px) 48vw, (max-width: 1024px) 32vw, 18rem"
+					sizes="(max-width: 640px) 48vw, 31vw"
 				/>
 				<span class="photo-card__overlay">
 					<span class="photo-card__title">{photo.postTitle}</span>
@@ -113,7 +113,7 @@
 
 <style>
 	.photo-grid {
-		column-width: 16rem;
+		columns: 3;
 		column-gap: 0.75rem;
 	}
 
