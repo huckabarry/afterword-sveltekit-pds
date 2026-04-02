@@ -10,6 +10,7 @@ import {
 	getPostImages,
 	type PhotoItem
 } from '$lib/server/ghost';
+import { refreshGallerySnapshot } from '$lib/server/gallery-snapshot';
 
 type GalleryDb = NonNullable<App.Platform['env']['D1_DATABASE']>;
 type GalleryBucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
@@ -662,6 +663,8 @@ export async function syncRecentPhotoManifestBatch(
 		photos
 	);
 
+	await refreshGallerySnapshot(event).catch(() => {});
+
 	return {
 		limit,
 		processed: result.processed,
@@ -707,6 +710,8 @@ export async function syncGhostPostPhotoManifestBySlug(
 		photos
 	);
 
+	await refreshGallerySnapshot(event).catch(() => {});
+
 	return {
 		slug: normalizedSlug,
 		processed: result.processed,
@@ -741,6 +746,8 @@ export async function syncGalleryPhotoManifestForItems(
 		getGalleryImages(event),
 		uniquePhotos
 	);
+
+	await refreshGallerySnapshot(event).catch(() => {});
 
 	return {
 		processed: result.processed,

@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { attachGalleryAssetUrls } from '$lib/server/gallery-assets';
-import { getPhotoItems } from '$lib/server/ghost';
+import { getGallerySnapshot } from '$lib/server/gallery-snapshot';
 
 export const prerender = true;
 
@@ -9,15 +8,7 @@ function getGalleryVariantUrl(url: string, preset: 'thumb-sm' | 'thumb-md' | 'th
 }
 
 export async function GET(event) {
-	let galleryBucket = null;
-
-	try {
-		galleryBucket = event.platform?.env?.R2_BUCKET ?? null;
-	} catch {
-		galleryBucket = null;
-	}
-
-	const photos = await attachGalleryAssetUrls(await getPhotoItems(), galleryBucket);
+	const photos = await getGallerySnapshot(event);
 	const urls = photos.slice(0, 9).flatMap((photo) => {
 		const displayUrl = String(photo.displayUrl || '').trim();
 
