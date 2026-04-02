@@ -1,9 +1,12 @@
-import { getStatusPage, STATUS_PAGE_SIZE } from '$lib/server/atproto';
+import { getStatusSnapshotPage } from '$lib/server/status-snapshot';
 
-export async function load() {
-	const page = await getStatusPage(undefined, {
-		includeThreadContext: true,
-		limit: STATUS_PAGE_SIZE
+export async function load(event) {
+	event.setHeaders({
+		'cache-control': 'public, max-age=60, s-maxage=240, stale-while-revalidate=600'
+	});
+
+	const page = await getStatusSnapshotPage({
+		platform: event.platform
 	});
 
 	return {
