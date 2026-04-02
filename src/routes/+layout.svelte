@@ -235,6 +235,8 @@
 										class="site-nav-item"
 										href={link.href}
 										aria-current={isCurrentPath(link.href) ? 'page' : undefined}
+										data-sveltekit-preload-data={link.href === '/status' ? 'viewport' : undefined}
+										data-sveltekit-preload-code={link.href === '/status' ? 'viewport' : undefined}
 									>
 										{link.label}
 									</a>
