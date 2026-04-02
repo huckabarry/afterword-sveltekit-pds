@@ -3,7 +3,10 @@ import { getLatestCheckinSnapshot } from '$lib/server/checkin-snapshot';
 import { getNowIntroContent } from '$lib/server/content';
 import { getEarlierWebOnThisDayPosts } from '$lib/server/earlier-web';
 import { getNowPosts, getPhotoItems, type BlogPost } from '$lib/server/ghost';
-import { attachGalleryAssetUrls } from '$lib/server/gallery-assets';
+import {
+	attachGalleryAssetUrls,
+	getGalleryDeliveryUrls
+} from '$lib/server/gallery-assets';
 import { getTracks, type TrackEntry } from '$lib/server/music';
 import { getRecentManifestGalleryPhotos } from '$lib/server/photo-manifest';
 
@@ -35,14 +38,31 @@ export async function load(event) {
 	]);
 
 	const nowPosts = rawNowPosts.filter((post: BlogPost) => !isMediaTagged(post)).slice(0, 12);
+	let galleryBucket = null;
+
+	try {
+		galleryBucket = event.platform?.env?.R2_BUCKET ?? null;
+	} catch {
+		galleryBucket = null;
+	}
+
 	const fallbackPhotos = await attachGalleryAssetUrls(
 		(await getPhotoItems()).sort(
 			(a, b) => b.postPublishedAt.getTime() - a.postPublishedAt.getTime() || a.index - b.index
 		),
-		event.platform?.env.R2_BUCKET
+		galleryBucket
 	);
 	const latestPhoto =
-		recentPhotos[0] ||
+		(recentPhotos[0]
+			? {
+					...recentPhotos[0],
+					...getGalleryDeliveryUrls(
+						recentPhotos[0].assetKey,
+						recentPhotos[0].imageUrl,
+						recentPhotos[0].isSyncedToR2
+					)
+				}
+			: null) ||
 		fallbackPhotos[0] ||
 		null;
 	const latestCheckin =

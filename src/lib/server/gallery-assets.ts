@@ -69,8 +69,17 @@ export function getGalleryAssetPath(assetKey: string) {
 	return `/${['gallery-assets', ...assetKey.split('/').filter(Boolean)].join('/')}`;
 }
 
-export function getGalleryVariantPath(assetKey: string, preset: 'thumb' | 'large') {
-	return `/${['gallery-images', preset, ...assetKey.split('/').filter(Boolean)].join('/')}`;
+export function getGalleryVariantPath(
+	assetKey: string,
+	preset: 'thumb' | 'large',
+	sourceUrl?: string | null
+) {
+	const pathname = `/${['gallery-images', preset, ...assetKey.split('/').filter(Boolean)].join('/')}`;
+	const normalizedSourceUrl = String(sourceUrl || '').trim();
+
+	return normalizedSourceUrl
+		? `${pathname}?src=${encodeURIComponent(normalizedSourceUrl)}`
+		: pathname;
 }
 
 export function getGalleryVariantAssetKey(assetKey: string, preset: 'thumb' | 'large') {
@@ -103,14 +112,22 @@ function parseStoredDimension(value: string | undefined) {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function toGalleryUrls(photo: PhotoItem, assetKey: string, isSyncedToR2: boolean) {
+export function getGalleryDeliveryUrls(
+	assetKey: string,
+	sourceUrl: string,
+	isSyncedToR2: boolean
+) {
 	return {
 		assetKey,
 		isSyncedToR2,
-		originalUrl: isSyncedToR2 ? getGalleryAssetPath(assetKey) : photo.imageUrl,
-		displayUrl: isSyncedToR2 ? getGalleryVariantPath(assetKey, 'thumb') : photo.imageUrl,
-		lightboxUrl: isSyncedToR2 ? getGalleryVariantPath(assetKey, 'large') : photo.imageUrl
+		originalUrl: isSyncedToR2 ? getGalleryAssetPath(assetKey) : sourceUrl,
+		displayUrl: isSyncedToR2 ? getGalleryVariantPath(assetKey, 'thumb', sourceUrl) : sourceUrl,
+		lightboxUrl: isSyncedToR2 ? getGalleryVariantPath(assetKey, 'large', sourceUrl) : sourceUrl
 	};
+}
+
+function toGalleryUrls(photo: PhotoItem, assetKey: string, isSyncedToR2: boolean) {
+	return getGalleryDeliveryUrls(assetKey, photo.imageUrl, isSyncedToR2);
 }
 
 export async function ensureGalleryPhotoAsset(photo: PhotoItem, bucket: BoundR2Bucket) {

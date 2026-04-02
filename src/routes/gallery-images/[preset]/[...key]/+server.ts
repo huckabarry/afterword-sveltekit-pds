@@ -46,7 +46,7 @@ export async function GET(event) {
 		);
 	}
 
-	const source = await resolveImageSource(bucket, key);
+	const source = await resolveImageSource(bucket, key, event.url.searchParams.get('src'));
 	const transformed = await transformImageWithBinding(images, source, GALLERY_VARIANT_PRESETS[preset]);
 	const transformedBody = await transformed.clone().arrayBuffer();
 

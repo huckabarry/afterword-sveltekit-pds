@@ -78,7 +78,9 @@
 	.planning-row__image {
 		display: block;
 		width: 100%;
+		aspect-ratio: 4 / 5;
 		height: auto;
+		object-fit: cover;
 		border-radius: 0.5rem;
 	}
 
@@ -91,6 +93,15 @@
 
 	.planning-row__body {
 		min-width: 0;
+	}
+
+	.planning-row__body h2 {
+		font-size: 1.2rem;
+	}
+
+	.planning-row__body p {
+		line-clamp: 4;
+		-webkit-line-clamp: 4;
 	}
 
 	@media (max-width: 640px) {
