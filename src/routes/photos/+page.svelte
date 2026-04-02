@@ -3,8 +3,23 @@
 
 	let { data }: { data: { photos: GalleryPhotoItem[] } } = $props();
 	let activeIndex = $state<number | null>(null);
+	const prefetchedLightboxUrls = new Set<string>();
+
+	function prefetchLightbox(url: string | null | undefined) {
+		const normalized = String(url || '').trim();
+
+		if (!normalized || prefetchedLightboxUrls.has(normalized) || typeof Image === 'undefined') {
+			return;
+		}
+
+		prefetchedLightboxUrls.add(normalized);
+		const image = new Image();
+		image.decoding = 'async';
+		image.src = normalized;
+	}
 
 	function openLightbox(index: number) {
+		prefetchLightbox(data.photos[index]?.lightboxUrl);
 		activeIndex = index;
 	}
 
@@ -73,6 +88,9 @@
 				class="photo-card__image-link"
 				type="button"
 				onclick={() => openLightbox(index)}
+				onpointerenter={() => prefetchLightbox(photo.lightboxUrl)}
+				onfocus={() => prefetchLightbox(photo.lightboxUrl)}
+				onpointerdown={() => prefetchLightbox(photo.lightboxUrl)}
 				aria-label={`Open ${photo.postTitle}`}
 			>
 				<img

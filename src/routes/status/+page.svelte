@@ -8,6 +8,7 @@
 	}: {
 		data: {
 			statusPage: StatusFeedPage;
+			authorAvatarUrl: string;
 		};
 	} = $props();
 
@@ -88,7 +89,15 @@
 		<article class="status-row h-entry">
 			<div class="status-row__avatar h-card">
 				{#if post.avatar}
-					<img class="u-photo" src={post.avatar} alt={post.displayName} loading="lazy" />
+					<img
+						class="u-photo"
+						src={data.authorAvatarUrl}
+						alt={post.displayName}
+						loading="lazy"
+						decoding="async"
+						width="48"
+						height="48"
+					/>
 				{/if}
 			</div>
 			<div class="status-row__body">
