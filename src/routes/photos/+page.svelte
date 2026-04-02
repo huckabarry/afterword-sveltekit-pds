@@ -18,8 +18,16 @@
 		image.src = normalized;
 	}
 
-	function openLightbox(index: number) {
+	function prefetchLightboxByIndex(index: number | null) {
+		if (index === null || !data.photos.length) {
+			return;
+		}
+
 		prefetchLightbox(data.photos[index]?.lightboxUrl);
+	}
+
+	function openLightbox(index: number) {
+		prefetchLightboxByIndex(index);
 		activeIndex = index;
 	}
 
@@ -64,6 +72,20 @@
 			showNext();
 		}
 	}
+
+	$effect(() => {
+		if (activeIndex === null || data.photos.length < 2) {
+			return;
+		}
+
+		const nextIndex = (activeIndex + 1) % data.photos.length;
+		const previousIndex = (activeIndex - 1 + data.photos.length) % data.photos.length;
+		const nextNextIndex = (activeIndex + 2) % data.photos.length;
+
+		prefetchLightboxByIndex(previousIndex);
+		prefetchLightboxByIndex(nextIndex);
+		prefetchLightboxByIndex(nextNextIndex);
+	});
 </script>
 
 <svelte:head>
