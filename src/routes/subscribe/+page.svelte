@@ -35,27 +35,24 @@
 		<div class="post-full-content">
 			<section class="content-body subscribe-page">
 				<section class="subscribe-planning">
-					<h2>Planning via Low Velocity</h2>
+					<h2>Email Updates</h2>
 					<p>
-						My planning posts originate on <a href="https://lowvelocity.org" rel="noreferrer">Low
-						Velocity</a>. If you’d rather get them by email, you can subscribe there directly:
+						If you’d rather get new posts by email, you can subscribe directly here:
 					</p>
 					<div class="subscribe-embed">
-						<div style="height: 40vmin; min-height: 360px;">
-							<script
-								src="https://cdn.jsdelivr.net/ghost/signup-form@~0.3/umd/signup-form.min.js"
-								data-background-color="#1e2021"
-								data-text-color="#FFFFFF"
-								data-button-color="#4b9cb4"
-								data-button-text-color="#FFFFFF"
-								data-title="Low Velocity"
-								data-description="A journal of cities, places, and the human experience of living in them."
-								data-icon="https://lowvelocity.org/content/images/size/w192h192/size/w256h256/2026/02/Low_Velocity_Logo.png"
-								data-site="https://lowvelocity.org/"
-								data-locale="en"
-								async
-							></script>
-						</div>
+						<form data-members-form="subscribe" class="ghost-newsletter-form">
+							<input
+								data-members-email
+								type="email"
+								required
+								placeholder="Enter your email"
+								autocomplete="email"
+							/>
+							<input data-members-newsletter type="hidden" value="Afterword" />
+							<button type="submit">Subscribe</button>
+							<p data-members-success>Check your inbox to confirm your subscription.</p>
+							<p data-members-error>Something went wrong. Please try again.</p>
+						</form>
 					</div>
 				</section>
 
@@ -129,5 +126,35 @@
 
 	.subscribe-embed {
 		margin-top: 1rem;
+	}
+
+	.ghost-newsletter-form {
+		max-width: 440px;
+		margin: 0 auto;
+		display: grid;
+		gap: 12px;
+	}
+
+	.ghost-newsletter-form input[type='email'] {
+		padding: 14px 16px;
+		border-radius: 6px;
+		border: 1px solid #ccc;
+		font-size: 16px;
+	}
+
+	.ghost-newsletter-form button {
+		padding: 14px 16px;
+		border: 0;
+		border-radius: 6px;
+		background: #4b9cb4;
+		color: #fff;
+		font-size: 16px;
+		cursor: pointer;
+	}
+
+	.ghost-newsletter-form [data-members-success],
+	.ghost-newsletter-form [data-members-error] {
+		font-size: 14px;
+		margin: 0;
 	}
 </style>
