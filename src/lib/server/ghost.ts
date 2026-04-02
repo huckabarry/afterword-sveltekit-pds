@@ -9,7 +9,7 @@ const ghostNowFallbackFiles = import.meta.glob('/data/ghost-now-lite.json', {
 	import: 'default',
 	eager: true
 }) as Record<string, { posts?: unknown }>;
-const LIVE_GHOST_CACHE_TTL_MS = 1000 * 60 * 5;
+const LIVE_GHOST_CACHE_TTL_MS = 1000 * 60 * 10;
 const INCLUDED_TAGS = new Set([
 	'field-notes',
 	'gallery',

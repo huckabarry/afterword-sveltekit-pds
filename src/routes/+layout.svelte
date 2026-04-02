@@ -212,20 +212,16 @@
 			return;
 		}
 
-		const statusTimeout = window.setTimeout(() => {
+		const warmupTimeout = window.setTimeout(() => {
 			void preloadCode('/status');
 			void preloadData('/status');
-		}, 2000);
-
-		const photosTimeout = window.setTimeout(() => {
 			void preloadCode('/photos');
 			void preloadData('/photos');
 			void prewarmGalleryThumbs();
-		}, 4000);
+		}, 2500);
 
 		return () => {
-			window.clearTimeout(statusTimeout);
-			window.clearTimeout(photosTimeout);
+			window.clearTimeout(warmupTimeout);
 		};
 	});
 </script>
