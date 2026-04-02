@@ -74,9 +74,6 @@
 				type="button"
 				onclick={() => openLightbox(index)}
 				aria-label={`Open ${photo.postTitle}`}
-				style={photo.width && photo.height
-					? `aspect-ratio: ${photo.width} / ${photo.height};`
-					: undefined}
 			>
 				<img
 					class="photo-card__image"
@@ -168,11 +165,6 @@
 		transition:
 			transform 180ms ease,
 			filter 180ms ease;
-	}
-
-	.photo-card__image-link[style*='aspect-ratio'] .photo-card__image {
-		height: 100%;
-		object-fit: cover;
 	}
 
 	.photo-card__overlay {
