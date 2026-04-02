@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, preloadCode, preloadData } from '$app/navigation';
 	import { tick } from 'svelte';
 	import '../app.css';
 
@@ -172,6 +172,21 @@
 
 		return () => {
 			controller.abort();
+			window.clearTimeout(timeout);
+		};
+	});
+
+	$effect(() => {
+		if (!browser || data.pathname !== '/') {
+			return;
+		}
+
+		const timeout = window.setTimeout(() => {
+			void preloadCode('/status');
+			void preloadData('/status');
+		}, 3000);
+
+		return () => {
 			window.clearTimeout(timeout);
 		};
 	});
