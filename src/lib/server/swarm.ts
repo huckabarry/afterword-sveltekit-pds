@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import { error, redirect, type Cookies, type RequestEvent } from '@sveltejs/kit';
 import { hydrateCheckinRecord, type Checkin } from '$lib/server/atproto';
 import { upsertLatestCheckinSnapshot } from '$lib/server/checkin-snapshot';
+import { refreshCheckinsSnapshot } from '$lib/server/checkins-snapshot';
 import {
 	createCheckinRecord,
 	getCheckinWriterSession,
@@ -825,6 +826,12 @@ async function syncCheckinItems(
 
 	if (latestSyncedCheckin) {
 		await upsertLatestCheckinSnapshot(event, latestSyncedCheckin);
+	}
+
+	if (imported > 0) {
+		await refreshCheckinsSnapshot(event).catch((snapshotError) => {
+			console.warn('[swarm] Unable to refresh check-ins snapshot:', snapshotError);
+		});
 	}
 
 	const now = new Date().toISOString();
