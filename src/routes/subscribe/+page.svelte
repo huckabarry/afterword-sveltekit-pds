@@ -166,12 +166,12 @@
 		margin: 0;
 	}
 
-	.ghost-newsletter-form.success [data-members-success] {
+	:global(.ghost-newsletter-form.success) [data-members-success] {
 		display: block;
 		color: #bde7b3;
 	}
 
-	.ghost-newsletter-form.error [data-members-error] {
+	:global(.ghost-newsletter-form.error) [data-members-error] {
 		display: block;
 		color: #ffb8b8;
 	}
