@@ -4,6 +4,16 @@
 		name="description"
 		content="Subscribe to Afterword by RSS or JSON feed, with options for writing, planning, and status updates."
 	/>
+	<script
+		defer
+		src="https://cdn.jsdelivr.net/ghost/portal@~2.67/umd/portal.min.js"
+		data-i18n="true"
+		data-ghost="https://lowvelocity.org/"
+		data-key="531a03d1af5b6e4749d8189195"
+		data-api="https://lowvelocity.org/ghost/api/content/"
+		data-locale="en"
+		crossorigin="anonymous"
+	></script>
 </svelte:head>
 
 <script lang="ts">
