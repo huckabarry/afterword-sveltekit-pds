@@ -25,7 +25,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.title} | Afterword PDS Lab</title>
+	<title>{data.title} | Bryan Robb</title>
 </svelte:head>
 
 <section class="section-block">

@@ -52,7 +52,7 @@
 </script>
 
 <svelte:head>
-	<title>Photos | Afterword PDS Lab</title>
+	<title>Photos | Bryan Robb</title>
 </svelte:head>
 
 <svelte:window onkeydown={onKeydown} />

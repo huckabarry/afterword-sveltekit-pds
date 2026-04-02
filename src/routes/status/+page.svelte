@@ -76,7 +76,7 @@
 </script>
 
 <svelte:head>
-	<title>Status | Afterword PDS Lab</title>
+	<title>Status | Bryan Robb</title>
 </svelte:head>
 
 <section class="stream-head">

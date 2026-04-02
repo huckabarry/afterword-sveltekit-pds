@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>Contact | Afterword PDS Lab</title>
+	<title>Contact | Bryan Robb</title>
 </svelte:head>
 
 <section class="contact">
