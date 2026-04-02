@@ -1,12 +1,16 @@
 import type { RequestEvent } from '@sveltejs/kit';
 
 function getDb(event: Pick<RequestEvent, 'platform'>) {
-	return (
-		event.platform?.env?.D1_DATABASE ??
-		event.platform?.env?.D1_DATABASE_BINDING ??
-		event.platform?.env?.AP_DB ??
-		null
-	);
+	try {
+		return (
+			event.platform?.env?.D1_DATABASE ??
+			event.platform?.env?.D1_DATABASE_BINDING ??
+			event.platform?.env?.AP_DB ??
+			null
+		);
+	} catch {
+		return null;
+	}
 }
 
 function normalizeUrl(value: string) {

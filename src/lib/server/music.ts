@@ -93,6 +93,14 @@ let musicSnapshotWritePromise:
 	| null = null;
 let musicSnapshotWriteDigest: string | null = null;
 
+function hasR2Bucket(context: MusicReadContext) {
+	try {
+		return Boolean(context?.platform?.env?.R2_BUCKET);
+	} catch {
+		return false;
+	}
+}
+
 function walkMarkdownFiles(root: string): string[] {
 	const files = root === 'albumwhale' ? albumArchiveFiles : trackArchiveFiles;
 	const preferredByRelativePath = new Map<string, string>();
@@ -260,7 +268,7 @@ export function getMusicArchiveDigest() {
 }
 
 async function ensureMusicSnapshotInR2(context: MusicReadContext, archiveDigest: string) {
-	if (!context?.platform?.env?.R2_BUCKET) {
+	if (!hasR2Bucket(context)) {
 		return null;
 	}
 
@@ -927,7 +935,7 @@ export async function getAlbums(context?: MusicReadContext): Promise<AlbumEntry[
 		return attachAlbumCoverDelivery(mergeMusicEntries(r2Albums, pdsAlbums, getAlbumDedupKey), context);
 	}
 
-	if (context?.platform?.env?.R2_BUCKET) {
+	if (hasR2Bucket(context)) {
 		try {
 			const snapshot = await ensureMusicSnapshotInR2(context, archiveDigest);
 			if (snapshot?.albums.length) {
@@ -993,7 +1001,7 @@ export async function getTracks(context?: MusicReadContext): Promise<TrackEntry[
 		return attachTrackCoverDelivery(mergeMusicEntries(r2Tracks, pdsTracks, getTrackDedupKey), context);
 	}
 
-	if (context?.platform?.env?.R2_BUCKET) {
+	if (hasR2Bucket(context)) {
 		try {
 			const snapshot = await ensureMusicSnapshotInR2(context, archiveDigest);
 			if (snapshot?.tracks.length) {
@@ -1061,7 +1069,7 @@ export async function getTrackBySlug(
 export async function getMusicImportEntries(context?: MusicReadContext) {
 	const archiveDigest = getMusicArchiveDigest();
 
-	if (context?.platform?.env?.R2_BUCKET) {
+	if (hasR2Bucket(context)) {
 		try {
 			await ensureMusicSnapshotInR2(context, archiveDigest);
 		} catch {

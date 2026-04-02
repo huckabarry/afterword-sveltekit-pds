@@ -80,16 +80,24 @@ type SyncManifestPhotosResult = {
 };
 
 function getGalleryDb(event: Pick<RequestEvent, 'platform'>) {
-	return (
-		event.platform?.env?.D1_DATABASE ??
-		event.platform?.env?.D1_DATABASE_BINDING ??
-		event.platform?.env?.AP_DB ??
-		null
-	);
+	try {
+		return (
+			event.platform?.env?.D1_DATABASE ??
+			event.platform?.env?.D1_DATABASE_BINDING ??
+			event.platform?.env?.AP_DB ??
+			null
+		);
+	} catch {
+		return null;
+	}
 }
 
 function getGalleryBucket(event: Pick<RequestEvent, 'platform'>) {
-	return event.platform?.env?.R2_BUCKET ?? null;
+	try {
+		return event.platform?.env?.R2_BUCKET ?? null;
+	} catch {
+		return null;
+	}
 }
 
 const PHOTO_SYNC_KEY = 'ghost_gallery_manifest';

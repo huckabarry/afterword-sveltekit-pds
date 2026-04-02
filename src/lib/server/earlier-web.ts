@@ -104,16 +104,24 @@ export type EarlierWebOnThisDayPost = EarlierWebPostSummary;
 export const EARLIER_WEB_STREAM_PAGE_SIZE = 30;
 
 function getEarlierWebDb(event: Pick<RequestEvent, 'platform'>) {
-	return (
-		event.platform?.env?.D1_DATABASE ??
-		event.platform?.env?.D1_DATABASE_BINDING ??
-		event.platform?.env?.AP_DB ??
-		null
-	);
+	try {
+		return (
+			event.platform?.env?.D1_DATABASE ??
+			event.platform?.env?.D1_DATABASE_BINDING ??
+			event.platform?.env?.AP_DB ??
+			null
+		);
+	} catch {
+		return null;
+	}
 }
 
 function getEarlierWebBucket(event: Pick<RequestEvent, 'platform'>) {
-	return event.platform?.env?.R2_BUCKET ?? null;
+	try {
+		return event.platform?.env?.R2_BUCKET ?? null;
+	} catch {
+		return null;
+	}
 }
 
 function toEarlierWebPostSummary(row: EarlierWebPostRow): EarlierWebPostSummary {

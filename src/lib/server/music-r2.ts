@@ -30,7 +30,11 @@ type RawMusicSnapshotCacheEntry = {
 };
 
 function getBucket(context: MusicReadContext) {
-	return context?.platform?.env?.R2_BUCKET ?? null;
+	try {
+		return context?.platform?.env?.R2_BUCKET ?? null;
+	} catch {
+		return null;
+	}
 }
 
 function getMusicSnapshotCache() {

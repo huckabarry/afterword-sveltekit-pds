@@ -5,6 +5,14 @@ const MUSIC_COVER_PREFIX = 'music-covers/originals';
 
 type MusicCoverContext = Pick<RequestEvent, 'platform' | 'url'>;
 
+function hasR2Bucket(event: MusicCoverContext | null | undefined) {
+	try {
+		return Boolean(event?.platform?.env?.R2_BUCKET);
+	} catch {
+		return false;
+	}
+}
+
 function sanitizeSegment(value: string) {
 	return (
 		String(value || '')
@@ -72,14 +80,16 @@ export function attachAlbumCoverDelivery(
 	albums: AlbumEntry[],
 	event: MusicCoverContext | null | undefined
 ) {
-	if (!event?.platform?.env?.R2_BUCKET) {
+	if (!event || !hasR2Bucket(event)) {
 		return albums;
 	}
+
+	const origin = event.url.origin;
 
 	return albums.map((album) => {
 		const sourceUrl = String(album.coverImage || '').trim();
 
-		if (!sourceUrl || isSameOriginOrRelativeUrl(sourceUrl, event.url.origin)) {
+		if (!sourceUrl || isSameOriginOrRelativeUrl(sourceUrl, origin)) {
 			return album;
 		}
 
@@ -96,14 +106,16 @@ export function attachTrackCoverDelivery(
 	tracks: TrackEntry[],
 	event: MusicCoverContext | null | undefined
 ) {
-	if (!event?.platform?.env?.R2_BUCKET) {
+	if (!event || !hasR2Bucket(event)) {
 		return tracks;
 	}
+
+	const origin = event.url.origin;
 
 	return tracks.map((track) => {
 		const sourceUrl = String(track.artworkUrl || '').trim();
 
-		if (!sourceUrl || isSameOriginOrRelativeUrl(sourceUrl, event.url.origin)) {
+		if (!sourceUrl || isSameOriginOrRelativeUrl(sourceUrl, origin)) {
 			return track;
 		}
 

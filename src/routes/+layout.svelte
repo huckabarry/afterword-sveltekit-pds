@@ -332,7 +332,12 @@
 					<ul class="search-results">
 						{#each searchResults as result}
 							<li>
-								<a class="search-result" href={result.path} onclick={closeSearch}>
+								<a
+									class="search-result"
+									class:search-result--no-image={!result.coverImage}
+									href={result.path}
+									onclick={closeSearch}
+								>
 									{#if result.coverImage}
 										<img class="search-result__image" src={result.coverImage} alt={result.title} loading="lazy" />
 									{/if}

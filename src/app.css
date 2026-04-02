@@ -391,6 +391,10 @@ p:last-child {
 	text-decoration: none;
 }
 
+.search-result--no-image {
+	grid-template-columns: minmax(0, 1fr);
+}
+
 .search-result:hover,
 .search-result:focus-visible {
 	background: rgba(20, 21, 22, 0.06);

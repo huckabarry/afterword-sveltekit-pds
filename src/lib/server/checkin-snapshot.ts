@@ -22,12 +22,16 @@ let latestCheckinSnapshotReady = false;
 let latestCheckinSnapshotPromise: Promise<void> | null = null;
 
 function getDatabase(event: Pick<RequestEvent, 'platform'>) {
-	return (
-		event.platform?.env?.D1_DATABASE ??
-		event.platform?.env?.D1_DATABASE_BINDING ??
-		event.platform?.env?.AP_DB ??
-		null
-	);
+	try {
+		return (
+			event.platform?.env?.D1_DATABASE ??
+			event.platform?.env?.D1_DATABASE_BINDING ??
+			event.platform?.env?.AP_DB ??
+			null
+		);
+	} catch {
+		return null;
+	}
 }
 
 async function ensureLatestCheckinSnapshotSchema(db: CheckinSnapshotDb) {

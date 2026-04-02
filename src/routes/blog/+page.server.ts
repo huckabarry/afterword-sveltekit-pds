@@ -1,7 +1,5 @@
 import { getBlogPosts } from '$lib/server/ghost';
 
-export const prerender = false;
-
 const BLOG_INDEX_TAGS = new Set([
 	'field-notes',
 	'gallery',

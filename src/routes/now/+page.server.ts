@@ -2,7 +2,7 @@ import { getCheckins, type Checkin } from '$lib/server/atproto';
 import { getLatestCheckinSnapshot } from '$lib/server/checkin-snapshot';
 import { getNowIntroContent } from '$lib/server/content';
 import { getEarlierWebOnThisDayPosts } from '$lib/server/earlier-web';
-import { getNowPosts, type BlogPost } from '$lib/server/ghost';
+import { getNowPosts, getPhotoItems, type BlogPost } from '$lib/server/ghost';
 import { getTracks, type TrackEntry } from '$lib/server/music';
 import { getRecentManifestGalleryPhotos } from '$lib/server/photo-manifest';
 
@@ -34,6 +34,11 @@ export async function load(event) {
 	]);
 
 	const nowPosts = rawNowPosts.filter((post: BlogPost) => !isMediaTagged(post)).slice(0, 12);
+	const latestPhoto =
+		recentPhotos[0] ||
+		(await getPhotoItems())
+			.sort((a, b) => b.postPublishedAt.getTime() - a.postPublishedAt.getTime() || a.index - b.index)[0] ||
+		null;
 	const latestCheckin =
 		latestCheckinSnapshot ||
 		(await getCheckins())
@@ -46,7 +51,7 @@ export async function load(event) {
 		nowPosts,
 		latestTrack: tracks[0] || null,
 		latestCheckin,
-		latestPhoto: recentPhotos[0] || null,
+		latestPhoto,
 		onThisDayPosts
 	};
 }
