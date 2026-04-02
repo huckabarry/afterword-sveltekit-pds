@@ -26,6 +26,7 @@
 	let navMenu = $state<HTMLElement | null>(null);
 	let navMenuButton = $state<HTMLButtonElement | null>(null);
 	let searchRequest = 0;
+	let galleryThumbsPrewarmed = false;
 	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
 	const profile = $derived(data.profile);
 	const primaryNavLinks = [
@@ -88,6 +89,36 @@
 		}
 
 		return data.pathname === href || data.pathname.startsWith(`${href}/`);
+	}
+
+	async function prewarmGalleryThumbs() {
+		if (!browser || galleryThumbsPrewarmed) {
+			return;
+		}
+
+		galleryThumbsPrewarmed = true;
+
+		try {
+			const response = await fetch('/photos/prewarm.json');
+
+			if (!response.ok) {
+				return;
+			}
+
+			const payload = (await response.json()) as { urls?: string[] };
+			const urls = Array.isArray(payload.urls) ? payload.urls : [];
+
+			for (const url of urls) {
+				const normalized = String(url || '').trim();
+				if (!normalized) continue;
+
+				const image = new Image();
+				image.decoding = 'async';
+				image.src = normalized;
+			}
+		} catch {
+			// Ignore prewarm failures; this is only a background hint.
+		}
 	}
 
 	$effect(() => {
@@ -184,12 +215,13 @@
 		const statusTimeout = window.setTimeout(() => {
 			void preloadCode('/status');
 			void preloadData('/status');
-		}, 3000);
+		}, 2000);
 
 		const photosTimeout = window.setTimeout(() => {
 			void preloadCode('/photos');
 			void preloadData('/photos');
-		}, 5000);
+			void prewarmGalleryThumbs();
+		}, 4000);
 
 		return () => {
 			window.clearTimeout(statusTimeout);
