@@ -11,7 +11,8 @@
 		variant = 'card',
 		sizes = '(max-width: 640px) 100vw, 11rem',
 		imageClass = '',
-		loading = 'lazy'
+		loading = 'lazy',
+		fetchpriority = 'auto'
 	}: {
 		sourceUrl: string | null;
 		alt: string;
@@ -20,6 +21,7 @@
 		sizes?: string;
 		imageClass?: string;
 		loading?: 'lazy' | 'eager';
+		fetchpriority?: 'high' | 'low' | 'auto';
 	} = $props();
 
 	const image = $derived(
@@ -37,8 +39,16 @@
 		sizes={sizes}
 		alt={alt}
 		loading={loading}
+		fetchpriority={fetchpriority}
 		decoding="async"
 	/>
 {:else}
-	<img class={imageClass} src={sourceUrl || ''} alt={alt} loading={loading} decoding="async" />
+	<img
+		class={imageClass}
+		src={sourceUrl || ''}
+		alt={alt}
+		loading={loading}
+		fetchpriority={fetchpriority}
+		decoding="async"
+	/>
 {/if}

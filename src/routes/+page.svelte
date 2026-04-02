@@ -34,7 +34,7 @@
 		<h2 class="section-title">Field Notes</h2>
 		{#if data.fieldNotesPosts.length}
 			<section class="blog-list">
-				{#each data.fieldNotesPosts as post}
+				{#each data.fieldNotesPosts as post, index}
 					<article class="blog-row home-feature-row">
 						<a class="blog-row__link home-feature-row__link" href={blogUrl(post.slug)}>
 							{#if post.coverImage}
@@ -44,6 +44,8 @@
 										sourceUrl={post.coverImage}
 										alt={post.title}
 										hint={post.path}
+										loading={index === 0 ? 'eager' : 'lazy'}
+										fetchpriority={index === 0 ? 'high' : 'auto'}
 									/>
 								</div>
 							{/if}
@@ -71,7 +73,7 @@
 		<h2 class="section-title">Planning & Urbanism</h2>
 		{#if data.planningPosts.length}
 			<section class="blog-list">
-				{#each data.planningPosts as post}
+				{#each data.planningPosts as post, index}
 					<article class="blog-row home-feature-row">
 						<a class="blog-row__link home-feature-row__link" href={blogUrl(post.slug)}>
 							{#if post.coverImage}
@@ -81,6 +83,8 @@
 										sourceUrl={post.coverImage}
 										alt={post.title}
 										hint={post.path}
+										loading={index === 0 ? 'eager' : 'lazy'}
+										fetchpriority={index === 0 ? 'high' : 'auto'}
 									/>
 								</div>
 							{/if}

@@ -63,7 +63,7 @@ export function getResponsiveContentCover(
 	const src1080 = buildVariantPath(key, 'card-lg', normalized);
 
 	return {
-		src: src640,
+		src: src320,
 		srcset: `${src320} 360w, ${src640} 720w, ${src1080} 1080w`
 	};
 }
@@ -84,7 +84,7 @@ export function getFeatureContentCover(
 	const src1600 = buildVariantPath(key, 'feature', normalized);
 
 	return {
-		src: src1080,
+		src: src720,
 		srcset: `${src720} 720w, ${src1080} 1080w, ${src1600} 1600w`
 	};
 }
