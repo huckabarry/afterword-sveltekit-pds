@@ -28,13 +28,14 @@ function isMediaTagged(post: BlogPost) {
 }
 
 export async function load(event) {
-	const [intro, rawNowPosts, latestCheckinSnapshot, recentPhotos, onThisDayPosts, tracks] = await Promise.all([
+	const [intro, rawNowPosts, latestCheckinSnapshot, recentPhotos, onThisDayPosts, tracks, liveCheckins] = await Promise.all([
 		getNowIntroContent(),
 		getNowPosts(),
 		getLatestCheckinSnapshot(event),
 		getRecentManifestGalleryPhotos(event, 1),
 		getEarlierWebOnThisDayPosts(event, new Date(), 3, { sourceType: 'instagram' }),
-		getTracks(event)
+		getTracks(event),
+		getCheckins().catch(() => [])
 	]);
 
 	const nowPosts = rawNowPosts.filter((post: BlogPost) => !isMediaTagged(post)).slice(0, 12);
@@ -66,10 +67,10 @@ export async function load(event) {
 		fallbackPhotos[0] ||
 		null;
 	const latestCheckin =
-		latestCheckinSnapshot ||
-		(await getCheckins())
+		liveCheckins
 			.slice()
 			.sort((a: Checkin, b: Checkin) => b.visitedAt.getTime() - a.visitedAt.getTime())[0] ||
+		latestCheckinSnapshot ||
 		null;
 
 	return {
