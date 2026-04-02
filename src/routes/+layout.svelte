@@ -181,13 +181,19 @@
 			return;
 		}
 
-		const timeout = window.setTimeout(() => {
+		const statusTimeout = window.setTimeout(() => {
 			void preloadCode('/status');
 			void preloadData('/status');
 		}, 3000);
 
+		const photosTimeout = window.setTimeout(() => {
+			void preloadCode('/photos');
+			void preloadData('/photos');
+		}, 5000);
+
 		return () => {
-			window.clearTimeout(timeout);
+			window.clearTimeout(statusTimeout);
+			window.clearTimeout(photosTimeout);
 		};
 	});
 </script>
