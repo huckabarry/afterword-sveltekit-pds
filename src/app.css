@@ -76,7 +76,7 @@ p:last-child {
 	display: flex;
 	align-items: center;
 	gap: 1rem;
-	z-index: 50;
+	z-index: 3000;
 }
 
 .site-header-avatar-link {
