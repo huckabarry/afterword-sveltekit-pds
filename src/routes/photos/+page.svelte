@@ -145,7 +145,6 @@
 		position: relative;
 		display: block;
 		width: 100%;
-		min-height: 12rem;
 		padding: 0;
 		border: 0;
 		background: transparent;
