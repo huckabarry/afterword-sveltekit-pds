@@ -38,7 +38,11 @@ function getTimelineCache() {
 }
 
 function getBucket(context?: MediaTimelineContext) {
-	return context?.platform?.env?.R2_BUCKET ?? null;
+	try {
+		return context?.platform?.env?.R2_BUCKET ?? null;
+	} catch {
+		return null;
+	}
 }
 
 function getBucketCacheKey(bucket: BoundR2Bucket) {

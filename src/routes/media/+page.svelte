@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { MediaTimelineItem, MediaTimelinePage } from '$lib/types/media-timeline';
 
 	let {
@@ -11,6 +10,7 @@
 				description: string;
 				paragraphs: string[];
 			};
+			initialTimelinePage: MediaTimelinePage;
 		};
 	} = $props();
 
@@ -20,11 +20,24 @@
 	let nextOffset = $state<number | null>(null);
 	let totalItems = $state<number | null>(null);
 	let pageSize = $state(initialPageSize);
-	let isLoadingInitial = $state(true);
+	let isLoadingInitial = $state(false);
 	let isLoadingMore = $state(false);
 	let loadError = $state('');
 	let imageOverrides = $state<Record<string, string | null>>({});
 	let hiddenImages = $state<Record<string, boolean>>({});
+	let hasInitialized = false;
+
+	$effect(() => {
+		if (hasInitialized) {
+			return;
+		}
+
+		hasInitialized = true;
+		timelineItems = data.initialTimelinePage.items;
+		nextOffset = data.initialTimelinePage.nextOffset;
+		totalItems = data.initialTimelinePage.total;
+		pageSize = data.initialTimelinePage.limit || initialPageSize;
+	});
 
 	function usesPosterRatio(item: MediaTimelineItem) {
 		return item.kind === 'popfeed' && (item.mediaType === 'movie' || item.mediaType === 'tv_show');
@@ -129,10 +142,6 @@
 
 		await fetchPage(nextOffset, 'more');
 	}
-
-	onMount(() => {
-		void fetchPage(0, 'initial');
-	});
 </script>
 
 <svelte:head>

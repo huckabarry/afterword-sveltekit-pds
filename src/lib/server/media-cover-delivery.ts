@@ -85,7 +85,11 @@ export function attachMediaCoverDelivery(
 	page: MediaTimelinePage,
 	event: Pick<RequestEvent, 'platform' | 'url'>
 ): MediaTimelinePage {
-	if (!event.platform?.env?.R2_BUCKET) {
+	try {
+		if (!event.platform?.env?.R2_BUCKET) {
+			return page;
+		}
+	} catch {
 		return page;
 	}
 
