@@ -30,15 +30,15 @@
 	const profile = $derived(data.profile);
 	const primaryNavLinks = [
 		{ href: '/', label: 'Home' },
-		{ href: '/now', label: 'Now' },
-		{ href: '/media', label: 'Media' },
-		{ href: '/photos', label: 'Gallery' }
+		{ href: '/status', label: 'Status' },
+		{ href: '/photos', label: 'Gallery' },
+		{ href: '/about', label: 'About' }
 	];
 	const secondaryNavLinks = [
 		{ href: '/hello', label: 'Hello' },
+		{ href: '/now', label: 'Now' },
 		{ href: '/check-ins', label: 'Check-ins' },
-		{ href: '/status', label: 'Status' },
-		{ href: '/about', label: 'About' },
+		{ href: '/media', label: 'Media' },
 		{ href: '/colophon', label: 'Colophon' },
 		{ href: '/subscribe', label: 'Subscribe' }
 	];

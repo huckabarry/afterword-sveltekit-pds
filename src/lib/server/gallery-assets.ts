@@ -1,10 +1,15 @@
 import type { PhotoItem } from '$lib/server/ghost';
 import {
+	resolveImageSource,
+	transformImageWithBinding
+} from '$lib/server/cloudflare-image-service';
+import {
 	inferImageDimensions,
 	inferImageMimeType
 } from '$lib/server/image-metadata';
 
 type BoundR2Bucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
+type BoundImages = NonNullable<App.Platform['env']['IMAGES']>;
 
 export type GalleryPhotoItem = PhotoItem & {
 	assetKey: string;
@@ -17,6 +22,18 @@ export type GalleryPhotoItem = PhotoItem & {
 };
 
 const GALLERY_PREFIX = 'gallery/originals';
+const GALLERY_VARIANT_PREFIX = 'gallery/variants';
+
+export const GALLERY_VARIANT_PRESETS = {
+	thumb: {
+		width: 900,
+		quality: 76
+	},
+	large: {
+		width: 1800,
+		quality: 82
+	}
+} as const;
 
 function sanitizeSegment(value: string) {
 	return String(value || '')
@@ -54,6 +71,11 @@ export function getGalleryAssetPath(assetKey: string) {
 
 export function getGalleryVariantPath(assetKey: string, preset: 'thumb' | 'large') {
 	return `/${['gallery-images', preset, ...assetKey.split('/').filter(Boolean)].join('/')}`;
+}
+
+export function getGalleryVariantAssetKey(assetKey: string, preset: 'thumb' | 'large') {
+	const normalizedAssetKey = assetKey.replace(/^gallery\/originals\//, '');
+	return `${GALLERY_VARIANT_PREFIX}/${preset}/${normalizedAssetKey}`;
 }
 
 async function listExistingGalleryAssetKeys(bucket: BoundR2Bucket) {
@@ -153,6 +175,56 @@ export async function ensureGalleryPhotoAsset(photo: PhotoItem, bucket: BoundR2B
 
 		throw error;
 	}
+}
+
+export async function ensureGalleryPhotoVariant(
+	bucket: BoundR2Bucket,
+	images: BoundImages,
+	assetKey: string,
+	preset: 'thumb' | 'large'
+) {
+	const variantKey = getGalleryVariantAssetKey(assetKey, preset);
+	const existing = await bucket.get(variantKey);
+
+	if (existing) {
+		return variantKey;
+	}
+
+	const transformed = await transformImageWithBinding(
+		images,
+		await resolveImageSource(bucket, assetKey),
+		GALLERY_VARIANT_PRESETS[preset]
+	);
+	const contentType = transformed.headers.get('content-type') || inferImageMimeType(variantKey);
+	const body = await transformed.arrayBuffer();
+
+	if (!body.byteLength) {
+		throw new Error(`Generated ${preset} gallery variant is empty.`);
+	}
+
+	await bucket.put(variantKey, body, {
+		httpMetadata: {
+			contentType,
+			cacheControl: 'public, max-age=31536000, immutable'
+		},
+		customMetadata: {
+			sourceAssetKey: assetKey,
+			preset
+		}
+	});
+
+	return variantKey;
+}
+
+export async function ensureGalleryPhotoVariants(
+	bucket: BoundR2Bucket,
+	images: BoundImages,
+	assetKey: string
+) {
+	await Promise.all([
+		ensureGalleryPhotoVariant(bucket, images, assetKey, 'thumb'),
+		ensureGalleryPhotoVariant(bucket, images, assetKey, 'large')
+	]);
 }
 
 export async function attachGalleryAssetUrls(photos: PhotoItem[], bucket?: BoundR2Bucket | null) {

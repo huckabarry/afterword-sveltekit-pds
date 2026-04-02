@@ -1,6 +1,7 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import {
 	ensureGalleryPhotoAsset,
+	ensureGalleryPhotoVariants,
 	type GalleryPhotoItem
 } from '$lib/server/gallery-assets';
 import {
@@ -12,6 +13,7 @@ import {
 
 type GalleryDb = NonNullable<App.Platform['env']['D1_DATABASE']>;
 type GalleryBucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
+type GalleryImages = NonNullable<App.Platform['env']['IMAGES']>;
 
 type GalleryPhotoManifestRow = {
 	id: string;
@@ -95,6 +97,14 @@ function getGalleryDb(event: Pick<RequestEvent, 'platform'>) {
 function getGalleryBucket(event: Pick<RequestEvent, 'platform'>) {
 	try {
 		return event.platform?.env?.R2_BUCKET ?? null;
+	} catch {
+		return null;
+	}
+}
+
+function getGalleryImages(event: Pick<RequestEvent, 'platform'>) {
+	try {
+		return event.platform?.env?.IMAGES ?? null;
 	} catch {
 		return null;
 	}
@@ -282,6 +292,7 @@ async function upsertGalleryPhotoManifestRow(
 async function syncManifestPhotos(
 	db: GalleryDb,
 	bucket: GalleryBucket,
+	images: GalleryImages | null,
 	photos: PhotoItem[]
 ): Promise<SyncManifestPhotosResult> {
 	const synced: GalleryPhotoItem[] = [];
@@ -290,6 +301,9 @@ async function syncManifestPhotos(
 	for (const photo of photos) {
 		try {
 			const asset = await ensureGalleryPhotoAsset(photo, bucket);
+			if (images) {
+				await ensureGalleryPhotoVariants(bucket, images, asset.assetKey);
+			}
 			const manifestItem: GalleryPhotoItem = {
 				...photo,
 				...asset
@@ -537,7 +551,12 @@ export async function syncPhotoManifestBatch(
 	const limit = Math.min(toPositiveInteger(options.limit, 20), 50);
 	const allPhotos = await getSortedGhostPhotoItems();
 	const batch = allPhotos.slice(offset, offset + limit);
-	const result = await syncManifestPhotos(db, bucket as GalleryBucket, batch);
+	const result = await syncManifestPhotos(
+		db,
+		bucket as GalleryBucket,
+		getGalleryImages(event),
+		batch
+	);
 
 	return {
 		totalAvailable: allPhotos.length,
@@ -636,7 +655,12 @@ export async function syncRecentPhotoManifestBatch(
 
 	const limit = Math.min(toPositiveInteger(options.limit, 18), 60);
 	const photos = await getRecentGhostPhotoItems(limit);
-	const result = await syncManifestPhotos(db, bucket as GalleryBucket, photos);
+	const result = await syncManifestPhotos(
+		db,
+		bucket as GalleryBucket,
+		getGalleryImages(event),
+		photos
+	);
 
 	return {
 		limit,
@@ -676,7 +700,12 @@ export async function syncGhostPostPhotoManifestBySlug(
 	}
 
 	const photos = getPostImages(post);
-	const result = await syncManifestPhotos(db, bucket as GalleryBucket, photos);
+	const result = await syncManifestPhotos(
+		db,
+		bucket as GalleryBucket,
+		getGalleryImages(event),
+		photos
+	);
 
 	return {
 		slug: normalizedSlug,
@@ -706,7 +735,12 @@ export async function syncGalleryPhotoManifestForItems(
 	const uniquePhotos = Array.from(
 		new Map((photos || []).map((photo) => [photo.id, photo] as const)).values()
 	);
-	const result = await syncManifestPhotos(db, bucket as GalleryBucket, uniquePhotos);
+	const result = await syncManifestPhotos(
+		db,
+		bucket as GalleryBucket,
+		getGalleryImages(event),
+		uniquePhotos
+	);
 
 	return {
 		processed: result.processed,

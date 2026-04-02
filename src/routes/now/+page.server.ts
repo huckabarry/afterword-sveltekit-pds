@@ -3,6 +3,7 @@ import { getLatestCheckinSnapshot } from '$lib/server/checkin-snapshot';
 import { getNowIntroContent } from '$lib/server/content';
 import { getEarlierWebOnThisDayPosts } from '$lib/server/earlier-web';
 import { getNowPosts, getPhotoItems, type BlogPost } from '$lib/server/ghost';
+import { attachGalleryAssetUrls } from '$lib/server/gallery-assets';
 import { getTracks, type TrackEntry } from '$lib/server/music';
 import { getRecentManifestGalleryPhotos } from '$lib/server/photo-manifest';
 
@@ -34,10 +35,15 @@ export async function load(event) {
 	]);
 
 	const nowPosts = rawNowPosts.filter((post: BlogPost) => !isMediaTagged(post)).slice(0, 12);
+	const fallbackPhotos = await attachGalleryAssetUrls(
+		(await getPhotoItems()).sort(
+			(a, b) => b.postPublishedAt.getTime() - a.postPublishedAt.getTime() || a.index - b.index
+		),
+		event.platform?.env.R2_BUCKET
+	);
 	const latestPhoto =
 		recentPhotos[0] ||
-		(await getPhotoItems())
-			.sort((a, b) => b.postPublishedAt.getTime() - a.postPublishedAt.getTime() || a.index - b.index)[0] ||
+		fallbackPhotos[0] ||
 		null;
 	const latestCheckin =
 		latestCheckinSnapshot ||
