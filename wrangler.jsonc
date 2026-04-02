@@ -21,6 +21,9 @@
 			"bucket_name": "afterword"
 		}
 	],
+	"images": {
+		"binding": "IMAGES"
+	},
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"assets": {
 		"binding": "ASSETS",

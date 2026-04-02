@@ -6,6 +6,7 @@ declare global {
 		D1_DATABASE?: D1Database;
 		D1_DATABASE_BINDING?: D1Database;
 		R2_BUCKET?: R2Bucket;
+		IMAGES?: ImagesBinding;
 		ACTIVITYPUB_PRIVATE_KEY_PEM?: string;
 		ACTIVITYPUB_PUBLIC_KEY_PEM?: string;
 		ACTIVITYPUB_KEY_ID?: string;

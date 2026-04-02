@@ -1,4 +1,9 @@
 import { error } from '@sveltejs/kit';
+import {
+	resolveImageSource,
+	transformImageWithBinding
+} from '$lib/server/cloudflare-image-service';
+import { cacheImageResponse, matchCachedImage } from '$lib/server/worker-image-cache';
 
 const PRESETS = {
 	mini: {
@@ -11,26 +16,18 @@ const PRESETS = {
 	}
 } as const;
 
-type CfImageRequestInit = RequestInit & {
-	cf?: {
-		image?: {
-			width?: number;
-			fit?: 'scale-down' | 'contain' | 'cover' | 'crop' | 'pad';
-			quality?: number;
-			metadata?: 'none' | 'keep' | 'copyright';
-		};
-	};
-};
-
-function isSvgAsset(key: string) {
-	return /\.svg$/i.test(key);
-}
-
 export async function GET(event) {
-	const bucket = event.platform?.env.R2_BUCKET;
+	const cached = await matchCachedImage(event.request);
 
-	if (!bucket) {
-		throw error(500, 'R2_BUCKET is not configured');
+	if (cached) {
+		return cached;
+	}
+
+	const bucket = event.platform?.env.R2_BUCKET;
+	const images = event.platform?.env.IMAGES;
+
+	if (!bucket || !images) {
+		throw error(500, 'Image bindings are not configured');
 	}
 
 	const key = event.params.key;
@@ -40,47 +37,15 @@ export async function GET(event) {
 		throw error(404, 'Asset not found');
 	}
 
-	if (isSvgAsset(key)) {
-		const originUrl = new URL(
-			`/${['media-cover-assets', ...key.split('/').filter(Boolean)].join('/')}`,
-			event.url
-		);
-		originUrl.search = event.url.search;
-
-		return fetch(originUrl);
-	}
-
-	const originUrl = new URL(
-		`/${['media-cover-assets', ...key.split('/').filter(Boolean)].join('/')}`,
-		event.url
-	);
-	originUrl.search = event.url.search;
-
-	const imageRequest: CfImageRequestInit = {
-		cf: {
-			image: {
-				width: PRESETS[preset].width,
-				fit: 'scale-down',
-				quality: PRESETS[preset].quality,
-				metadata: 'none'
-			}
-		}
-	};
-
-	const transformed = await fetch(originUrl, imageRequest as RequestInit);
-
-	if (!transformed.ok) {
-		throw error(transformed.status, 'Image transform failed');
-	}
-
-	const headers = new Headers(transformed.headers);
-	headers.set(
-		'cache-control',
-		headers.get('cache-control') || 'public, max-age=31536000, immutable'
+	const transformed = await transformImageWithBinding(
+		images,
+		await resolveImageSource(bucket, key, event.url.searchParams.get('src')),
+		PRESETS[preset]
 	);
 
-	return new Response(transformed.body, {
-		status: transformed.status,
-		headers
-	});
+	return cacheImageResponse(
+		event.request,
+		transformed,
+		event.platform?.ctx
+	);
 }
