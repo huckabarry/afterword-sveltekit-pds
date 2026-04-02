@@ -276,7 +276,9 @@
 			</div>
 		</header>
 
-		<hr class="site-rule" />
+		{#if data.pathname !== '/'}
+			<hr class="site-rule" />
+		{/if}
 
 		<main class="site-main">
 			{@render children()}

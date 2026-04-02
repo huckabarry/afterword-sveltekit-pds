@@ -84,6 +84,8 @@
 <style>
 	.stream-head {
 		margin-top: 0.1rem;
+		padding-bottom: 1.45rem;
+		border-bottom: 1px solid var(--border);
 	}
 
 	.empty-state {
