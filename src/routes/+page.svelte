@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatDate } from '$lib/format';
+	import ResponsiveContentCover from '$lib/components/ResponsiveContentCover.svelte';
 	import type { BlogPost } from '$lib/server/ghost';
 
 	let {
@@ -38,7 +39,12 @@
 						<a class="blog-row__link home-feature-row__link" href={blogUrl(post.slug)}>
 							{#if post.coverImage}
 								<div class="home-feature-row__media">
-									<img class="home-feature-row__image" src={post.coverImage} alt={post.title} loading="lazy" />
+									<ResponsiveContentCover
+										imageClass="home-feature-row__image"
+										sourceUrl={post.coverImage}
+										alt={post.title}
+										hint={post.path}
+									/>
 								</div>
 							{/if}
 							<div class="home-feature-row__body">
@@ -70,7 +76,12 @@
 						<a class="blog-row__link home-feature-row__link" href={blogUrl(post.slug)}>
 							{#if post.coverImage}
 								<div class="home-feature-row__media">
-									<img class="home-feature-row__image" src={post.coverImage} alt={post.title} loading="lazy" />
+									<ResponsiveContentCover
+										imageClass="home-feature-row__image"
+										sourceUrl={post.coverImage}
+										alt={post.title}
+										hint={post.path}
+									/>
 								</div>
 							{/if}
 							<div class="home-feature-row__body">
@@ -113,7 +124,7 @@
 		display: grid;
 	}
 
-	.home-feature-row__image {
+	:global(.home-feature-row__image) {
 		display: block;
 		width: 100%;
 		aspect-ratio: 4 / 5;

@@ -10,9 +10,25 @@ const PRESETS = {
 		width: 320,
 		quality: 74
 	},
+	'card-sm': {
+		width: 360,
+		quality: 70
+	},
+	'card-md': {
+		width: 720,
+		quality: 74
+	},
+	'card-lg': {
+		width: 1080,
+		quality: 78
+	},
 	cover: {
 		width: 1400,
 		quality: 86
+	},
+	feature: {
+		width: 1600,
+		quality: 82
 	}
 } as const;
 

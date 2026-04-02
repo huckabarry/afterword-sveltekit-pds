@@ -25,15 +25,25 @@ const GALLERY_PREFIX = 'gallery/originals';
 const GALLERY_VARIANT_PREFIX = 'gallery/variants';
 
 export const GALLERY_VARIANT_PRESETS = {
+	'thumb-sm': {
+		width: 360,
+		quality: 70
+	},
+	'thumb-md': {
+		width: 720,
+		quality: 74
+	},
 	thumb: {
-		width: 900,
-		quality: 76
+		width: 1080,
+		quality: 78
 	},
 	large: {
 		width: 1800,
 		quality: 82
 	}
 } as const;
+
+export type GalleryVariantPreset = keyof typeof GALLERY_VARIANT_PRESETS;
 
 function sanitizeSegment(value: string) {
 	return String(value || '')
@@ -71,7 +81,7 @@ export function getGalleryAssetPath(assetKey: string) {
 
 export function getGalleryVariantPath(
 	assetKey: string,
-	preset: 'thumb' | 'large',
+	preset: GalleryVariantPreset,
 	sourceUrl?: string | null
 ) {
 	const pathname = `/${['gallery-images', preset, ...assetKey.split('/').filter(Boolean)].join('/')}`;
@@ -82,7 +92,7 @@ export function getGalleryVariantPath(
 		: pathname;
 }
 
-export function getGalleryVariantAssetKey(assetKey: string, preset: 'thumb' | 'large') {
+export function getGalleryVariantAssetKey(assetKey: string, preset: GalleryVariantPreset) {
 	const normalizedAssetKey = assetKey.replace(/^gallery\/originals\//, '');
 	return `${GALLERY_VARIANT_PREFIX}/${preset}/${normalizedAssetKey}`;
 }
@@ -198,7 +208,7 @@ export async function ensureGalleryPhotoVariant(
 	bucket: BoundR2Bucket,
 	images: BoundImages,
 	assetKey: string,
-	preset: 'thumb' | 'large'
+	preset: GalleryVariantPreset
 ) {
 	const variantKey = getGalleryVariantAssetKey(assetKey, preset);
 	const existing = await bucket.get(variantKey);
@@ -239,6 +249,8 @@ export async function ensureGalleryPhotoVariants(
 	assetKey: string
 ) {
 	await Promise.all([
+		ensureGalleryPhotoVariant(bucket, images, assetKey, 'thumb-sm'),
+		ensureGalleryPhotoVariant(bucket, images, assetKey, 'thumb-md'),
 		ensureGalleryPhotoVariant(bucket, images, assetKey, 'thumb'),
 		ensureGalleryPhotoVariant(bucket, images, assetKey, 'large')
 	]);
@@ -248,7 +260,11 @@ export async function attachGalleryAssetUrls(photos: PhotoItem[], bucket?: Bound
 	if (!bucket) {
 		return photos.map((photo) => ({
 			...photo,
-			...toGalleryUrls(photo, getGalleryAssetKey(photo), false),
+			assetKey: getGalleryAssetKey(photo),
+			isSyncedToR2: false,
+			originalUrl: photo.imageUrl,
+			displayUrl: getGalleryVariantPath(getGalleryAssetKey(photo), 'thumb-md', photo.imageUrl),
+			lightboxUrl: getGalleryVariantPath(getGalleryAssetKey(photo), 'large', photo.imageUrl),
 			width: photo.width || null,
 			height: photo.height || null
 		})) satisfies GalleryPhotoItem[];

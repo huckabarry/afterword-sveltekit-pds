@@ -22,6 +22,22 @@
 		activeIndex = (activeIndex + 1) % data.photos.length;
 	}
 
+	function getGalleryVariantUrl(url: string, preset: 'thumb-sm' | 'thumb-md' | 'thumb' | 'large') {
+		return String(url || '').replace(/\/gallery-images\/[^/]+\//, `/gallery-images/${preset}/`);
+	}
+
+	function getPhotoSrcset(url: string) {
+		if (!url.includes('/gallery-images/')) {
+			return undefined;
+		}
+
+		return [
+			`${getGalleryVariantUrl(url, 'thumb-sm')} 360w`,
+			`${getGalleryVariantUrl(url, 'thumb-md')} 720w`,
+			`${getGalleryVariantUrl(url, 'thumb')} 1080w`
+		].join(', ');
+	}
+
 	function onKeydown(event: KeyboardEvent) {
 		if (activeIndex === null) return;
 
@@ -65,12 +81,13 @@
 				<img
 					class="photo-card__image"
 					src={photo.displayUrl}
+					srcset={getPhotoSrcset(photo.displayUrl)}
+					sizes="(max-width: 640px) 48vw, 31vw"
 					alt={photo.alt || photo.postTitle}
 					width={photo.width || undefined}
 					height={photo.height || undefined}
 					loading="lazy"
 					decoding="async"
-					sizes="(max-width: 640px) 48vw, 31vw"
 				/>
 				<span class="photo-card__overlay">
 					<span class="photo-card__title">{photo.postTitle}</span>
@@ -101,7 +118,11 @@
 				›
 			</button>
 			<figure class="lightbox__figure">
-				<img class="lightbox__image" src={activePhoto.lightboxUrl} alt={activePhoto.alt || activePhoto.postTitle} />
+				<img
+					class="lightbox__image"
+					src={activePhoto.lightboxUrl}
+					alt={activePhoto.alt || activePhoto.postTitle}
+				/>
 				<figcaption class="lightbox__caption">
 					<a href={activePhoto.postPath}>{activePhoto.postTitle}</a>
 					<span>{new Date(activePhoto.postPublishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>

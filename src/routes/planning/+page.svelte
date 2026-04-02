@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ResponsiveContentCover from '$lib/components/ResponsiveContentCover.svelte';
+
 	let {
 		data
 	}: {
@@ -35,7 +37,12 @@
 			<a class="blog-row__link" href={post.path}>
 				{#if post.coverImage}
 					<div class="planning-row__media">
-						<img class="planning-row__image" src={post.coverImage} alt={post.title} loading="lazy" />
+						<ResponsiveContentCover
+							imageClass="planning-row__image"
+							sourceUrl={post.coverImage}
+							alt={post.title}
+							hint={post.path}
+						/>
 						{#if post.coverImage.includes('images.unsplash.com') && post.coverImageCaption}
 							<span class="planning-row__credit">{post.coverImageCaption}</span>
 						{/if}
@@ -75,7 +82,7 @@
 		gap: 0.45rem;
 	}
 
-	.planning-row__image {
+	:global(.planning-row__image) {
 		display: block;
 		width: 100%;
 		aspect-ratio: 4 / 5;

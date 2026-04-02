@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ResponsiveContentCover from '$lib/components/ResponsiveContentCover.svelte';
+
 	let {
 		data
 	}: {
@@ -35,7 +37,12 @@
 		<article class="blog-row field-notes-row">
 			<a class="blog-row__link" href={post.path}>
 				{#if post.coverImage}
-					<img class="field-notes-row__image" src={post.coverImage} alt={post.title} loading="lazy" />
+					<ResponsiveContentCover
+						imageClass="field-notes-row__image"
+						sourceUrl={post.coverImage}
+						alt={post.title}
+						hint={post.path}
+					/>
 				{/if}
 				<div class="field-notes-row__body">
 					<time class="blog-row__date" datetime={new Date(post.publishedAt).toISOString()}>
@@ -66,7 +73,7 @@
 		align-items: start;
 	}
 
-	.field-notes-row__image {
+	:global(.field-notes-row__image) {
 		display: block;
 		width: 100%;
 		height: auto;

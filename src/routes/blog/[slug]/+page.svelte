@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ResponsiveContentCover from '$lib/components/ResponsiveContentCover.svelte';
 	import type { BlogPost } from '$lib/server/ghost';
 	import type { WebmentionRecord } from '$lib/server/webmentions';
 
@@ -44,7 +45,15 @@
 
 	{#if data.post.coverImage}
 		<figure class="entry__figure">
-			<img class="u-photo" src={data.post.coverImage} alt={data.post.title} />
+			<ResponsiveContentCover
+				imageClass="u-photo"
+				sourceUrl={data.post.coverImage}
+				alt={data.post.title}
+				hint={data.post.path}
+				variant="feature"
+				sizes="(max-width: 760px) 100vw, 46rem"
+				loading="eager"
+			/>
 		</figure>
 	{/if}
 
