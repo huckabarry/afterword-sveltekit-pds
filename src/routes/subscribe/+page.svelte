@@ -136,10 +136,17 @@
 	}
 
 	.ghost-newsletter-form input[type='email'] {
+		width: 100%;
 		padding: 14px 16px;
 		border-radius: 6px;
 		border: 1px solid #ccc;
+		background: rgba(255, 255, 255, 0.96);
+		color: #1e2021;
 		font-size: 16px;
+	}
+
+	.ghost-newsletter-form input[type='email']::placeholder {
+		color: rgba(30, 32, 33, 0.6);
 	}
 
 	.ghost-newsletter-form button {
@@ -154,7 +161,18 @@
 
 	.ghost-newsletter-form [data-members-success],
 	.ghost-newsletter-form [data-members-error] {
+		display: none;
 		font-size: 14px;
 		margin: 0;
+	}
+
+	.ghost-newsletter-form.success [data-members-success] {
+		display: block;
+		color: #bde7b3;
+	}
+
+	.ghost-newsletter-form.error [data-members-error] {
+		display: block;
+		color: #ffb8b8;
 	}
 </style>
