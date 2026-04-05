@@ -231,8 +231,32 @@
 	<link rel="apple-touch-icon" href={profile.avatarUrl} />
 	<link rel="webmention" href="/webmention" />
 	<link
-		rel="stylesheet"
-		href="https://fonts.bunny.net/css?family=fira-sans:400,600,800|ibm-plex-mono:400,400i,500,500i,600,600i,700,700i&display=swap"
+		rel="preload"
+		href="/fonts/fira-sans-latin-400-normal.woff2"
+		as="font"
+		type="font/woff2"
+		crossorigin="anonymous"
+	/>
+	<link
+		rel="preload"
+		href="/fonts/fira-sans-latin-800-normal.woff2"
+		as="font"
+		type="font/woff2"
+		crossorigin="anonymous"
+	/>
+	<link
+		rel="preload"
+		href="/fonts/ibm-plex-mono-latin-400-normal.woff2"
+		as="font"
+		type="font/woff2"
+		crossorigin="anonymous"
+	/>
+	<link
+		rel="preload"
+		href="/fonts/ibm-plex-mono-latin-500-italic.woff2"
+		as="font"
+		type="font/woff2"
+		crossorigin="anonymous"
 	/>
 	<meta
 		name="description"
