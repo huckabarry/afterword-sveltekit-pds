@@ -175,14 +175,17 @@ function trimHtmlToText(html: string) {
 		.trim();
 }
 
-async function querySanity<T>(query: string, params: Record<string, string> = {}) {
+async function querySanity<T>(
+	query: string,
+	params: Record<string, string | number | boolean> = {}
+) {
 	const url = new URL(
-		`https://${SANITY_PROJECT_ID}.api.sanity.io/${SANITY_API_VERSION}/data/query/${SANITY_DATASET}`
+		`https://${SANITY_PROJECT_ID}.api.sanity.io/v${SANITY_API_VERSION}/data/query/${SANITY_DATASET}`
 	);
 	url.searchParams.set('query', query);
 
 	for (const [key, value] of Object.entries(params)) {
-		url.searchParams.set(`$${key}`, value);
+		url.searchParams.set(`$${key}`, JSON.stringify(value));
 	}
 
 	const response = await fetch(url, {
@@ -260,7 +263,7 @@ export async function getJournalEntries(limit = 50): Promise<JournalEntry[]> {
 	const query =
 		'*[_type == "journalEntry" && defined(slug.current)] | order(publishedAt desc)[0...$limit]{_id,title,slug,publishedAt,summary,tags[]->{title,slug,description},intro,body,hideFromIndexing}';
 	const records = await querySanity<SanityJournalEntryRecord[]>(query, {
-		limit: String(limit),
+		limit,
 	});
 
 	return (Array.isArray(records) ? records : []).map(toJournalEntry).filter((entry): entry is JournalEntry => Boolean(entry));
@@ -292,7 +295,7 @@ export async function getJournalEntriesByTagSlug(slug: string, limit = 100): Pro
 		'*[_type == "journalEntry" && defined(slug.current) && count((tags[]->slug.current)[@ == $slug]) > 0] | order(publishedAt desc)[0...$limit]{_id,title,slug,publishedAt,summary,tags[]->{title,slug,description},intro,body,hideFromIndexing}';
 	const records = await querySanity<SanityJournalEntryRecord[]>(query, {
 		slug,
-		limit: String(limit),
+		limit,
 	});
 
 	return (Array.isArray(records) ? records : []).map(toJournalEntry).filter((entry): entry is JournalEntry => Boolean(entry));

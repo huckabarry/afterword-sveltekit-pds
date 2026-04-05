@@ -3,18 +3,30 @@
 	import CheckinMap from '$lib/components/CheckinMap.svelte';
 	import type { Checkin } from '$lib/server/atproto';
 
-	let { data }: { data: { checkins: Checkin[] } } = $props();
+	let {
+		data
+	}: {
+		data: {
+			intro: {
+				title: string;
+				description: string;
+				paragraphs: string[];
+			};
+			checkins: Checkin[];
+		};
+	} = $props();
 </script>
 
 <svelte:head>
-	<title>Check-ins</title>
+	<title>{data.intro.title}</title>
+	<meta name="description" content={data.intro.description} />
 </svelte:head>
 
 <section class="page-head">
-	<h1 class="section-title">Check-ins</h1>
-	<p class="page-head__lede">
-		Places I’ve saved along the way, with notes, maps, and a little context for why they mattered.
-	</p>
+	<h1 class="section-title">{data.intro.title}</h1>
+	{#each data.intro.paragraphs as paragraph}
+		<p class="page-head__lede">{paragraph}</p>
+	{/each}
 </section>
 
 <section class="list">

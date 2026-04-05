@@ -1,7 +1,16 @@
 import { getColophonContent } from '$lib/server/content';
+import { getSanityEditorialPage } from '$lib/server/sanity-site';
 
-export const prerender = true;
+export const prerender = false;
 
-export function load() {
-	return getColophonContent();
+export async function load() {
+	const [content, page] = await Promise.all([
+		Promise.resolve(getColophonContent()),
+		getSanityEditorialPage('colophon')
+	]);
+
+	return {
+		...content,
+		page
+	};
 }
