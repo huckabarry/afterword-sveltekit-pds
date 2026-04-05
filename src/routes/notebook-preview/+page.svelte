@@ -1,8 +1,24 @@
 <script lang="ts">
-	import { shouldSurfaceEarlierWebTitle } from '$lib/earlier-web';
-	import type { EarlierWebSeriesPost } from '$lib/server/earlier-web';
-
-	let { data }: { data: { posts: EarlierWebSeriesPost[] } } = $props();
+	let {
+		data
+	}: {
+		data: {
+			posts: Array<{
+				id: string;
+				title: string;
+				path: string;
+				publishedAt: string;
+				bodyHtml: string;
+				showTitle: boolean;
+				sourceLabel: 'Earlier Web' | 'Journal';
+				tags?: Array<{
+					title: string;
+					slug: string;
+					path: string;
+				}>;
+			}>;
+		};
+	} = $props();
 </script>
 
 <svelte:head>
@@ -16,8 +32,9 @@
 <section class="section-block notebook-preview">
 	<h1 class="section-title">Notebook Preview</h1>
 	<p class="page-head__lede">
-		A hidden preview of longer, more inward posts drawn from <a href="/earlier-web">From an Earlier Web</a>.
-		This isn’t linked anywhere yet. It’s just a way to see how these pieces feel in sequence.
+		A hidden preview of longer, more inward writing drawn from <a href="/earlier-web">From an Earlier Web</a>
+		and new notebook entries. This isn’t linked anywhere yet. It’s just a way to see how these pieces
+		feel in sequence.
 	</p>
 
 	<div class="notebook-preview__list">
@@ -31,10 +48,10 @@
 							day: 'numeric'
 						})}
 					</time>
-					<span>Earlier Web</span>
+					<span>{post.sourceLabel}</span>
 				</div>
 
-				{#if shouldSurfaceEarlierWebTitle(post)}
+				{#if post.showTitle}
 					<h2 class="notebook-preview__title">
 						<a href={post.path}>{post.title}</a>
 					</h2>
@@ -43,6 +60,14 @@
 				<div class="notebook-preview__body earlier-web-post__body">
 					{@html post.bodyHtml}
 				</div>
+
+				{#if post.tags?.length}
+					<div class="notebook-preview__tags">
+						{#each post.tags as tag}
+							<a class="tag-pill" href={tag.path}>{tag.title}</a>
+						{/each}
+					</div>
+				{/if}
 
 				<p class="notebook-preview__actions">
 					<a href={post.path}>View archive post</a>
@@ -122,5 +147,12 @@
 	.notebook-preview__actions {
 		margin: 1.1rem 0 0;
 		font-size: 0.95rem;
+	}
+
+	.notebook-preview__tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.55rem;
+		margin-top: 1.1rem;
 	}
 </style>
