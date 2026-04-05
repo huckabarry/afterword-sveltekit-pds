@@ -10,7 +10,7 @@ import {
 } from '$lib/server/gallery-assets';
 import { getTracks, type TrackEntry } from '$lib/server/music';
 import { getRecentManifestGalleryPhotos } from '$lib/server/photo-manifest';
-import { getSanityRouteIntro } from '$lib/server/sanity-site';
+import { getSanityRouteIntro, SANITY_PUBLIC_CACHE_CONTROL } from '$lib/server/sanity-site';
 
 export const prerender = false;
 
@@ -32,6 +32,10 @@ function isMediaTagged(post: BlogPost) {
 }
 
 export async function load(event) {
+	event.setHeaders({
+		'cache-control': SANITY_PUBLIC_CACHE_CONTROL
+	});
+
 	const [fallbackIntro, sanityIntro, rawNowPosts, latestCheckinSnapshot, recentPhotos, onThisDayPosts, tracks, liveCheckins] = await Promise.all([
 		getNowIntroContent(),
 		getSanityRouteIntro('now'),

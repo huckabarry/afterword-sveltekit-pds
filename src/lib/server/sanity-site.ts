@@ -100,6 +100,8 @@ const SANITY_PROJECT_ID = 'ea0gp9o5';
 const SANITY_DATASET = 'production';
 const SANITY_API_VERSION = '2025-02-19';
 const CACHE_TTL_MS = 5 * 60 * 1000;
+export const SANITY_PUBLIC_CACHE_CONTROL =
+	'public, max-age=60, s-maxage=600, stale-while-revalidate=86400';
 
 const memoryCache = new Map<string, { expiresAt: number; value: unknown }>();
 

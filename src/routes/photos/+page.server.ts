@@ -1,9 +1,13 @@
 import { getGallerySnapshot } from '$lib/server/gallery-snapshot';
-import { getSanityRouteIntro } from '$lib/server/sanity-site';
+import { getSanityRouteIntro, SANITY_PUBLIC_CACHE_CONTROL } from '$lib/server/sanity-site';
 
 export const prerender = false;
 
 export async function load(event) {
+	event.setHeaders({
+		'cache-control': SANITY_PUBLIC_CACHE_CONTROL
+	});
+
 	const [photos, intro] = await Promise.all([
 		getGallerySnapshot(event),
 		getSanityRouteIntro('photos')
