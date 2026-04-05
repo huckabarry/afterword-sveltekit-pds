@@ -107,6 +107,26 @@ function writeItemsToMemoryCache(cacheKey: string, items: Checkin[]) {
 	});
 }
 
+function sortCheckins(items: Checkin[]) {
+	return items
+		.slice()
+		.sort((left, right) => right.visitedAt.getTime() - left.visitedAt.getTime());
+}
+
+function mergeCheckins(existing: Checkin[], incoming: Checkin[]) {
+	const merged = new Map<string, Checkin>();
+
+	for (const item of existing) {
+		merged.set(item.slug || item.id || item.uri, item);
+	}
+
+	for (const item of incoming) {
+		merged.set(item.slug || item.id || item.uri, item);
+	}
+
+	return sortCheckins(Array.from(merged.values()));
+}
+
 async function rebuildCheckinsSnapshot(cacheKey: string, context?: CheckinsSnapshotContext) {
 	const scope = getCheckinsSnapshotScope();
 	const inflight = scope.__afterwordCheckinsSnapshotRefreshes?.get(cacheKey);
@@ -187,4 +207,42 @@ export async function refreshCheckinsSnapshot(context?: CheckinsSnapshotContext)
 	const bucket = getBucket(context);
 	const cacheKey = bucket ? getBucketCacheKey(bucket) : 'default';
 	return rebuildCheckinsSnapshot(cacheKey, context);
+}
+
+export async function mergeIntoCheckinsSnapshot(
+	context: CheckinsSnapshotContext | undefined,
+	incoming: Checkin[]
+) {
+	if (!incoming.length) {
+		return [];
+	}
+
+	const scope = getCheckinsSnapshotScope();
+	const bucket = getBucket(context);
+	const cacheKey = bucket ? getBucketCacheKey(bucket) : 'default';
+	const cached = scope.__afterwordCheckinsSnapshotCache?.get(cacheKey);
+
+	let baseItems = cached?.items || [];
+
+	if (!baseItems.length && bucket) {
+		try {
+			const snapshot = await readCheckinsSnapshotFromR2(bucket);
+			baseItems = snapshot?.items || [];
+		} catch {
+			baseItems = [];
+		}
+	}
+
+	const merged = mergeCheckins(baseItems, incoming);
+	writeItemsToMemoryCache(cacheKey, merged);
+
+	if (bucket) {
+		try {
+			await writeCheckinsSnapshotToR2(bucket, merged);
+		} catch {
+			// Keep the in-memory snapshot even if the R2 write fails.
+		}
+	}
+
+	return merged;
 }

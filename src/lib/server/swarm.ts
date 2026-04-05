@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private';
 import { error, redirect, type Cookies, type RequestEvent } from '@sveltejs/kit';
 import { hydrateCheckinRecord, type Checkin } from '$lib/server/atproto';
 import { upsertLatestCheckinSnapshot } from '$lib/server/checkin-snapshot';
-import { refreshCheckinsSnapshot } from '$lib/server/checkins-snapshot';
+import { mergeIntoCheckinsSnapshot } from '$lib/server/checkins-snapshot';
 import {
 	createCheckinRecord,
 	getCheckinWriterSession,
@@ -748,6 +748,7 @@ async function syncCheckinItems(
 	let failed = 0;
 	let lastSourceCheckinId: string | null = null;
 	let latestSyncedCheckin: Checkin | null = null;
+	const syncedCheckins: Checkin[] = [];
 
 	for (const checkin of checkins) {
 		const sourceId = normalizeString(checkin.id) || 'unknown';
@@ -783,6 +784,7 @@ async function syncCheckinItems(
 				) {
 					latestSyncedCheckin = syncedCheckin;
 				}
+				syncedCheckins.push(syncedCheckin);
 			} else {
 				const result = await createCheckinRecord(nextRecord.record);
 				const recordUri = normalizeString(result.uri);
@@ -812,6 +814,7 @@ async function syncCheckinItems(
 				) {
 					latestSyncedCheckin = syncedCheckin;
 				}
+				syncedCheckins.push(syncedCheckin);
 			}
 			imported += 1;
 			lastSourceCheckinId = nextRecord.sourceId;
@@ -828,9 +831,9 @@ async function syncCheckinItems(
 		await upsertLatestCheckinSnapshot(event, latestSyncedCheckin);
 	}
 
-	if (imported > 0) {
-		await refreshCheckinsSnapshot(event).catch((snapshotError) => {
-			console.warn('[swarm] Unable to refresh check-ins snapshot:', snapshotError);
+	if (syncedCheckins.length) {
+		await mergeIntoCheckinsSnapshot(event, syncedCheckins).catch((snapshotError) => {
+			console.warn('[swarm] Unable to merge check-ins snapshot:', snapshotError);
 		});
 	}
 
