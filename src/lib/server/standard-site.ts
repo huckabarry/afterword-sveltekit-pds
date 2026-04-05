@@ -13,7 +13,6 @@ const GET_RECORD_NSID = 'com.atproto.repo.getRecord';
 const LIST_RECORDS_NSID = 'com.atproto.repo.listRecords';
 const UPLOAD_BLOB_NSID = 'com.atproto.repo.uploadBlob';
 const LEGACY_LEAFLET_PUBLICATION_COLLECTION = 'pub.leaflet.publication';
-const LEGACY_LEAFLET_BASE_PATH = 'afterword.leaflet.pub';
 const SESSION_CACHE_TTL_MS = 1000 * 60 * 20;
 const MAX_INLINE_IMAGE_UPLOADS_PER_SYNC = 3;
 
@@ -456,20 +455,6 @@ async function findPreferredPublicationRecord(event: Pick<RequestEvent, 'url'>) 
 	};
 }
 
-async function findPreferredLeafletPublicationRecord(session: AtprotoSession) {
-	const payload = await listRecords(session, LEGACY_LEAFLET_PUBLICATION_COLLECTION);
-	const records = payload.records || [];
-
-	return (
-		records.find(
-			(record) =>
-				String(record.value?.base_path || '')
-					.trim()
-					.toLowerCase() === LEGACY_LEAFLET_BASE_PATH
-		) || null
-	);
-}
-
 async function getPreferredDocumentPublicationAtUri(event: Pick<RequestEvent, 'url'>) {
 	return (
 		(await getStandardSitePublicationAtUri(event)) ||
@@ -533,10 +518,6 @@ export async function getStandardSiteDocumentAtUri(slug: string) {
 
 function isLeafletPublicationAtUri(publicationAtUri: string) {
 	return String(publicationAtUri || '').includes(`/${LEGACY_LEAFLET_PUBLICATION_COLLECTION}/`);
-}
-
-function getLeafletPublicUrl(rkey: string) {
-	return rkey ? `https://${LEGACY_LEAFLET_BASE_PATH}/${rkey}` : null;
 }
 
 function createLeafletTextBlocks(text: string) {

@@ -72,7 +72,6 @@ export type PhotoItem = {
 export type GhostStandardSiteWriteback = {
 	documentAtUri: string;
 	publicationAtUri: string;
-	publicUrl?: string | null;
 	syncedAt?: string;
 };
 
@@ -504,9 +503,6 @@ function mergeAfterwordStandardSiteHead(existingHead: string, metadata: GhostSta
 
 	lines.push(buildStandardSiteMetaTag('afterword:standard-site-document', metadata.documentAtUri));
 	lines.push(buildStandardSiteMetaTag('afterword:standard-site-publication', metadata.publicationAtUri));
-	if (metadata.publicUrl) {
-		lines.push(buildStandardSiteMetaTag('afterword:leaflet-url', metadata.publicUrl));
-	}
 	lines.push(
 		buildStandardSiteMetaTag(
 			'afterword:last-synced-at',
