@@ -27,7 +27,12 @@ export async function GET(event) {
 					freshnessMs: 1000 * 60 * 4
 				});
 
-	return json(page, {
+	const filteredPage = {
+		...page,
+		statuses: page.statuses.filter((status) => !status.isReply)
+	};
+
+	return json(filteredPage, {
 		headers: {
 			'cache-control': 'public, max-age=60, s-maxage=240, stale-while-revalidate=600'
 		}

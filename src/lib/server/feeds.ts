@@ -1,5 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import { getStatusPage } from '$lib/server/atproto';
+import { getStatusPage, type StatusPost } from '$lib/server/atproto';
 import {
 	EARLIER_WEB_STREAM_PAGE_SIZE,
 	getEarlierWebStreamHydratedPage
@@ -59,6 +59,39 @@ function normalizeDescription(value: string) {
 
 function toAbsoluteUrl(origin: string, value: string) {
 	return new URL(value, origin).toString();
+}
+
+function renderStatusFeedHtml(status: StatusPost) {
+	const parts: string[] = [];
+	const baseHtml = String(status.html || '').trim();
+
+	if (baseHtml) {
+		parts.push(baseHtml);
+	} else if (status.text) {
+		parts.push(`<p>${escapeXml(status.text)}</p>`);
+	}
+
+	if (status.external?.uri) {
+		const title = escapeXml(status.external.title || status.external.domain || status.external.uri);
+		const description = String(status.external.description || '').trim();
+		parts.push(
+			[
+				'<p>',
+				`Shared link: <a href="${escapeXml(status.external.uri)}">${title}</a>`,
+				description ? `<br>${escapeXml(description)}` : '',
+				'</p>'
+			].join('')
+		);
+	}
+
+	for (const image of status.images) {
+		if (!image.fullsize) continue;
+		parts.push(
+			`<p><img src="${escapeXml(image.fullsize)}" alt="${escapeXml(image.alt || '')}"></p>`
+		);
+	}
+
+	return parts.join('');
 }
 
 function toRssItem(entry: FeedEntry) {
@@ -166,11 +199,11 @@ export async function getStatusFeedEntries(origin: string) {
 		limit: 20
 	});
 
-	return page.statuses.map((status) => ({
+	return page.statuses.filter((status) => !status.isReply).map((status) => ({
 		id: status.uri || status.id,
 		url: toAbsoluteUrl(origin, `/status/${status.slug}`),
 		summary: normalizeDescription(status.text),
-		contentHtml: status.html || `<p>${escapeXml(status.text)}</p>`,
+		contentHtml: renderStatusFeedHtml(status),
 		datePublished: status.date,
 		image: status.images[0]?.fullsize || null
 	}));
