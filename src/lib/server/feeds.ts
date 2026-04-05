@@ -238,7 +238,7 @@ export async function getMediaFeedEntries(event: RequestEvent) {
 	return page.items.map((item) => ({
 		id: item.id,
 		url: toAbsoluteUrl(event.url.origin, item.href),
-		title: item.title,
+		title: item.kind === 'track' ? `Now listening: ${item.title}` : item.title,
 		summary: normalizeDescription(item.summary),
 		contentHtml: renderMediaFeedHtml(item, event.url.origin),
 		datePublished: new Date(item.dateIso),
@@ -285,7 +285,7 @@ export async function getCheckinFeedEntries(event: RequestEvent) {
 	return checkins.map((checkin) => ({
 		id: checkin.uri || checkin.id,
 		url: toAbsoluteUrl(event.url.origin, `/check-ins/${checkin.slug}`),
-		title: checkin.name,
+		title: `Check-In: ${checkin.name}`,
 		summary: normalizeDescription(checkin.note || checkin.excerpt || checkin.place || checkin.name),
 		contentHtml: [
 			checkin.note ? `<p>${escapeXml(checkin.note)}</p>` : '',
