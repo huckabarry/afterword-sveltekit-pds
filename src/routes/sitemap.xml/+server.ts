@@ -1,4 +1,5 @@
 import { getCheckins, getStatusesLite } from '$lib/server/atproto';
+import { filterPublicCheckins } from '$lib/server/checkin-visibility';
 import { getBlogPosts, getPublicTags } from '$lib/server/ghost';
 
 const STATIC_PATHS = [
@@ -66,7 +67,7 @@ export async function GET({ url }) {
 		...STATIC_PATHS.map((path) => toUrlEntry(origin, path)),
 		...posts.map((post) => toUrlEntry(origin, post.path, post.updatedAt || post.publishedAt)),
 		...statuses.map((status) => toUrlEntry(origin, `/status/${status.slug}`, status.date)),
-		...checkins.map((checkin) =>
+		...filterPublicCheckins(checkins).map((checkin) =>
 			toUrlEntry(origin, normalizePath(checkin.canonicalPath), checkin.visitedAt)
 		),
 		...tags.map((tag) => toUrlEntry(origin, tag.path))

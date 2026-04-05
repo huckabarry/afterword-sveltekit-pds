@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { getCheckinBySlug } from '$lib/server/atproto';
+import { isPublicCheckin } from '$lib/server/checkin-visibility';
 
 function escapeXml(value: string) {
 	return String(value || '')
@@ -19,7 +20,7 @@ function truncate(value: string, length: number) {
 export async function GET({ params }) {
 	const item = await getCheckinBySlug(params.slug);
 
-	if (!item) {
+	if (!item || !isPublicCheckin(item)) {
 		throw error(404, 'Check-in not found');
 	}
 

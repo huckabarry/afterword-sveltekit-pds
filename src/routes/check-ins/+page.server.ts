@@ -1,4 +1,5 @@
 import { getCheckinsSnapshot } from '$lib/server/checkins-snapshot';
+import { filterPublicCheckins } from '$lib/server/checkin-visibility';
 
 export async function load(event) {
 	event.setHeaders({
@@ -6,6 +7,6 @@ export async function load(event) {
 	});
 
 	return {
-		checkins: await getCheckinsSnapshot(event)
+		checkins: filterPublicCheckins(await getCheckinsSnapshot(event))
 	};
 }

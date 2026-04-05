@@ -1,5 +1,6 @@
 import { getCheckins, type Checkin } from '$lib/server/atproto';
 import { getLatestCheckinSnapshot } from '$lib/server/checkin-snapshot';
+import { filterPublicCheckins, isPublicCheckin } from '$lib/server/checkin-visibility';
 import { getNowIntroContent } from '$lib/server/content';
 import { getEarlierWebOnThisDayPosts } from '$lib/server/earlier-web';
 import { getNowPosts, getPhotoItems, type BlogPost } from '$lib/server/ghost';
@@ -67,10 +68,10 @@ export async function load(event) {
 		fallbackPhotos[0] ||
 		null;
 	const latestCheckin =
-		liveCheckins
+		filterPublicCheckins(liveCheckins)
 			.slice()
 			.sort((a: Checkin, b: Checkin) => b.visitedAt.getTime() - a.visitedAt.getTime())[0] ||
-		latestCheckinSnapshot ||
+		(isPublicCheckin(latestCheckinSnapshot) ? latestCheckinSnapshot : null) ||
 		null;
 
 	return {

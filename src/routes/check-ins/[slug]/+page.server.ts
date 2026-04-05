@@ -1,19 +1,22 @@
 import { error } from '@sveltejs/kit';
 import { getCheckinBySlug, getCheckins } from '$lib/server/atproto';
+import { filterPublicCheckins, isPublicCheckin } from '$lib/server/checkin-visibility';
 import { getCheckinsSnapshot } from '$lib/server/checkins-snapshot';
 
 export async function load({ params, url, platform }) {
-	const snapshotCheckins = await getCheckinsSnapshot({ platform });
+	const snapshotCheckins = filterPublicCheckins(await getCheckinsSnapshot({ platform }));
 	const latestSnapshotSlug = snapshotCheckins[0]?.slug || null;
 	const shouldPreferLive = params.slug === latestSnapshotSlug;
 
-	const liveCheckins = shouldPreferLive ? await getCheckins().catch(() => []) : [];
+	const liveCheckins = shouldPreferLive
+		? filterPublicCheckins(await getCheckins().catch(() => []))
+		: [];
 	const checkins = liveCheckins.length ? liveCheckins : snapshotCheckins;
 	const item =
 		checkins.find((entry) => entry.slug === params.slug) ||
 		(shouldPreferLive ? await getCheckinBySlug(params.slug) : null);
 
-	if (!item) {
+	if (!item || !isPublicCheckin(item)) {
 		throw error(404, 'Check-in not found');
 	}
 
