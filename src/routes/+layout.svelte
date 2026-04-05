@@ -29,42 +29,20 @@
 	let galleryThumbsPrewarmed = false;
 	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
 	const profile = $derived(data.profile);
-	const primaryNavLinks = $derived(
-		data.primaryNavLinks?.length
-			? data.primaryNavLinks
-			: [
-					{ href: '/', label: 'Home', openInNewTab: false },
-					{ href: '/status', label: 'Status', openInNewTab: false },
-					{ href: '/photos', label: 'Gallery', openInNewTab: false },
-					{ href: '/about', label: 'About', openInNewTab: false }
-				]
-	);
-	const secondaryNavLinks = $derived(
-		data.secondaryNavLinks?.length
-			? data.secondaryNavLinks
-			: [
-					{ href: '/hello', label: 'Hello', openInNewTab: false },
-					{ href: '/now', label: 'Now', openInNewTab: false },
-					{ href: '/check-ins', label: 'Check-ins', openInNewTab: false },
-					{ href: '/media', label: 'Media', openInNewTab: false },
-					{ href: '/colophon', label: 'Colophon', openInNewTab: false },
-					{ href: '/subscribe', label: 'Subscribe', openInNewTab: false }
-				]
-	);
-	const footerNavLinks = $derived(
-		data.footerNavLinks?.length
-			? data.footerNavLinks
-			: [
-					{ href: '/about', label: 'About', openInNewTab: false },
-					{ href: '/colophon', label: 'Colophon', openInNewTab: false },
-					{ href: '/subscribe', label: 'Subscribe', openInNewTab: false },
-					...profile.verificationLinks
-						.filter(
-							(link) => link.url !== '/' && !['afterword', 'bluesky'].includes(link.label.toLowerCase())
-						)
-						.map((link) => ({ href: link.url, label: link.label, openInNewTab: true }))
-				]
-	);
+	const primaryNavLinks = [
+		{ href: '/', label: 'Home' },
+		{ href: '/status', label: 'Status' },
+		{ href: '/photos', label: 'Gallery' },
+		{ href: '/about', label: 'About' }
+	];
+	const secondaryNavLinks = [
+		{ href: '/hello', label: 'Hello' },
+		{ href: '/now', label: 'Now' },
+		{ href: '/check-ins', label: 'Check-ins' },
+		{ href: '/media', label: 'Media' },
+		{ href: '/colophon', label: 'Colophon' },
+		{ href: '/subscribe', label: 'Subscribe' }
+	];
 
 	async function openSearch() {
 		navMenuOpen = false;
@@ -258,7 +236,7 @@
 	/>
 	<meta
 		name="description"
-		content={data.siteDescription}
+		content="Short updates, photos, and longer reflections on place, music, design, and daily life."
 	/>
 </svelte:head>
 
@@ -305,8 +283,6 @@
 									<a
 										class="site-nav-item"
 										href={link.href}
-										target={link.openInNewTab ? '_blank' : undefined}
-										rel={link.openInNewTab ? 'noreferrer' : undefined}
 										aria-current={isCurrentPath(link.href) ? 'page' : undefined}
 										data-sveltekit-preload-data={link.href === '/status' ? 'viewport' : undefined}
 										data-sveltekit-preload-code={link.href === '/status' ? 'viewport' : undefined}
@@ -334,8 +310,6 @@
 												<a
 													class="site-nav-menu__link"
 													href={link.href}
-													target={link.openInNewTab ? '_blank' : undefined}
-													rel={link.openInNewTab ? 'noreferrer' : undefined}
 													role="menuitem"
 													aria-current={isCurrentPath(link.href) ? 'page' : undefined}
 													onclick={closeNavMenu}
@@ -365,18 +339,14 @@
 
 		<footer class="site-foot">
 			<div class="site-foot-nav">
-				{#each footerNavLinks as link, index}
-					{#if index > 0}
-						<span class="site-foot-separator">/</span>
-					{/if}
-					<a
-						class="site-foot-nav-item"
-						href={link.href}
-						target={link.openInNewTab ? '_blank' : undefined}
-						rel={link.openInNewTab ? 'noreferrer me' : undefined}
-					>
-						{link.label}
-					</a>
+				<a class="site-foot-nav-item" href="/about">About</a>
+				<span class="site-foot-separator">/</span>
+				<a class="site-foot-nav-item" href="/colophon">Colophon</a>
+				<span class="site-foot-separator">/</span>
+				<a class="site-foot-nav-item" href="/subscribe">Subscribe</a>
+				{#each profile.verificationLinks.filter((link) => link.url !== '/' && !['afterword', 'bluesky'].includes(link.label.toLowerCase())) as link}
+					<span class="site-foot-separator">/</span>
+					<a class="site-foot-nav-item" href={link.url} target="_blank" rel="noreferrer me">{link.label}</a>
 				{/each}
 			</div>
 		</footer>

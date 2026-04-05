@@ -1,20 +1,7 @@
 import { getColophonContent } from '$lib/server/content';
-import { getSanityEditorialPage, SANITY_PUBLIC_CACHE_CONTROL } from '$lib/server/sanity-site';
 
-export const prerender = false;
+export const prerender = true;
 
-export async function load(event) {
-	event.setHeaders({
-		'cache-control': SANITY_PUBLIC_CACHE_CONTROL
-	});
-
-	const [content, page] = await Promise.all([
-		Promise.resolve(getColophonContent()),
-		getSanityEditorialPage('colophon')
-	]);
-
-	return {
-		...content,
-		page
-	};
+export function load() {
+	return getColophonContent();
 }

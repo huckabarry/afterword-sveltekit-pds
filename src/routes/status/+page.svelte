@@ -7,11 +7,6 @@
 		data
 	}: {
 		data: {
-			intro: {
-				title: string;
-				description: string;
-				paragraphs: string[];
-			};
 			statusPage: StatusFeedPage;
 			authorAvatarUrl: string;
 		};
@@ -82,19 +77,11 @@
 </script>
 
 <svelte:head>
-	<title>{data.intro.title} | Bryan Robb</title>
-	<meta name="description" content={data.intro.description} />
+	<title>Status | Bryan Robb</title>
 </svelte:head>
 
 <section class="stream-head">
-	<h1 class="stream-head__title">{data.intro.title}</h1>
-	{#if data.intro.paragraphs.length}
-		<div class="stream-head__lede">
-			{#each data.intro.paragraphs as paragraph}
-				<p>{paragraph}</p>
-			{/each}
-		</div>
-	{/if}
+	<h1 class="stream-head__title">Status Updates</h1>
 </section>
 
 <section class="status-list">

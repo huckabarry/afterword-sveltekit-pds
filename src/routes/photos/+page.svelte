@@ -1,18 +1,7 @@
 <script lang="ts">
 	import type { GalleryPhotoItem } from '$lib/server/gallery-assets';
 
-	let {
-		data
-	}: {
-		data: {
-			intro: {
-				title: string;
-				description: string;
-				paragraphs: string[];
-			};
-			photos: GalleryPhotoItem[];
-		};
-	} = $props();
+	let { data }: { data: { photos: GalleryPhotoItem[] } } = $props();
 	let activeIndex = $state<number | null>(null);
 	const prefetchedLightboxUrls = new Set<string>();
 
@@ -100,21 +89,18 @@
 </script>
 
 <svelte:head>
-	<title>{data.intro.title} | Bryan Robb</title>
-	<meta name="description" content={data.intro.description} />
+	<title>Photos | Bryan Robb</title>
 </svelte:head>
 
 <svelte:window onkeydown={onKeydown} />
 
 <section class="stream-head">
-	<h1 class="stream-head__title">{data.intro.title}</h1>
-	{#if data.intro.paragraphs.length}
-		<div class="stream-head__lede">
-			{#each data.intro.paragraphs as paragraph}
-				<p>{paragraph}</p>
-			{/each}
-		</div>
-	{/if}
+	<h1 class="stream-head__title">Visual Notes</h1>
+	<div class="stream-head__lede">
+		<p>
+			Most of these are photos of places I've visited, street scenes, and landscapes. Photography is just a hobby for me, and I'm still learning and trying new things. It's just another way for me to express myself.
+		</p>
+	</div>
 </section>
 
 <section class="photo-grid" aria-label="Photo gallery">
