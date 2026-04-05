@@ -402,14 +402,15 @@
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Media</p>
-				<h2>Localize media assets</h2>
+				<h2>Sync media records</h2>
 			</div>
 		</div>
 
 		<p class="admin-field-note">
-			Use this screen to move remote media artwork into your PDS. Music import uploads track and
-			album art from your archive-backed entries, and the Popfeed pass queues books whose posters
-			need manual cleanup in Popfeed without editing the original Popfeed records.
+			Use this screen to keep media records tidy across your archive, your PDS, and the public site.
+			Music import writes archive-backed track and album records into your PDS, including notes,
+			links, and artwork. The Popfeed pass queues books whose posters need manual cleanup in Popfeed
+			without editing the original Popfeed records.
 		</p>
 
 		<div class="admin-form-actions">
@@ -455,18 +456,18 @@
 			{/if}
 	</div>
 
-	<div class="admin-card">
+		<div class="admin-card">
 		<div class="admin-card__head">
 			<div>
 				<p class="admin-eyebrow">Music</p>
-				<h2>Import track and album artwork</h2>
+				<h2>Import track and album records</h2>
 			</div>
 		</div>
 
 		<p class="admin-field-note">
-			This uploads artwork for archive-backed tracks and albums into your PDS music collections so
-			the public music pages can prefer local blobs instead of remote Apple Music or other provider
-			images.
+			This imports archive-backed tracks and albums into your PDS music collections, including artwork,
+			listen links, source links, and note content. The public music pages can stay snapshot-backed
+			for speed while your PDS keeps a fuller canonical copy.
 		</p>
 
 		<div class="music-cache-status">

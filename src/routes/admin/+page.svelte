@@ -40,10 +40,12 @@
 				stream.
 			</p>
 			<p>
-				<a href="/admin/checkins">Check-ins</a> can now sync Swarm activity into your own PDS records.
+				<a href="/admin/checkins">Check-ins</a> syncs Swarm activity into your own PDS records and
+				refreshes the local read layer the public site uses.
 			</p>
 			<p>
-				<a href="/admin/media">Media</a> runs PDS syncs that localize music artwork and Popfeed book covers.
+				<a href="/admin/media">Media</a> imports archive-backed music records into your PDS and
+				runs Popfeed cover review tools.
 			</p>
 			<p>
 				<a href="/admin/photos">Images</a> manages the synced gallery archive and local image URLs.
