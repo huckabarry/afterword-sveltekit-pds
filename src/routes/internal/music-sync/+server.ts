@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { error, json } from '@sveltejs/kit';
 import { refreshMediaTimelineSnapshot } from '$lib/server/media-timeline';
-import { getAlbums, getMusicArchiveDigest, getRemoteMusicImportEntries, getTracks } from '$lib/server/music';
+import { getAlbums, getMusicArchiveDigest, getMusicImportEntries, getTracks } from '$lib/server/music';
 import { writeMusicSnapshotToR2 } from '$lib/server/music-r2';
 import { importMusicToPds } from '$lib/server/pds-music';
 
@@ -63,7 +63,7 @@ export async function POST(event) {
 	const offset = normalizeOffset(body?.offset);
 
 	try {
-		const music = await getRemoteMusicImportEntries();
+		const music = await getMusicImportEntries(event);
 		const tracks = collections.includes('tracks') ? music.tracks : [];
 		const albums = collections.includes('albums') ? music.albums : [];
 		const result = await importMusicToPds({
@@ -89,7 +89,7 @@ export async function POST(event) {
 		await refreshMediaTimelineSnapshot(event);
 
 		return json({
-			source: 'remote',
+			source: 'archive',
 			snapshot,
 			...result
 		});
