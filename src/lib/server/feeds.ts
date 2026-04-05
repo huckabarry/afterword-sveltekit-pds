@@ -8,6 +8,8 @@ import { getBlogPosts, stripImagesFromHtml, type BlogPost } from '$lib/server/gh
 import { attachMediaCoverDelivery } from '$lib/server/media-cover-delivery';
 import { getMediaTimelinePage, MEDIA_TIMELINE_PAGE_SIZE } from '$lib/server/media-timeline';
 import type { MediaTimelineItem } from '$lib/types/media-timeline';
+import { getCheckinsSnapshot } from '$lib/server/checkins-snapshot';
+import { filterPublicCheckins } from '$lib/server/checkin-visibility';
 
 const SITE_WRITING_TAGS = new Set([
 	'field-notes',
@@ -275,4 +277,41 @@ export async function getEarlierWebFeedEntries(event: RequestEvent) {
 		datePublished: new Date(post.publishedAt),
 		image: post.coverImage
 	}));
+}
+
+export async function getCheckinFeedEntries(event: RequestEvent) {
+	const checkins = filterPublicCheckins(await getCheckinsSnapshot(event)).slice(0, 20);
+
+	return checkins.map((checkin) => ({
+		id: checkin.uri || checkin.id,
+		url: toAbsoluteUrl(event.url.origin, `/check-ins/${checkin.slug}`),
+		title: checkin.name,
+		summary: normalizeDescription(checkin.note || checkin.excerpt || checkin.place || checkin.name),
+		contentHtml: [
+			checkin.note ? `<p>${escapeXml(checkin.note)}</p>` : '',
+			checkin.place ? `<p>${escapeXml(checkin.place)}</p>` : '',
+			checkin.coverImage
+				? `<p><img src="${escapeXml(checkin.coverImage)}" alt="${escapeXml(checkin.name || 'Check-in')}"></p>`
+				: ''
+		]
+			.filter(Boolean)
+			.join(''),
+		datePublished: checkin.visitedAt,
+		image: checkin.coverImage
+	}));
+}
+
+export async function getEverythingFeedEntries(event: RequestEvent, limit = 50) {
+	const origin = event.url.origin;
+	const [writing, status, media, checkins, earlierWeb] = await Promise.all([
+		getSiteWritingFeedEntries(origin),
+		getStatusFeedEntries(origin),
+		getMediaFeedEntries(event),
+		getCheckinFeedEntries(event),
+		getEarlierWebFeedEntries(event)
+	]);
+
+	return [...writing, ...status, ...media, ...checkins, ...earlierWeb]
+		.sort((left, right) => right.datePublished.getTime() - left.datePublished.getTime())
+		.slice(0, limit);
 }
