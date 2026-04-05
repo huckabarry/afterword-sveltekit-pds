@@ -238,7 +238,12 @@ export async function getMediaFeedEntries(event: RequestEvent) {
 	return page.items.map((item) => ({
 		id: item.id,
 		url: toAbsoluteUrl(event.url.origin, item.href),
-		title: item.kind === 'track' ? `Now listening: ${item.title}` : item.title,
+		title:
+			item.kind === 'track'
+				? `Now listening: ${item.title}`
+				: item.kind === 'album'
+					? `Album Rotation: ${item.title}`
+					: item.title,
 		summary: normalizeDescription(item.summary),
 		contentHtml: renderMediaFeedHtml(item, event.url.origin),
 		datePublished: new Date(item.dateIso),
