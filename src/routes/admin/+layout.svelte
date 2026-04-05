@@ -2,15 +2,34 @@
 	let { children, data } = $props();
 	let menuOpen = $state(false);
 
-	const navItems = [
-		{ href: '/admin', label: 'Home' },
-		{ href: '/admin/profile', label: 'Profile' },
-		{ href: '/admin/posts', label: 'Posts' },
-		{ href: '/admin/checkins', label: 'Check-ins' },
-		{ href: '/admin/media', label: 'Media' },
-		{ href: '/admin/photos', label: 'Images' },
-		{ href: '/admin/webmentions', label: 'Webmentions' },
-		{ href: '/admin/standard-site', label: 'Standard Site' }
+	const navSections = [
+		{
+			label: 'Workspace',
+			items: [{ href: '/admin', label: 'Home' }]
+		},
+		{
+			label: 'Content',
+			items: [
+				{ href: '/admin/site', label: 'Site' },
+				{ href: '/admin/navigation', label: 'Navigation' },
+				{ href: '/admin/pages', label: 'Pages' },
+				{ href: '/admin/profile', label: 'Profile' },
+				{ href: '/admin/posts', label: 'Posts' },
+				{ href: '/admin/photos', label: 'Images' }
+			]
+		},
+		{
+			label: 'Signals',
+			items: [
+				{ href: '/admin/checkins', label: 'Check-ins' },
+				{ href: '/admin/media', label: 'Media' },
+				{ href: '/admin/webmentions', label: 'Webmentions' }
+			]
+		},
+		{
+			label: 'Publishing',
+			items: [{ href: '/admin/standard-site', label: 'Standard Site' }]
+		}
 	];
 
 	function isActive(href: string) {
@@ -45,19 +64,27 @@
 				<p class="admin-eyebrow">Afterword</p>
 				<h1 class="admin-title">Admin</h1>
 				<p class="admin-sidebar__tagline">
-					A quieter publishing workspace for profile, posts, images, and site upkeep.
+					A quieter publishing workspace for site structure, editorial pages, archives, and
+					syndication.
 				</p>
 			</div>
 
 			<nav class="admin-sidebar__nav" aria-label="Admin">
-				{#each navItems as item}
-					<a
-						class:admin-sidebar__link--active={isActive(item.href)}
-						class="admin-sidebar__link"
-						href={item.href}
-					>
-						<span>{item.label}</span>
-					</a>
+				{#each navSections as section}
+					<div class="admin-sidebar__section">
+						<p class="admin-sidebar__section-label">{section.label}</p>
+						<div class="admin-sidebar__section-links">
+							{#each section.items as item}
+								<a
+									class:admin-sidebar__link--active={isActive(item.href)}
+									class="admin-sidebar__link"
+									href={item.href}
+								>
+									<span>{item.label}</span>
+								</a>
+							{/each}
+						</div>
+					</div>
 				{/each}
 			</nav>
 
@@ -73,6 +100,12 @@
 					<p class="admin-topbar__title">
 						{#if data.pathname === '/admin'}
 							Home
+						{:else if data.pathname === '/admin/site'}
+							Site
+						{:else if data.pathname === '/admin/navigation'}
+							Navigation
+						{:else if data.pathname.startsWith('/admin/pages')}
+							Pages
 						{:else if data.pathname === '/admin/profile'}
 							Profile
 						{:else if data.pathname.startsWith('/admin/posts')}
@@ -106,15 +139,20 @@
 						</button>
 						{#if menuOpen}
 							<nav class="admin-mobile-nav" id="admin-mobile-nav" aria-label="Admin">
-								{#each navItems as item}
-									<a
-										class:admin-mobile-nav__link--active={isActive(item.href)}
-										class="admin-mobile-nav__link"
-										href={item.href}
-										onclick={closeMenu}
-									>
-										<span>{item.label}</span>
-									</a>
+								{#each navSections as section}
+									<div class="admin-mobile-nav__section">
+										<p class="admin-mobile-nav__section-label">{section.label}</p>
+										{#each section.items as item}
+											<a
+												class:admin-mobile-nav__link--active={isActive(item.href)}
+												class="admin-mobile-nav__link"
+												href={item.href}
+												onclick={closeMenu}
+											>
+												<span>{item.label}</span>
+											</a>
+										{/each}
+									</div>
 								{/each}
 							</nav>
 						{/if}

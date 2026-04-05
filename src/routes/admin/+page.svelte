@@ -33,6 +33,18 @@
 
 		<div class="admin-link-list">
 			<p>
+				<a href="/admin/site">Site</a> sets the shell-level voice: title, taglines, and search
+				copy.
+			</p>
+			<p>
+				<a href="/admin/navigation">Navigation</a> controls the primary row, the menu button
+				list, and the footer links.
+			</p>
+			<p>
+				<a href="/admin/pages">Pages</a> gives the quieter editorial pages a real writing
+				workspace.
+			</p>
+			<p>
 				<a href="/admin/profile">Profile</a> keeps your about copy, avatar, and public identity tidy.
 			</p>
 			<p>

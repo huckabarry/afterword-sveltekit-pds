@@ -29,20 +29,11 @@
 	let galleryThumbsPrewarmed = false;
 	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
 	const profile = $derived(data.profile);
-	const primaryNavLinks = [
-		{ href: '/', label: 'Home' },
-		{ href: '/status', label: 'Status' },
-		{ href: '/photos', label: 'Gallery' },
-		{ href: '/about', label: 'About' }
-	];
-	const secondaryNavLinks = [
-		{ href: '/hello', label: 'Hello' },
-		{ href: '/now', label: 'Now' },
-		{ href: '/check-ins', label: 'Check-ins' },
-		{ href: '/media', label: 'Media' },
-		{ href: '/colophon', label: 'Colophon' },
-		{ href: '/subscribe', label: 'Subscribe' }
-	];
+	const siteSettings = $derived(data.cms.settings);
+	const siteTitle = $derived(siteSettings.siteTitle || profile.displayName);
+	const primaryNavLinks = $derived(data.cms.navigation.primary);
+	const secondaryNavLinks = $derived(data.cms.navigation.secondary);
+	const footerNavLinks = $derived(data.cms.navigation.footer);
 
 	async function openSearch() {
 		navMenuOpen = false;
@@ -281,7 +272,7 @@
 				<div class="site-title-row">
 					<div class="site-title p-name">
 						<a class="u-url" href="/">
-							<span class="site-title__name">{profile.displayName}</span>
+							<span class="site-title__name">{siteTitle}</span>
 						</a>
 					</div>
 
@@ -298,6 +289,7 @@
 						</svg>
 					</button>
 				</div>
+				<p class="site-subtitle">{siteSettings.siteTagline}</p>
 
 				<div class="site-nav-row">
 					<nav class="site-nav" aria-label="Primary">
@@ -363,16 +355,18 @@
 
 		<footer class="site-foot">
 			<div class="site-foot-nav">
-				<a class="site-foot-nav-item" href="/about">About</a>
-				<span class="site-foot-separator">/</span>
-				<a class="site-foot-nav-item" href="/colophon">Colophon</a>
-				<span class="site-foot-separator">/</span>
-				<a class="site-foot-nav-item" href="/subscribe">Subscribe</a>
+				{#each footerNavLinks as link, index}
+					<a class="site-foot-nav-item" href={link.href}>{link.label}</a>
+					{#if index < footerNavLinks.length - 1}
+						<span class="site-foot-separator">/</span>
+					{/if}
+				{/each}
 				{#each profile.verificationLinks.filter((link) => link.url !== '/' && !['afterword', 'bluesky'].includes(link.label.toLowerCase())) as link}
 					<span class="site-foot-separator">/</span>
 					<a class="site-foot-nav-item" href={link.url} target="_blank" rel="noreferrer me">{link.label}</a>
 				{/each}
 			</div>
+			<p class="site-foot-tagline">{siteSettings.footerTagline}</p>
 		</footer>
 	</div>
 {/if}
@@ -396,7 +390,7 @@
 					type="search"
 					name="q"
 					autocomplete="off"
-					placeholder="Search posts, places, tags, and ideas"
+					placeholder={siteSettings.searchPlaceholder}
 				/>
 			</div>
 

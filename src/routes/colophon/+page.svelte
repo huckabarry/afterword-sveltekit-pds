@@ -5,7 +5,7 @@
 		data: {
 			title: string;
 			description: string;
-			paragraphs: string[];
+			html: string;
 		};
 	} = $props();
 </script>
@@ -20,9 +20,7 @@
 	<article class="content content-page">
 		<div class="post-full-content">
 			<section class="content-body">
-				{#each data.paragraphs as paragraph}
-					<p>{paragraph}</p>
-				{/each}
+				{@html data.html}
 				<p>
 					If you’d rather follow along from your own reader, there’s now a
 					<a href="/subscribe">Subscribe page</a> with RSS and JSON feed links for writing,
