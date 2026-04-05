@@ -2,7 +2,7 @@
 	<title>Subscribe | Bryan Robb</title>
 	<meta
 		name="description"
-		content="Subscribe to Afterword by RSS or JSON feed, with options for writing, planning, and status updates."
+		content="Subscribe to Afterword by email, RSS, or JSON feed, with options for writing, planning, status, media, and the full public stream."
 	/>
 	<script
 		defer
@@ -18,6 +18,12 @@
 
 <script lang="ts">
 	const feeds = [
+		{
+			title: 'Everything',
+			description: 'The full public stream from Afterword: writing, status, media, check-ins, and archive posts.',
+			rssUrl: '/everything/feed.xml',
+			jsonUrl: '/everything/feed.json'
+		},
 		{
 			title: 'Writing',
 			description: 'Field notes, planning posts, and other longer writing from Afterword.',
@@ -35,6 +41,12 @@
 			description: 'Short updates pulled from Bluesky into the site.',
 			rssUrl: '/status/feed.xml',
 			jsonUrl: '/status/feed-public.json'
+		},
+		{
+			title: 'Media',
+			description: 'Albums, songs, books, movies, and shows from the media timeline.',
+			rssUrl: '/media/feed.xml',
+			jsonUrl: '/media/feed.json'
 		}
 	];
 </script>
