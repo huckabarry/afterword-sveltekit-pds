@@ -2,8 +2,10 @@ import { fail } from '@sveltejs/kit';
 import { getBlogPostBySlug, getBlogPostsByAnyTag } from '$lib/server/ghost';
 import { getSiteProfile } from '$lib/server/profile';
 import {
+	cleanupDuplicateAfterwordPublications,
 	ensurePublicationRecord,
 	getStandardSitePublicationAtUri,
+	migrateGhostBackedStandardSiteDocuments,
 	syncGhostPostToStandardSite
 } from '$lib/server/standard-site';
 import { requireAdminSession } from '$lib/server/admin';
@@ -43,9 +45,10 @@ export const actions: Actions = {
 		try {
 			const profile = await getSiteProfile(event);
 			const result = await ensurePublicationRecord(event, profile);
+			const cleanup = await cleanupDuplicateAfterwordPublications(event);
 			return {
 				success: true,
-				message: 'Publication record synced.',
+				message: `Publication record synced.${cleanup.deletedCount ? ` Removed ${cleanup.deletedCount} duplicate Afterword publication record${cleanup.deletedCount === 1 ? '' : 's'}.` : ''}`,
 				uri: result.uri
 			};
 		} catch (err) {
@@ -87,6 +90,24 @@ export const actions: Actions = {
 			return fail(500, {
 				error: err instanceof Error ? err.message : 'Unable to sync Ghost post.',
 				slug
+			});
+		}
+	},
+	migrateGhostBackedPosts: async (event) => {
+		await requireAdminSession(event);
+
+		try {
+			const profile = await getSiteProfile(event);
+			await ensurePublicationRecord(event, profile);
+			const cleanup = await cleanupDuplicateAfterwordPublications(event);
+			const migration = await migrateGhostBackedStandardSiteDocuments(event, profile);
+			return {
+				success: true,
+				message: `Migrated ${migration.count} Ghost-backed standard.site documents to your Afterword publication.${cleanup.deletedCount ? ` Removed ${cleanup.deletedCount} duplicate Afterword publication record${cleanup.deletedCount === 1 ? '' : 's'}.` : ''}`
+			};
+		} catch (err) {
+			return fail(500, {
+				error: err instanceof Error ? err.message : 'Unable to migrate Ghost-backed documents.'
 			});
 		}
 	}

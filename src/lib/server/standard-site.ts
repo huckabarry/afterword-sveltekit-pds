@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
-import { stripImagesFromHtml, type BlogPost } from '$lib/server/ghost';
+import { getBlogPosts, stripImagesFromHtml, type BlogPost } from '$lib/server/ghost';
 import { inferImageDimensions, inferImageMimeType } from '$lib/server/image-metadata';
 import type { SiteProfile } from '$lib/server/profile';
 import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-identity';
@@ -471,16 +471,9 @@ async function findPreferredLeafletPublicationRecord(session: AtprotoSession) {
 }
 
 async function getPreferredDocumentPublicationAtUri(event: Pick<RequestEvent, 'url'>) {
-	const session = await createSession();
-	const leafletRecord = await findPreferredLeafletPublicationRecord(session);
-
-	if (leafletRecord?.uri) {
-		return leafletRecord.uri;
-	}
-
 	return (
 		(await getStandardSitePublicationAtUri(event)) ||
-		`at://${session.did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`
+		`at://${(await createSession()).did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`
 	);
 }
 
@@ -805,6 +798,19 @@ export function createDocumentRecord(
 	const text = stripHtml(stripImagesFromHtml(post.html));
 	const isLeafletPublication = isLeafletPublicationAtUri(publicationAtUri);
 	const documentPath = documentPathOverride || (isLeafletPublication ? `/${post.slug}` : post.path);
+	const compatibleContent =
+		leafletBlocksOverride && leafletBlocksOverride.length
+			? {
+					$type: 'pub.leaflet.content',
+					pages: [
+						{
+							id: crypto.randomUUID(),
+							$type: 'pub.leaflet.pages.linearDocument',
+							blocks: leafletBlocksOverride
+						}
+					]
+				}
+			: undefined;
 
 	return {
 		$type: STANDARD_SITE_DOCUMENT_COLLECTION,
@@ -815,23 +821,24 @@ export function createDocumentRecord(
 		ghostPostId: post.id,
 		title: post.title,
 		description: post.excerpt || toExcerpt(text),
-		...(isLeafletPublication
+		...(compatibleContent
 			? {
-					content: {
-						$type: 'pub.leaflet.content',
-						pages: [
-							{
-								id: crypto.randomUUID(),
-								$type: 'pub.leaflet.pages.linearDocument',
-								blocks:
-									leafletBlocksOverride && leafletBlocksOverride.length
-										? leafletBlocksOverride
-										: createLeafletTextBlocks(text)
-							}
-						]
-					}
+					content: compatibleContent
 				}
-			: {}),
+			: isLeafletPublication
+				? {
+						content: {
+							$type: 'pub.leaflet.content',
+							pages: [
+								{
+									id: crypto.randomUUID(),
+									$type: 'pub.leaflet.pages.linearDocument',
+									blocks: createLeafletTextBlocks(text)
+								}
+							]
+						}
+					}
+				: {}),
 		textContent: text,
 		text,
 		...(coverImageBlob
@@ -891,14 +898,8 @@ export async function syncGhostPostToStandardSite(
 	const matchingExistingRecords = allDocuments.filter((record) =>
 		matchesGhostPostRecord(record, post, origin)
 	);
-	const matchingLeafletRecord =
-		matchingExistingRecords.find((record) =>
-			isLeafletPublicationAtUri(String(record.value?.site || ''))
-		) || null;
 	const preferredPublicationAtUri = await getPreferredDocumentPublicationAtUri(event);
-	const publicationAtUri = matchingLeafletRecord?.value?.site
-		? String(matchingLeafletRecord.value.site)
-		: preferredPublicationAtUri;
+	const publicationAtUri = preferredPublicationAtUri;
 	const isLeafletPublication = isLeafletPublicationAtUri(publicationAtUri);
 
 	const publicationResult = await ensurePublicationRecord(event, profile);
@@ -914,22 +915,20 @@ export async function syncGhostPostToStandardSite(
 			);
 		}
 	}
-	if (isLeafletPublication) {
-		try {
-			leafletBlocks = await buildLeafletBlocksFromHtml(session, post.html);
-		} catch (error) {
-			console.warn(
-				'[standard-site] Unable to build rich Leaflet content:',
-				error instanceof Error ? error.message : error
-			);
-		}
-		if (coverImageBlob) {
-			const hasImageBlocks = (leafletBlocks || []).some(
-				(block) => block.block.$type === 'pub.leaflet.blocks.image'
-			);
-			if (!hasImageBlocks) {
-				leafletBlocks = [imageBlock(coverImageBlob), ...(leafletBlocks || [])];
-			}
+	try {
+		leafletBlocks = await buildLeafletBlocksFromHtml(session, post.html);
+	} catch (error) {
+		console.warn(
+			'[standard-site] Unable to build compatible content blocks:',
+			error instanceof Error ? error.message : error
+		);
+	}
+	if (coverImageBlob) {
+		const hasImageBlocks = (leafletBlocks || []).some(
+			(block) => block.block.$type === 'pub.leaflet.blocks.image'
+		);
+		if (!hasImageBlocks) {
+			leafletBlocks = [imageBlock(coverImageBlob), ...(leafletBlocks || [])];
 		}
 	}
 
@@ -1024,8 +1023,18 @@ export async function syncGhostPostToStandardSite(
 		};
 	}
 
-	const record = createDocumentRecord(event, post, publicationAtUri, coverImageBlob);
-	const result = await putRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, post.slug, record);
+	const result = await putRecord(
+		session,
+		STANDARD_SITE_DOCUMENT_COLLECTION,
+		post.slug,
+		createDocumentRecord(event, post, publicationAtUri, coverImageBlob, undefined, leafletBlocks)
+	);
+
+	for (const duplicate of matchingExistingRecords) {
+		const duplicateRkey = getRecordKey(String(duplicate.uri || ''));
+		if (!duplicateRkey || duplicateRkey === post.slug) continue;
+		await deleteRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, duplicateRkey);
+	}
 
 	return {
 		...result,
@@ -1048,9 +1057,11 @@ export async function getStandardSiteDocumentStatus(
 		const matches = records.filter((record) => matchesGhostPostRecord(record, post, origin));
 		return (
 			matches.sort((a, b) => {
-				const aLeaflet = isLeafletPublicationAtUri(String(a.value?.site || '')) ? 1 : 0;
-				const bLeaflet = isLeafletPublicationAtUri(String(b.value?.site || '')) ? 1 : 0;
-				if (aLeaflet !== bLeaflet) return bLeaflet - aLeaflet;
+				const aStandard =
+					String(a.value?.site || '').includes(`/${STANDARD_SITE_PUBLICATION_COLLECTION}/`) ? 1 : 0;
+				const bStandard =
+					String(b.value?.site || '').includes(`/${STANDARD_SITE_PUBLICATION_COLLECTION}/`) ? 1 : 0;
+				if (aStandard !== bStandard) return bStandard - aStandard;
 				const aSlug = getRecordKey(String(a.uri || '')) === post.slug ? 1 : 0;
 				const bSlug = getRecordKey(String(b.uri || '')) === post.slug ? 1 : 0;
 				if (aSlug !== bSlug) return aSlug - bSlug;
@@ -1087,9 +1098,11 @@ export async function getStandardSiteDocumentStatuses(
 			const matches = records.filter((record) => matchesGhostPostRecord(record, post, origin));
 			const best =
 				matches.sort((a, b) => {
-					const aLeaflet = isLeafletPublicationAtUri(String(a.value?.site || '')) ? 1 : 0;
-					const bLeaflet = isLeafletPublicationAtUri(String(b.value?.site || '')) ? 1 : 0;
-					if (aLeaflet !== bLeaflet) return bLeaflet - aLeaflet;
+					const aStandard =
+						String(a.value?.site || '').includes(`/${STANDARD_SITE_PUBLICATION_COLLECTION}/`) ? 1 : 0;
+					const bStandard =
+						String(b.value?.site || '').includes(`/${STANDARD_SITE_PUBLICATION_COLLECTION}/`) ? 1 : 0;
+					if (aStandard !== bStandard) return bStandard - aStandard;
 					const aSlug = getRecordKey(String(a.uri || '')) === post.slug ? 1 : 0;
 					const bSlug = getRecordKey(String(b.uri || '')) === post.slug ? 1 : 0;
 					if (aSlug !== bSlug) return aSlug - bSlug;
@@ -1105,4 +1118,52 @@ export async function getStandardSiteDocumentStatuses(
 			{ uri?: string; cid?: string; value?: Record<string, unknown> } | null
 		>();
 	}
+}
+
+export async function cleanupDuplicateAfterwordPublications(event: Pick<RequestEvent, 'url'>) {
+	const session = await createSession();
+	const origin = normalizeUrl(getOrigin(event));
+	const payload = await listRecords(session, STANDARD_SITE_PUBLICATION_COLLECTION);
+	const records = payload.records || [];
+	const matchingOriginRecords = records.filter(
+		(record) => normalizeUrl(String(record.value?.url || '')) === origin
+	);
+	const kept =
+		matchingOriginRecords.find((record) => getRecordKey(String(record.uri || '')) === STANDARD_SITE_PUBLICATION_RKEY) ||
+		matchingOriginRecords[0] ||
+		null;
+
+	for (const record of matchingOriginRecords) {
+		if (!record.uri || record === kept) continue;
+		await deleteRecord(session, STANDARD_SITE_PUBLICATION_COLLECTION, getRecordKey(record.uri));
+	}
+
+	return {
+		keptUri: kept?.uri || null,
+		deletedCount: Math.max(0, matchingOriginRecords.length - (kept ? 1 : 0))
+	};
+}
+
+export async function migrateGhostBackedStandardSiteDocuments(
+	event: Pick<RequestEvent, 'url'>,
+	profile: SiteProfile
+) {
+	const [session, posts] = await Promise.all([createSession(), getBlogPosts()]);
+	const payload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
+	const records = payload.records || [];
+	const origin = getOrigin(event);
+	const ghostBackedPosts = posts.filter((post) =>
+		records.some((record) => matchesGhostPostRecord(record, post, origin))
+	);
+
+	const results: Array<{ slug: string; title: string; uri?: string }> = [];
+	for (const post of ghostBackedPosts) {
+		const result = await syncGhostPostToStandardSite(event, post, profile);
+		results.push({ slug: post.slug, title: post.title, uri: result.uri });
+	}
+
+	return {
+		count: results.length,
+		results
+	};
 }

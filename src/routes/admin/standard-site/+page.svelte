@@ -61,10 +61,10 @@
 		</div>
 
 		<p class="admin-field-note">
-			This experimental screen syncs Ghost posts into your PDS as
-			<code>site.standard.publication</code> and <code>site.standard.document</code> records.
-			It syncs text first, attaches a cover image when one is available, and limits inline image
-			imports to keep Worker requests under control.
+			This screen syncs Ghost posts into your PDS as <code>site.standard.publication</code> and
+			<code>site.standard.document</code> records. Ghost-backed posts now prefer your own
+			Afterword publication, while still keeping compatible content blocks for clients that know
+			how to read them.
 		</p>
 
 		{#if form?.success}
@@ -88,6 +88,9 @@
 		<div class="admin-form-actions">
 			<form method="POST" action="/admin/standard-site?/syncPublication" use:enhance>
 				<button class="admin-button" type="submit">Sync publication record</button>
+			</form>
+			<form method="POST" action="/admin/standard-site?/migrateGhostBackedPosts" use:enhance>
+				<button class="admin-button" type="submit">Migrate Ghost-backed documents</button>
 			</form>
 		</div>
 	</div>
