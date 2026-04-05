@@ -5,6 +5,9 @@ import {
 	getEarlierWebStreamHydratedPage
 } from '$lib/server/earlier-web';
 import { getBlogPosts, stripImagesFromHtml, type BlogPost } from '$lib/server/ghost';
+import { attachMediaCoverDelivery } from '$lib/server/media-cover-delivery';
+import { getMediaTimelinePage, MEDIA_TIMELINE_PAGE_SIZE } from '$lib/server/media-timeline';
+import type { MediaTimelineItem } from '$lib/types/media-timeline';
 
 const SITE_WRITING_TAGS = new Set([
 	'field-notes',
@@ -177,6 +180,37 @@ function toBlogFeedEntries(posts: BlogPost[], origin: string) {
 	}));
 }
 
+function renderMediaFeedHtml(item: MediaTimelineItem, origin: string) {
+	const parts: string[] = [];
+
+	if (item.summary) {
+		parts.push(`<p>${escapeXml(item.summary)}</p>`);
+	}
+
+	if (item.imageUrl) {
+		parts.push(
+			`<p><img src="${escapeXml(toAbsoluteUrl(origin, item.imageUrl))}" alt="${escapeXml(item.imageAlt || '')}"></p>`
+		);
+	}
+
+	if ('artist' in item && item.artist) {
+		parts.push(`<p>${escapeXml(item.artist)}</p>`);
+	}
+
+	if ('credit' in item && item.credit) {
+		parts.push(`<p>${escapeXml(item.credit)}</p>`);
+	}
+
+	if (item.links.length) {
+		const linkHtml = item.links
+			.map((link) => `<a href="${escapeXml(link.url)}">${escapeXml(link.label)}</a>`)
+			.join(' · ');
+		parts.push(`<p>${linkHtml}</p>`);
+	}
+
+	return parts.join('');
+}
+
 export async function getSiteWritingFeedEntries(origin: string) {
 	const posts = await getBlogPosts();
 	return toBlogFeedEntries(
@@ -191,6 +225,23 @@ export async function getPlanningFeedEntries(origin: string) {
 		posts.filter((post) => post.publicTags.some((tag) => PLANNING_TAGS.has(tag.slug))),
 		origin
 	);
+}
+
+export async function getMediaFeedEntries(event: RequestEvent) {
+	const page = attachMediaCoverDelivery(
+		await getMediaTimelinePage(event, 0, MEDIA_TIMELINE_PAGE_SIZE),
+		event
+	);
+
+	return page.items.map((item) => ({
+		id: item.id,
+		url: toAbsoluteUrl(event.url.origin, item.href),
+		title: item.title,
+		summary: normalizeDescription(item.summary),
+		contentHtml: renderMediaFeedHtml(item, event.url.origin),
+		datePublished: new Date(item.dateIso),
+		image: item.imageUrl ? toAbsoluteUrl(event.url.origin, item.imageUrl) : null
+	}));
 }
 
 export async function getStatusFeedEntries(origin: string) {
