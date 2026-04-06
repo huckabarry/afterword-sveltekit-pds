@@ -289,8 +289,6 @@
 						</svg>
 					</button>
 				</div>
-				<p class="site-subtitle">{siteSettings.siteTagline}</p>
-
 				<div class="site-nav-row">
 					<nav class="site-nav" aria-label="Primary">
 						<ul class="site-nav-list">

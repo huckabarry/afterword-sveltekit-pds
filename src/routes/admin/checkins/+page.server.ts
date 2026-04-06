@@ -16,7 +16,10 @@ export const actions: Actions = {
 		await requireAdminSession(event);
 
 		try {
-			const result = await syncRecentSwarmCheckins(event, { limit: 50 });
+			const result = await syncRecentSwarmCheckins(event, {
+				limit: 20,
+				includePhotos: false
+			});
 			return {
 				ok: true,
 				message: `Synced ${result.imported} check-ins${result.failed ? `, with ${result.failed} failures` : ''}.`,

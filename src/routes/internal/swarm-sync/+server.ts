@@ -4,11 +4,14 @@ import { requireSwarmSyncToken, syncRecentSwarmCheckins } from '$lib/server/swar
 export async function POST(event) {
 	requireSwarmSyncToken(event.request);
 
-	const limitParam = Number.parseInt(event.url.searchParams.get('limit') || '50', 10);
-	const limit = Number.isFinite(limitParam) ? limitParam : 50;
+	const limitParam = Number.parseInt(event.url.searchParams.get('limit') || '20', 10);
+	const limit = Number.isFinite(limitParam) ? limitParam : 20;
 
 	try {
-		const result = await syncRecentSwarmCheckins(event, { limit });
+		const result = await syncRecentSwarmCheckins(event, {
+			limit,
+			includePhotos: false
+		});
 		return json({
 			...result,
 			ok: result.ok
