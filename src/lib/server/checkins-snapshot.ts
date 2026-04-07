@@ -1,8 +1,11 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { getCheckins, type Checkin } from '$lib/server/atproto';
+import { getSwarmSyncHealth, syncRecentSwarmCheckins } from '$lib/server/swarm';
 
 const CHECKINS_SNAPSHOT_TTL_MS = 1000 * 60 * 5;
 const CHECKINS_SNAPSHOT_R2_KEY = 'checkins/list.json';
+const SWARM_CATCHUP_TTL_MS = 1000 * 60 * 10;
+const SWARM_CATCHUP_STALE_MS = 1000 * 60 * 30;
 
 type CheckinsSnapshotContext = Pick<RequestEvent, 'platform'>;
 type BoundR2Bucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
@@ -16,6 +19,8 @@ function getCheckinsSnapshotScope() {
 	const scope = globalThis as typeof globalThis & {
 		__afterwordCheckinsSnapshotCache?: Map<string, CheckinsSnapshotCacheEntry>;
 		__afterwordCheckinsSnapshotRefreshes?: Map<string, Promise<Checkin[]>>;
+		__afterwordSwarmCatchupRefreshes?: Map<string, Promise<void>>;
+		__afterwordSwarmCatchupAttempts?: Map<string, number>;
 	};
 
 	if (!scope.__afterwordCheckinsSnapshotCache) {
@@ -24,6 +29,14 @@ function getCheckinsSnapshotScope() {
 
 	if (!scope.__afterwordCheckinsSnapshotRefreshes) {
 		scope.__afterwordCheckinsSnapshotRefreshes = new Map<string, Promise<Checkin[]>>();
+	}
+
+	if (!scope.__afterwordSwarmCatchupRefreshes) {
+		scope.__afterwordSwarmCatchupRefreshes = new Map<string, Promise<void>>();
+	}
+
+	if (!scope.__afterwordSwarmCatchupAttempts) {
+		scope.__afterwordSwarmCatchupAttempts = new Map<string, number>();
 	}
 
 	return scope;
@@ -161,6 +174,60 @@ async function rebuildCheckinsSnapshot(cacheKey: string, context?: CheckinsSnaps
 	}
 }
 
+function shouldTrySwarmCatchup(lastAttemptAt: number | undefined) {
+	return !lastAttemptAt || lastAttemptAt + SWARM_CATCHUP_TTL_MS <= Date.now();
+}
+
+async function maybeRefreshFromSwarm(cacheKey: string, context?: CheckinsSnapshotContext) {
+	if (!context?.platform?.ctx) {
+		return;
+	}
+
+	const scope = getCheckinsSnapshotScope();
+	const inflight = scope.__afterwordSwarmCatchupRefreshes?.get(cacheKey);
+
+	if (inflight) {
+		return;
+	}
+
+	const lastAttemptAt = scope.__afterwordSwarmCatchupAttempts?.get(cacheKey);
+	if (!shouldTrySwarmCatchup(lastAttemptAt)) {
+		return;
+	}
+
+	scope.__afterwordSwarmCatchupAttempts?.set(cacheKey, Date.now());
+
+	const refresh = (async () => {
+		const health = await getSwarmSyncHealth(context);
+
+		if (!health.connected) {
+			return;
+		}
+
+		const lastSyncedAt = health.lastSyncedAt ? Date.parse(health.lastSyncedAt) : NaN;
+		if (Number.isFinite(lastSyncedAt) && lastSyncedAt + SWARM_CATCHUP_STALE_MS > Date.now()) {
+			return;
+		}
+
+		await syncRecentSwarmCheckins(context, {
+			limit: 5,
+			includePhotos: false
+		});
+		await rebuildCheckinsSnapshot(cacheKey, context);
+	})().catch((syncError) => {
+		console.warn('[checkins] Swarm catch-up failed:', syncError);
+	});
+
+	scope.__afterwordSwarmCatchupRefreshes?.set(cacheKey, refresh);
+	context.platform.ctx.waitUntil(refresh);
+
+	try {
+		await refresh;
+	} finally {
+		scope.__afterwordSwarmCatchupRefreshes?.delete(cacheKey);
+	}
+}
+
 export async function getCheckinsSnapshot(context?: CheckinsSnapshotContext) {
 	const scope = getCheckinsSnapshotScope();
 	const bucket = getBucket(context);
@@ -168,12 +235,14 @@ export async function getCheckinsSnapshot(context?: CheckinsSnapshotContext) {
 	const cached = scope.__afterwordCheckinsSnapshotCache?.get(cacheKey);
 
 	if (cached?.expiresAt && cached.expiresAt > Date.now()) {
-		return cached.items;
+		await maybeRefreshFromSwarm(cacheKey, context);
+		return scope.__afterwordCheckinsSnapshotCache?.get(cacheKey)?.items || cached.items;
 	}
 
 	if (cached?.items?.length) {
 		context?.platform?.ctx?.waitUntil?.(rebuildCheckinsSnapshot(cacheKey, context).catch(() => {}));
-		return cached.items;
+		await maybeRefreshFromSwarm(cacheKey, context);
+		return scope.__afterwordCheckinsSnapshotCache?.get(cacheKey)?.items || cached.items;
 	}
 
 	if (bucket) {
@@ -193,13 +262,16 @@ export async function getCheckinsSnapshot(context?: CheckinsSnapshotContext) {
 					);
 				}
 
-				return snapshot.items;
+				await maybeRefreshFromSwarm(cacheKey, context);
+
+				return scope.__afterwordCheckinsSnapshotCache?.get(cacheKey)?.items || snapshot.items;
 			}
 		} catch {
 			// Fall through to live rebuild below.
 		}
 	}
 
+	await maybeRefreshFromSwarm(cacheKey, context);
 	return rebuildCheckinsSnapshot(cacheKey, context);
 }
 

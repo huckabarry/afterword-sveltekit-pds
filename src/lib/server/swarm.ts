@@ -40,6 +40,13 @@ export type SwarmSyncState = {
 	pushConfigured: boolean;
 };
 
+export type SwarmSyncHealth = {
+	connected: boolean;
+	lastSyncedAt: string | null;
+	lastError: string | null;
+	lastSourceCheckinId: string | null;
+};
+
 type SwarmStoredState = {
 	accessToken: string | null;
 	userId: string | null;
@@ -538,6 +545,19 @@ export async function getSwarmSyncStateView(
 		callbackUrl: getCallbackUrl(event.url.origin),
 		pushUrl: getPushUrl(event.url.origin),
 		pushConfigured: Boolean(getFoursquarePushSecret())
+	};
+}
+
+export async function getSwarmSyncHealth(
+	event: Pick<RequestEvent, 'platform'>
+): Promise<SwarmSyncHealth> {
+	const stored = await getStoredState(event);
+
+	return {
+		connected: Boolean(stored.accessToken),
+		lastSyncedAt: stored.lastSyncedAt,
+		lastError: stored.lastError,
+		lastSourceCheckinId: stored.lastSourceCheckinId
 	};
 }
 
