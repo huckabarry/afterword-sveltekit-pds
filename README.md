@@ -1,42 +1,18 @@
-# sv
+# afterword-sveltekit-pds
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+This repo used to power the full public `afterword.blog` site in SvelteKit. It now primarily acts as a sync and pipeline worker alongside the Astro/EmDash site.
 
-## Creating a project
+## Current role
 
-If you're seeing this, you've probably already done this step. Congrats!
+The public site now lives in the Astro repo, but this worker still handles a few important background jobs:
 
-```sh
-# create a new project
-npx sv create my-app
-```
+- `sync.afterword.blog/api/swarm/push` receives Swarm/Foursquare push events and writes check-ins to the PDS
+- `sync.afterword.blog/internal/music-sync` imports music activity into the PDS and refreshes related snapshots
+- `sync.afterword.blog/api/checkins` exposes normalized check-in data for the Astro site
+- `sync.afterword.blog/api/media/*` exposes normalized media data for the Astro site
 
-To recreate this project with the same configuration:
+## Notes
 
-```sh
-# recreate this project
-npx sv@0.12.8 create --template minimal --types ts --add prettier eslint sveltekit-adapter="adapter:cloudflare+cfTarget:pages" --install npm afterword-sveltekit-pds
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- Public site and CMS: see the Astro/EmDash repo
+- This repo is intentionally being kept around because it still owns a few backend-style sync duties
+- If we ever revive it further, the right direction is probably to keep it focused on sync APIs and protocol adapters rather than rebuild the whole public site here
