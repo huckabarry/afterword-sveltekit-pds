@@ -1,4 +1,4 @@
-import { getStatusPage, STATUS_PAGE_SIZE, type StatusFeedPage } from '$lib/server/atproto';
+import { getStatusPage, STATUS_PAGE_SIZE, type StatusFeedPage, type StatusPost } from '$lib/server/atproto';
 
 const STATUS_SNAPSHOT_TTL_MS = 1000 * 60 * 4;
 const STATUS_SNAPSHOT_R2_KEY = 'status/page-1.json';
@@ -59,7 +59,7 @@ async function readStatusSnapshotFromR2(bucket: BoundR2Bucket) {
 					object.uploaded?.toISOString?.() ||
 					''
 			).trim() || null;
-		const page = (await object.json()) as StatusFeedPage;
+		const page = hydrateStatusPage((await object.json()) as StatusFeedPage);
 
 		if (!page || !Array.isArray(page.statuses)) {
 			return null;
@@ -69,6 +69,27 @@ async function readStatusSnapshotFromR2(bucket: BoundR2Bucket) {
 	} catch {
 		return null;
 	}
+}
+
+function hydrateStatusItemDates(post: StatusPost): StatusPost {
+	return {
+		...post,
+		date: new Date(post.date),
+		quotedPost: post.quotedPost
+			? {
+					...post.quotedPost,
+					date: new Date(post.quotedPost.date)
+				}
+			: null,
+		replies: Array.isArray(post.replies) ? post.replies.map((reply) => hydrateStatusItemDates(reply)) : []
+	};
+}
+
+function hydrateStatusPage(page: StatusFeedPage): StatusFeedPage {
+	return {
+		...page,
+		statuses: Array.isArray(page.statuses) ? page.statuses.map((status) => hydrateStatusItemDates(status)) : []
+	};
 }
 
 async function writeStatusSnapshotToR2(bucket: BoundR2Bucket, page: StatusFeedPage) {

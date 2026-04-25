@@ -7,6 +7,7 @@ type CheckinsApiContext = Parameters<typeof getCheckinsSnapshot>[0];
 export type SerializedCheckin = {
 	id: string;
 	uri: string;
+	cid: string;
 	slug: string;
 	canonicalPath: string;
 	name: string;
@@ -22,6 +23,7 @@ export type SerializedCheckin = {
 	longitude: number | null;
 	website: string;
 	venueCategory: string;
+	visibility: string;
 	tags: string[];
 	createdAt: string;
 	visitedAt: string;
@@ -29,6 +31,8 @@ export type SerializedCheckin = {
 	photoUrls: string[];
 	mapEmbedUrl: string | null;
 	appleMapsUrl: string | null;
+	mapPreviewPath: string | null;
+	imported: boolean;
 };
 
 export type CheckinsApiPage = {
@@ -73,9 +77,15 @@ function clampLimit(value: string | null, fallback = 20, max = 100) {
 }
 
 function serializeCheckin(item: Checkin): SerializedCheckin {
+	const mapPreviewPath =
+		typeof item.latitude === 'number' && typeof item.longitude === 'number'
+			? `/check-ins/map/${encodeURIComponent(item.id)}?v=2&lat=${item.latitude.toFixed(6)}&lng=${item.longitude.toFixed(6)}`
+			: null;
+
 	return {
 		id: item.id,
 		uri: item.uri,
+		cid: item.cid,
 		slug: item.slug,
 		canonicalPath: item.canonicalPath,
 		name: item.name,
@@ -91,13 +101,16 @@ function serializeCheckin(item: Checkin): SerializedCheckin {
 		longitude: item.longitude,
 		website: item.website,
 		venueCategory: item.venueCategory,
+		visibility: item.visibility,
 		tags: item.tags,
 		createdAt: item.createdAt.toISOString(),
 		visitedAt: item.visitedAt.toISOString(),
 		coverImage: item.coverImage,
 		photoUrls: item.photoUrls,
 		mapEmbedUrl: item.mapEmbedUrl,
-		appleMapsUrl: item.appleMapsUrl
+		appleMapsUrl: item.appleMapsUrl,
+		mapPreviewPath,
+		imported: true
 	};
 }
 

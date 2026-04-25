@@ -55,6 +55,7 @@ export type StatusPost = {
 	likeCount: number;
 	images: StatusImage[];
 	external: StatusExternal | null;
+	video: StatusVideo | null;
 	quotedPost?: StatusQuotedPost | null;
 	replyTo?: {
 		uri: string | null;
@@ -76,6 +77,15 @@ export type StatusExternal = {
 	title: string;
 	description: string;
 	domain: string;
+	thumb: string;
+};
+
+export type StatusVideo = {
+	playlist: string;
+	thumbnail: string;
+	alt: string;
+	width: number;
+	height: number;
 };
 
 export type StatusQuotedPost = {
@@ -89,6 +99,7 @@ export type StatusQuotedPost = {
 	html: string;
 	images: StatusImage[];
 	external: StatusExternal | null;
+	video: StatusVideo | null;
 };
 
 export type StatusFeedPage = {
@@ -354,6 +365,28 @@ function normalizeImage(image: Record<string, any>): StatusImage {
 	};
 }
 
+function normalizeVideo(value: Record<string, unknown> | null | undefined): StatusVideo | null {
+	if (!value) {
+		return null;
+	}
+
+	const playlist = String(value.playlist || '').trim();
+	if (!playlist) {
+		return null;
+	}
+
+	const aspectRatio =
+		(value.aspectRatio as Record<string, unknown> | null | undefined) || null;
+
+	return {
+		playlist,
+		thumbnail: String(value.thumbnail || '').trim(),
+		alt: String(value.alt || '').trim(),
+		width: Number(aspectRatio?.width || 0),
+		height: Number(aspectRatio?.height || 0)
+	};
+}
+
 function getImagesFromEmbed(embed: Record<string, any> | null | undefined): StatusImage[] {
 	if (!embed) {
 		return [];
@@ -390,12 +423,29 @@ function getExternalFromEmbed(embed: Record<string, any> | null | undefined): St
 		uri: external.uri,
 		title: external.title || domain,
 		description: external.description || '',
-		domain
+		domain,
+		thumb:
+			String(external.thumb || '').trim() ||
+			String(external.image?.thumb || '').trim() ||
+			String(external.image?.url || '').trim()
 	};
 }
 
 function getExternal(post: Record<string, any>) {
 	return getExternalFromEmbed(post.embed || post.record?.embed);
+}
+
+function getVideoFromEmbed(embed: Record<string, any> | null | undefined): StatusVideo | null {
+	if (!embed) {
+		return null;
+	}
+
+	const video = embed.playlist ? embed : embed.video || embed.media?.video || null;
+	return normalizeVideo(video);
+}
+
+function getVideo(post: Record<string, any>) {
+	return getVideoFromEmbed(post.embed || post.record?.embed);
 }
 
 function getImagesFromEmbedViews(embeds: Array<Record<string, any>> | undefined): StatusImage[] {
@@ -433,6 +483,21 @@ function getExternalFromEmbedViews(embeds: Array<Record<string, any>> | undefine
 	return null;
 }
 
+function getVideoFromEmbedViews(embeds: Array<Record<string, any>> | undefined): StatusVideo | null {
+	if (!Array.isArray(embeds) || !embeds.length) {
+		return null;
+	}
+
+	for (const embed of embeds) {
+		const video = getVideoFromEmbed(embed);
+		if (video) {
+			return video;
+		}
+	}
+
+	return null;
+}
+
 function getQuotedPost(post: Record<string, any>): StatusQuotedPost | null {
 	const embed = post.embed || post.record?.embed;
 	const recordView = embed?.record?.record || embed?.record;
@@ -458,7 +523,8 @@ function getQuotedPost(post: Record<string, any>): StatusQuotedPost | null {
 		text,
 		html: renderTextHtml(text),
 		images: getImagesFromEmbedViews(embeds),
-		external: getExternalFromEmbedViews(embeds)
+		external: getExternalFromEmbedViews(embeds),
+		video: getVideoFromEmbedViews(embeds)
 	};
 }
 
@@ -507,6 +573,7 @@ function normalizeReply(node: Record<string, any>): StatusPost | null {
 		likeCount: Number(post.likeCount || 0),
 		images: getImages(post),
 		external: getExternal(post),
+		video: getVideo(post),
 		quotedPost: getQuotedPost(post),
 		replies: (node.replies || []).map(normalizeReply).filter(Boolean) as StatusPost[]
 	};
@@ -540,6 +607,7 @@ function normalizeStatus(item: Record<string, any>, actor: string): StatusPost |
 		likeCount: Number(post.likeCount || 0),
 		images: getImages(post),
 		external: getExternal(post),
+		video: getVideo(post),
 		quotedPost: getQuotedPost(post),
 		replyTo: null,
 		replies: []
