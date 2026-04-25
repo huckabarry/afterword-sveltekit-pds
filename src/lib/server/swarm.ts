@@ -16,6 +16,7 @@ const FOURSQUARE_API_VERSION = '20260330';
 const SWARM_STATE_COOKIE = 'afterword_swarm_oauth_state';
 const SWARM_SYNC_ROW_ID = 1;
 const SWARM_MAX_PHOTOS = 4;
+const D1_RETRY_LIMIT = 2;
 let swarmTablesReady = false;
 let swarmTablesPromise: Promise<void> | null = null;
 
@@ -130,6 +131,30 @@ function getDatabase(event: Pick<RequestEvent, 'platform'>) {
 	return db;
 }
 
+function isRetryableD1Error(error: unknown) {
+	const message = error instanceof Error ? error.message : String(error || '');
+	return /D1_ERROR/i.test(message) || /storage operation exceeded timeout/i.test(message);
+}
+
+async function withD1Retry<T>(operation: () => Promise<T>) {
+	let lastError: unknown;
+
+	for (let attempt = 0; attempt <= D1_RETRY_LIMIT; attempt += 1) {
+		try {
+			return await operation();
+		} catch (error) {
+			lastError = error;
+			if (!isRetryableD1Error(error) || attempt === D1_RETRY_LIMIT) {
+				throw error;
+			}
+			swarmTablesReady = false;
+			swarmTablesPromise = null;
+		}
+	}
+
+	throw lastError instanceof Error ? lastError : new Error('D1 operation failed.');
+}
+
 async function ensureSwarmTables(event: Pick<RequestEvent, 'platform'>) {
 	if (swarmTablesReady) {
 		return;
@@ -141,9 +166,9 @@ async function ensureSwarmTables(event: Pick<RequestEvent, 'platform'>) {
 	}
 
 	const db = getDatabase(event);
-	swarmTablesPromise = (async () => {
-		await db
-			.prepare(
+	swarmTablesPromise = withD1Retry(async () => {
+		await db.batch([
+			db.prepare(
 				`CREATE TABLE IF NOT EXISTS swarm_sync_state (
 					id INTEGER PRIMARY KEY CHECK (id = 1),
 					access_token TEXT,
@@ -158,10 +183,8 @@ async function ensureSwarmTables(event: Pick<RequestEvent, 'platform'>) {
 					sync_count INTEGER NOT NULL DEFAULT 0,
 					updated_at TEXT NOT NULL
 				)`
-			)
-			.run();
-		await db
-			.prepare(
+			),
+			db.prepare(
 				`CREATE TABLE IF NOT EXISTS swarm_checkin_records (
 					source_id TEXT PRIMARY KEY,
 					record_uri TEXT NOT NULL,
@@ -170,9 +193,9 @@ async function ensureSwarmTables(event: Pick<RequestEvent, 'platform'>) {
 					updated_at TEXT NOT NULL
 				)`
 			)
-			.run();
+		]);
 		swarmTablesReady = true;
-	})();
+	});
 
 	try {
 		await swarmTablesPromise;
@@ -385,26 +408,28 @@ async function fetchSwarmUser(accessToken: string) {
 }
 
 async function readStoredState(event: Pick<RequestEvent, 'platform'>): Promise<SwarmStoredState> {
-	const row = await getDatabase(event)
-		.prepare(
-			`SELECT access_token, user_id, first_name, last_name, photo_url, connected_at,
-				last_synced_at, last_error, last_source_checkin_id, sync_count
-			FROM swarm_sync_state
-			WHERE id = ?`
-		)
-		.bind(SWARM_SYNC_ROW_ID)
-		.first<{
-			access_token?: string | null;
-			user_id?: string | null;
-			first_name?: string | null;
-			last_name?: string | null;
-			photo_url?: string | null;
-			connected_at?: string | null;
-			last_synced_at?: string | null;
-			last_error?: string | null;
-			last_source_checkin_id?: string | null;
-			sync_count?: number | null;
-		}>();
+	const row = await withD1Retry(async () =>
+		getDatabase(event)
+			.prepare(
+				`SELECT access_token, user_id, first_name, last_name, photo_url, connected_at,
+					last_synced_at, last_error, last_source_checkin_id, sync_count
+				FROM swarm_sync_state
+				WHERE id = ?`
+			)
+			.bind(SWARM_SYNC_ROW_ID)
+			.first<{
+				access_token?: string | null;
+				user_id?: string | null;
+				first_name?: string | null;
+				last_name?: string | null;
+				photo_url?: string | null;
+				connected_at?: string | null;
+				last_synced_at?: string | null;
+				last_error?: string | null;
+				last_source_checkin_id?: string | null;
+				sync_count?: number | null;
+			}>()
+	);
 
 	return {
 		accessToken: row?.access_token || null,
@@ -430,18 +455,20 @@ async function getCheckinRecordMapping(
 	sourceId: string
 ): Promise<SwarmCheckinRecordMapping | null> {
 	await ensureSwarmTables(event);
-	const row = await getDatabase(event)
-		.prepare(
-			`SELECT source_id, record_uri, record_key
-			FROM swarm_checkin_records
-			WHERE source_id = ?`
-		)
-		.bind(sourceId)
-		.first<{
-			source_id?: string;
-			record_uri?: string;
-			record_key?: string;
-		}>();
+	const row = await withD1Retry(async () =>
+		getDatabase(event)
+			.prepare(
+				`SELECT source_id, record_uri, record_key
+				FROM swarm_checkin_records
+				WHERE source_id = ?`
+			)
+			.bind(sourceId)
+			.first<{
+				source_id?: string;
+				record_uri?: string;
+				record_key?: string;
+			}>()
+	);
 
 	if (!row?.source_id || !row.record_uri || !row.record_key) {
 		return null;
@@ -460,17 +487,19 @@ async function saveCheckinRecordMapping(
 ) {
 	await ensureSwarmTables(event);
 	const now = new Date().toISOString();
-	await getDatabase(event)
-		.prepare(
-			`INSERT INTO swarm_checkin_records (source_id, record_uri, record_key, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT(source_id) DO UPDATE SET
-				record_uri = excluded.record_uri,
-				record_key = excluded.record_key,
-				updated_at = excluded.updated_at`
-		)
-		.bind(mapping.sourceId, mapping.recordUri, mapping.recordKey, now, now)
-		.run();
+	await withD1Retry(async () =>
+		getDatabase(event)
+			.prepare(
+				`INSERT INTO swarm_checkin_records (source_id, record_uri, record_key, created_at, updated_at)
+				VALUES (?, ?, ?, ?, ?)
+				ON CONFLICT(source_id) DO UPDATE SET
+					record_uri = excluded.record_uri,
+					record_key = excluded.record_key,
+					updated_at = excluded.updated_at`
+			)
+			.bind(mapping.sourceId, mapping.recordUri, mapping.recordKey, now, now)
+			.run()
+	);
 }
 
 async function saveStoredState(
@@ -481,46 +510,51 @@ async function saveStoredState(
 	const db = getDatabase(event);
 	const existing = await readStoredState(event);
 	const now = new Date().toISOString();
+	const hasLastError = Object.prototype.hasOwnProperty.call(state, 'lastError');
 
-	await db
-		.prepare(
-			`INSERT INTO swarm_sync_state (
-				id, access_token, user_id, first_name, last_name, photo_url, connected_at,
-				last_synced_at, last_error, last_source_checkin_id, sync_count, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT(id) DO UPDATE SET
-				access_token = excluded.access_token,
-				user_id = excluded.user_id,
-				first_name = excluded.first_name,
-				last_name = excluded.last_name,
-				photo_url = excluded.photo_url,
-				connected_at = excluded.connected_at,
-				last_synced_at = excluded.last_synced_at,
-				last_error = excluded.last_error,
-				last_source_checkin_id = excluded.last_source_checkin_id,
-				sync_count = excluded.sync_count,
-				updated_at = excluded.updated_at`
-		)
-		.bind(
-			SWARM_SYNC_ROW_ID,
-			state.accessToken ?? existing.accessToken,
-			state.userId ?? existing.userId,
-			state.firstName ?? existing.firstName,
-			state.lastName ?? existing.lastName,
-			state.photoUrl ?? existing.photoUrl,
-			state.connectedAt ?? existing.connectedAt ?? now,
-			state.lastSyncedAt ?? existing.lastSyncedAt,
-			state.lastError ?? existing.lastError,
-			state.lastSourceCheckinId ?? existing.lastSourceCheckinId,
-			typeof state.syncCount === 'number' ? state.syncCount : existing.syncCount,
-			now
-		)
-		.run();
+	await withD1Retry(async () =>
+		db
+			.prepare(
+				`INSERT INTO swarm_sync_state (
+					id, access_token, user_id, first_name, last_name, photo_url, connected_at,
+					last_synced_at, last_error, last_source_checkin_id, sync_count, updated_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					access_token = excluded.access_token,
+					user_id = excluded.user_id,
+					first_name = excluded.first_name,
+					last_name = excluded.last_name,
+					photo_url = excluded.photo_url,
+					connected_at = excluded.connected_at,
+					last_synced_at = excluded.last_synced_at,
+					last_error = excluded.last_error,
+					last_source_checkin_id = excluded.last_source_checkin_id,
+					sync_count = excluded.sync_count,
+					updated_at = excluded.updated_at`
+			)
+			.bind(
+				SWARM_SYNC_ROW_ID,
+				state.accessToken ?? existing.accessToken,
+				state.userId ?? existing.userId,
+				state.firstName ?? existing.firstName,
+				state.lastName ?? existing.lastName,
+				state.photoUrl ?? existing.photoUrl,
+				state.connectedAt ?? existing.connectedAt ?? now,
+				state.lastSyncedAt ?? existing.lastSyncedAt,
+				hasLastError ? (state.lastError ?? null) : existing.lastError,
+				state.lastSourceCheckinId ?? existing.lastSourceCheckinId,
+				typeof state.syncCount === 'number' ? state.syncCount : existing.syncCount,
+				now
+			)
+			.run()
+	);
 }
 
 export async function clearSwarmConnection(event: Pick<RequestEvent, 'platform'>) {
 	await ensureSwarmTables(event);
-	await getDatabase(event).prepare(`DELETE FROM swarm_sync_state WHERE id = ?`).bind(SWARM_SYNC_ROW_ID).run();
+	await withD1Retry(async () =>
+		getDatabase(event).prepare(`DELETE FROM swarm_sync_state WHERE id = ?`).bind(SWARM_SYNC_ROW_ID).run()
+	);
 }
 
 export async function getSwarmSyncStateView(

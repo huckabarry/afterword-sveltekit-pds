@@ -5,6 +5,7 @@
 	"compatibility_flags": ["nodejs_compat", "nodejs_als"],
 	"vars": {
 		"ATPROTO_REPO": "did:plc:vt4k6d3e5rjw65cuzaf3nufq",
+		"STANDARD_SITE_LOGIN_IDENTIFIER": "afterword.blog",
 		"STANDARD_SITE_IDENTIFIER": "afterword.blog",
 		"STANDARD_SITE_PDS_URL": "https://eurosky.social"
 	},
@@ -24,6 +25,12 @@
 	"images": {
 		"binding": "IMAGES"
 	},
+	"routes": [
+		{
+			"pattern": "sync.afterword.blog",
+			"custom_domain": true
+		}
+	],
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"assets": {
 		"binding": "ASSETS",
