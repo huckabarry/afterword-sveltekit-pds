@@ -1,5 +1,6 @@
 const AUTHOR_FEED_URL = 'https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed';
 import { resolveAtprotoService } from '$lib/server/atproto-identity';
+import { getBlobUrl, getRecordKey } from '$lib/server/record-utils';
 const CHECKIN_COLLECTION = 'blog.afterword.checkin';
 const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 export const STATUS_PAGE_SIZE = 20;
@@ -120,14 +121,6 @@ function getStatusCache() {
 		scope.__afterwordStatusCache = new Map<string, StatusCacheEntry>();
 	}
 	return scope.__afterwordStatusCache;
-}
-
-function getRecordKey(uri: string | undefined | null) {
-	return String(uri || '').split('/').pop() || '';
-}
-
-function getBlobUrl(serviceUrl: string, did: string, cid: string) {
-	return `${serviceUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
 }
 
 function toCoordinate(value: unknown) {

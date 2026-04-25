@@ -1,6 +1,13 @@
 import { env } from '$env/dynamic/private';
 import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-identity';
 import type { PopfeedItem, PopfeedItemType, PopfeedLink } from '$lib/server/popfeed';
+import {
+	formatDisplayDate,
+	getRecordKey,
+	normalizeDate,
+	normalizeOptionalString,
+	normalizeString
+} from '$lib/server/record-utils';
 
 const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 export const PDS_POPFEED_ITEM_COLLECTION = 'blog.afterword.media.popfeedItem';
@@ -136,14 +143,6 @@ function getCanonicalCache() {
 	return scope.__afterwordCanonicalPopfeedCache;
 }
 
-function getRecordKey(uri: string | undefined | null) {
-	return (
-		String(uri || '')
-			.split('/')
-			.pop() || ''
-	);
-}
-
 function slugify(value: string) {
 	return (
 		String(value || '')
@@ -154,26 +153,6 @@ function slugify(value: string) {
 			.replace(/[^a-z0-9]+/g, '-')
 			.replace(/^-+|-+$/g, '') || 'item'
 	);
-}
-
-function normalizeString(value: unknown) {
-	return String(value || '').trim();
-}
-
-function normalizeOptionalString(value: unknown) {
-	const normalized = normalizeString(value);
-	return normalized || null;
-}
-
-function normalizeDate(value: unknown) {
-	const normalized = normalizeString(value);
-
-	if (!normalized) {
-		return null;
-	}
-
-	const parsed = new Date(normalized);
-	return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function normalizeStringArray(value: unknown) {
@@ -313,14 +292,6 @@ function getPopfeedLinks(type: PopfeedItemType, identifiers: Record<string, stri
 	}
 
 	return links;
-}
-
-function formatDisplayDate(date: Date) {
-	return new Intl.DateTimeFormat('en-GB', {
-		day: '2-digit',
-		month: 'short',
-		year: 'numeric'
-	}).format(date);
 }
 
 function getCanonicalDate(record: Record<string, unknown>) {

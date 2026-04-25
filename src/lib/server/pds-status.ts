@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-identity';
+import { getRecordKey, normalizeString } from '$lib/server/record-utils';
 
 const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 const STATUS_COLLECTION = 'app.bsky.feed.post';
@@ -21,10 +22,6 @@ type CachedAtprotoSession = AtprotoSession & {
 
 let statusSessionCache: CachedAtprotoSession | null = null;
 let statusSessionPromise: Promise<AtprotoSession> | null = null;
-
-function normalizeString(value: unknown) {
-	return String(value || '').trim();
-}
 
 function getConfiguredRepoIdentifier() {
 	return (
@@ -201,10 +198,6 @@ async function createSession(): Promise<AtprotoSession> {
 	} finally {
 		statusSessionPromise = null;
 	}
-}
-
-function getRecordKey(uri: string) {
-	return String(uri || '').split('/').pop() || '';
 }
 
 export function getStatusRecordKey(uri: string) {

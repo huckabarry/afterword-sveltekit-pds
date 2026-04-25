@@ -4,6 +4,7 @@ import { getBlogPosts, stripImagesFromHtml, type BlogPost } from '$lib/server/gh
 import { inferImageDimensions, inferImageMimeType } from '$lib/server/image-metadata';
 import type { SiteProfile } from '$lib/server/profile';
 import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-identity';
+import { getRecordKey } from '$lib/server/record-utils';
 
 const CREATE_SESSION_NSID = 'com.atproto.server.createSession';
 const CREATE_RECORD_NSID = 'com.atproto.repo.createRecord';
@@ -430,14 +431,6 @@ async function listRecords(session: AtprotoSession, collection: string, limit = 
 	return (await response.json()) as {
 		records?: Array<{ uri?: string; cid?: string; value?: Record<string, unknown> }>;
 	};
-}
-
-function getRecordKey(uri: string) {
-	return (
-		String(uri || '')
-			.split('/')
-			.pop() || ''
-	);
 }
 
 async function findPreferredPublicationRecord(event: Pick<RequestEvent, 'url'>) {

@@ -4,6 +4,11 @@ import {
 	transformImageWithBinding
 } from '$lib/server/cloudflare-image-service';
 import {
+	buildVariantPath,
+	inferImageExtensionFromUrl,
+	sanitizeAssetSegment
+} from '$lib/server/image-delivery';
+import {
 	inferImageDimensions,
 	inferImageMimeType
 } from '$lib/server/image-metadata';
@@ -45,33 +50,10 @@ export const GALLERY_VARIANT_PRESETS = {
 
 export type GalleryVariantPreset = keyof typeof GALLERY_VARIANT_PRESETS;
 
-function sanitizeSegment(value: string) {
-	return String(value || '')
-		.toLowerCase()
-		.trim()
-		.replace(/[^a-z0-9._-]+/g, '-')
-		.replace(/^-+|-+$/g, '') || 'item';
-}
-
-function inferExtensionFromUrl(imageUrl: string) {
-	try {
-		const pathname = new URL(imageUrl).pathname;
-		const ext = pathname.split('.').pop()?.toLowerCase() || '';
-
-		if (/^(avif|gif|jpe?g|png|svg|webp)$/i.test(ext)) {
-			return ext === 'jpeg' ? 'jpg' : ext;
-		}
-	} catch {
-		// ignore malformed URLs and fall through to jpg
-	}
-
-	return 'jpg';
-}
-
 export function getGalleryAssetKey(photo: PhotoItem) {
-	const postSlug = sanitizeSegment(photo.postPath.split('/').filter(Boolean).pop() || photo.postId);
-	const imageSlug = sanitizeSegment(`${photo.index < 0 ? 'cover' : `image-${photo.index}`}`);
-	const extension = inferExtensionFromUrl(photo.imageUrl);
+	const postSlug = sanitizeAssetSegment(photo.postPath.split('/').filter(Boolean).pop() || photo.postId);
+	const imageSlug = sanitizeAssetSegment(`${photo.index < 0 ? 'cover' : `image-${photo.index}`}`);
+	const extension = inferImageExtensionFromUrl(photo.imageUrl);
 	return `${GALLERY_PREFIX}/${postSlug}/${imageSlug}.${extension}`;
 }
 
@@ -84,12 +66,7 @@ export function getGalleryVariantPath(
 	preset: GalleryVariantPreset,
 	sourceUrl?: string | null
 ) {
-	const pathname = `/${['gallery-images', preset, ...assetKey.split('/').filter(Boolean)].join('/')}`;
-	const normalizedSourceUrl = String(sourceUrl || '').trim();
-
-	return normalizedSourceUrl
-		? `${pathname}?src=${encodeURIComponent(normalizedSourceUrl)}`
-		: pathname;
+	return buildVariantPath('gallery-images', preset, assetKey, sourceUrl);
 }
 
 export function getGalleryVariantAssetKey(assetKey: string, preset: GalleryVariantPreset) {

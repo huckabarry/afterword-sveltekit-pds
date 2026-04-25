@@ -2,6 +2,14 @@ import { env } from '$env/dynamic/private';
 import { inferImageDimensions, inferImageMimeType } from '$lib/server/image-metadata';
 import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-identity';
 import type { AlbumEntry, ListenLink, TrackEntry } from '$lib/server/music';
+import {
+	formatDisplayDate,
+	getBlobUrl,
+	getRecordKey,
+	normalizeDate,
+	normalizeOptionalString,
+	normalizeString
+} from '$lib/server/record-utils';
 
 const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 export const PDS_MUSIC_TRACK_COLLECTION = 'blog.afterword.media.track';
@@ -197,48 +205,8 @@ function getMusicCache() {
 	return scope.__afterwordPdsMusicCache;
 }
 
-function getRecordKey(uri: string | undefined | null) {
-	return (
-		String(uri || '')
-			.split('/')
-			.pop() || ''
-	);
-}
-
-function getBlobUrl(serviceUrl: string, did: string, cid: string) {
-	return `${serviceUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
-}
-
 function getObject(value: unknown): Record<string, unknown> {
 	return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
-}
-
-function normalizeString(value: unknown) {
-	return String(value || '').trim();
-}
-
-function normalizeOptionalString(value: unknown) {
-	const normalized = normalizeString(value);
-	return normalized || null;
-}
-
-function normalizeDate(value: unknown) {
-	const normalized = normalizeString(value);
-
-	if (!normalized) {
-		return null;
-	}
-
-	const date = new Date(normalized);
-	return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDisplayDate(date: Date) {
-	return new Intl.DateTimeFormat('en-GB', {
-		day: '2-digit',
-		month: 'short',
-		year: 'numeric'
-	}).format(date);
 }
 
 function titleCase(value: string) {
