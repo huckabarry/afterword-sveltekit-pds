@@ -4,9 +4,12 @@ export type TimelineLink = {
 	external?: boolean;
 };
 
+export type MediaTimelineKind = 'track' | 'album' | 'popfeed';
+export type MediaTimelineMediaType = 'book' | 'movie' | 'tv_show';
+
 type BaseMediaTimelineItem = {
 	id: string;
-	kind: 'track' | 'album' | 'popfeed';
+	kind: MediaTimelineKind;
 	label: string;
 	title: string;
 	href: string;
@@ -36,15 +39,17 @@ export type PopfeedTimelineItem = BaseMediaTimelineItem & {
 	kind: 'popfeed';
 	credit: string;
 	links: TimelineLink[];
-	mediaType: 'book' | 'movie' | 'tv_show';
+	mediaType: MediaTimelineMediaType;
 	statusLabel: string;
 	activityLabel: string;
 };
 
-export type MediaTimelineItem =
-	| TrackTimelineItem
-	| AlbumTimelineItem
-	| PopfeedTimelineItem;
+export type MediaTimelineItem = TrackTimelineItem | AlbumTimelineItem | PopfeedTimelineItem;
+
+export type MediaTimelineFilters = {
+	kinds?: MediaTimelineKind[];
+	mediaTypes?: MediaTimelineMediaType[];
+};
 
 export type MediaTimelinePage = {
 	items: MediaTimelineItem[];
@@ -52,4 +57,6 @@ export type MediaTimelinePage = {
 	limit: number;
 	total: number;
 	nextOffset: number | null;
+	generatedAt: string | null;
+	filters?: MediaTimelineFilters;
 };

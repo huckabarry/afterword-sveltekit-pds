@@ -3,7 +3,10 @@ import { getAlbums, getTracks } from '$lib/server/music';
 import { getPopfeedItems } from '$lib/server/popfeed';
 import type {
 	AlbumTimelineItem,
+	MediaTimelineFilters,
 	MediaTimelineItem,
+	MediaTimelineKind,
+	MediaTimelineMediaType,
 	MediaTimelinePage,
 	PopfeedTimelineItem,
 	TimelineLink,
@@ -15,6 +18,12 @@ const MEDIA_TIMELINE_R2_KEY = 'media/timeline.json';
 
 type MediaTimelineCacheEntry = {
 	expiresAt: number;
+	generatedAt: string | null;
+	items: MediaTimelineItem[];
+};
+
+type MediaTimelineSnapshot = {
+	generatedAt: string | null;
 	items: MediaTimelineItem[];
 };
 
@@ -23,7 +32,7 @@ type BoundR2Bucket = NonNullable<App.Platform['env']['R2_BUCKET']>;
 function getTimelineCache() {
 	const scope = globalThis as typeof globalThis & {
 		__afterwordMediaTimelineCache?: Map<string, MediaTimelineCacheEntry>;
-		__afterwordMediaTimelineRefreshes?: Map<string, Promise<MediaTimelineItem[]>>;
+		__afterwordMediaTimelineRefreshes?: Map<string, Promise<MediaTimelineSnapshot>>;
 	};
 
 	if (!scope.__afterwordMediaTimelineCache) {
@@ -31,7 +40,7 @@ function getTimelineCache() {
 	}
 
 	if (!scope.__afterwordMediaTimelineRefreshes) {
-		scope.__afterwordMediaTimelineRefreshes = new Map<string, Promise<MediaTimelineItem[]>>();
+		scope.__afterwordMediaTimelineRefreshes = new Map<string, Promise<MediaTimelineSnapshot>>();
 	}
 
 	return scope;
@@ -47,7 +56,9 @@ function getBucket(context?: MediaTimelineContext) {
 
 function getBucketCacheKey(bucket: BoundR2Bucket) {
 	const name =
-		typeof bucket === 'object' && bucket && 'name' in bucket ? String(bucket.name || '') : 'default';
+		typeof bucket === 'object' && bucket && 'name' in bucket
+			? String(bucket.name || '')
+			: 'default';
 
 	return name || 'default';
 }
@@ -183,17 +194,19 @@ async function buildAllMediaTimelineItems(context?: MediaTimelineContext) {
 	return items;
 }
 
-function writeItemsToMemoryCache(cacheKey: string, items: MediaTimelineItem[]) {
+function writeItemsToMemoryCache(
+	cacheKey: string,
+	items: MediaTimelineItem[],
+	generatedAt: string | null = new Date().toISOString()
+) {
 	getTimelineCache().__afterwordMediaTimelineCache?.set(cacheKey, {
 		expiresAt: Date.now() + MEDIA_TIMELINE_CACHE_TTL_MS,
+		generatedAt,
 		items
 	});
 }
 
-async function rebuildMediaTimelineItems(
-	cacheKey: string,
-	context?: MediaTimelineContext
-) {
+async function rebuildMediaTimelineItems(cacheKey: string, context?: MediaTimelineContext) {
 	const scope = getTimelineCache();
 	const existingRefresh = scope.__afterwordMediaTimelineRefreshes?.get(cacheKey);
 
@@ -203,14 +216,18 @@ async function rebuildMediaTimelineItems(
 
 	const refresh = (async () => {
 		const items = await buildAllMediaTimelineItems(context);
-		writeItemsToMemoryCache(cacheKey, items);
+		const generatedAt = new Date().toISOString();
+		writeItemsToMemoryCache(cacheKey, items, generatedAt);
 
 		const bucket = getBucket(context);
 		if (bucket) {
-			await writeTimelineSnapshotToR2(bucket, items);
+			await writeTimelineSnapshotToR2(bucket, items, generatedAt);
 		}
 
-		return items;
+		return {
+			generatedAt,
+			items
+		};
 	})()
 		.catch((error) => {
 			throw error;
@@ -258,10 +275,14 @@ async function readTimelineSnapshotFromR2(bucket: BoundR2Bucket) {
 	}
 }
 
-async function writeTimelineSnapshotToR2(bucket: BoundR2Bucket, items: MediaTimelineItem[]) {
+async function writeTimelineSnapshotToR2(
+	bucket: BoundR2Bucket,
+	items: MediaTimelineItem[],
+	generatedAt: string
+) {
 	await bucket.put(MEDIA_TIMELINE_R2_KEY, JSON.stringify(items), {
 		customMetadata: {
-			generatedAt: new Date().toISOString()
+			generatedAt
 		},
 		httpMetadata: {
 			contentType: 'application/json; charset=utf-8'
@@ -269,19 +290,29 @@ async function writeTimelineSnapshotToR2(bucket: BoundR2Bucket, items: MediaTime
 	});
 }
 
-async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
+async function getAllMediaTimelineSnapshot(
+	context?: MediaTimelineContext
+): Promise<MediaTimelineSnapshot> {
 	const scope = getTimelineCache();
 	const bucket = getBucket(context);
 	const cacheKey = bucket ? getBucketCacheKey(bucket) : 'default';
 	const cached = scope.__afterwordMediaTimelineCache?.get(cacheKey);
 
 	if (cached?.expiresAt && cached.expiresAt > Date.now()) {
-		return cached.items;
+		return {
+			generatedAt: cached.generatedAt,
+			items: cached.items
+		};
 	}
 
 	if (cached?.items?.length) {
-		context?.platform?.ctx?.waitUntil?.(rebuildMediaTimelineItems(cacheKey, context).catch(() => {}));
-		return cached.items;
+		context?.platform?.ctx?.waitUntil?.(
+			rebuildMediaTimelineItems(cacheKey, context).catch(() => {})
+		);
+		return {
+			generatedAt: cached.generatedAt,
+			items: cached.items
+		};
 	}
 
 	if (bucket) {
@@ -290,7 +321,7 @@ async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
 			const generatedAt = snapshot?.generatedAt ? Date.parse(snapshot.generatedAt) : NaN;
 
 			if (snapshot) {
-				writeItemsToMemoryCache(cacheKey, snapshot.items);
+				writeItemsToMemoryCache(cacheKey, snapshot.items, snapshot.generatedAt);
 
 				if (
 					!Number.isFinite(generatedAt) ||
@@ -301,7 +332,7 @@ async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
 					);
 				}
 
-				return snapshot.items;
+				return snapshot;
 			}
 		} catch {
 			// Fall through to a live rebuild below.
@@ -311,22 +342,73 @@ async function getAllMediaTimelineItems(context?: MediaTimelineContext) {
 	return rebuildMediaTimelineItems(cacheKey, context);
 }
 
-export async function getMediaTimelinePage(
+function normalizeTimelineKinds(kinds: MediaTimelineKind[] | undefined) {
+	return Array.isArray(kinds) ? Array.from(new Set(kinds)) : [];
+}
+
+function normalizeTimelineMediaTypes(mediaTypes: MediaTimelineMediaType[] | undefined) {
+	return Array.isArray(mediaTypes) ? Array.from(new Set(mediaTypes)) : [];
+}
+
+function filterTimelineItems(items: MediaTimelineItem[], filters?: MediaTimelineFilters) {
+	const kinds = normalizeTimelineKinds(filters?.kinds);
+	const mediaTypes = normalizeTimelineMediaTypes(filters?.mediaTypes);
+
+	return items.filter((item) => {
+		if (kinds.length && !kinds.includes(item.kind)) {
+			return false;
+		}
+
+		if (mediaTypes.length) {
+			if (item.kind !== 'popfeed' || !mediaTypes.includes(item.mediaType)) {
+				return false;
+			}
+		}
+
+		return true;
+	});
+}
+
+export async function getFilteredMediaTimelinePage(
 	context?: MediaTimelineContext,
-	offset = 0,
-	limit = MEDIA_TIMELINE_PAGE_SIZE
+	{
+		offset = 0,
+		limit = MEDIA_TIMELINE_PAGE_SIZE,
+		filters
+	}: {
+		offset?: number;
+		limit?: number;
+		filters?: MediaTimelineFilters;
+	} = {}
 ): Promise<MediaTimelinePage> {
-	const items = await getAllMediaTimelineItems(context);
-	const safeLimit = Math.max(1, Math.min(limit, 40));
+	const snapshot = await getAllMediaTimelineSnapshot(context);
+	const filteredItems = filterTimelineItems(snapshot.items, filters);
+	const safeLimit = Math.max(1, Math.min(limit, 60));
 	const safeOffset = Math.max(0, offset);
-	const pageItems = items.slice(safeOffset, safeOffset + safeLimit);
-	const nextOffset = safeOffset + safeLimit < items.length ? safeOffset + safeLimit : null;
+	const pageItems = filteredItems.slice(safeOffset, safeOffset + safeLimit);
+	const nextOffset = safeOffset + safeLimit < filteredItems.length ? safeOffset + safeLimit : null;
 
 	return {
 		items: pageItems,
 		offset: safeOffset,
 		limit: safeLimit,
-		total: items.length,
-		nextOffset
+		total: filteredItems.length,
+		nextOffset,
+		generatedAt: snapshot.generatedAt,
+		filters: {
+			kinds: normalizeTimelineKinds(filters?.kinds),
+			mediaTypes: normalizeTimelineMediaTypes(filters?.mediaTypes)
+		}
 	};
+}
+
+export async function getMediaTimelinePage(
+	context?: MediaTimelineContext,
+	offset = 0,
+	limit = MEDIA_TIMELINE_PAGE_SIZE
+): Promise<MediaTimelinePage> {
+	return getFilteredMediaTimelinePage(context, {
+		offset,
+		limit
+	});
 }
