@@ -42,9 +42,9 @@
 	];
 
 	const homeSections = [
-		{ id: 'home-blog-heading', value: 'Latest urbanism post', depth: 2 },
-		{ id: 'home-field-notes-heading', value: 'Latest field note', depth: 2 },
-		{ id: 'latest-photos-heading', value: 'Recent photos', depth: 2 }
+		{ id: 'home-blog-heading', value: 'Urbanism', depth: 2 },
+		{ id: 'home-field-notes-heading', value: 'Field Notes', depth: 2 },
+		{ id: 'latest-photos-heading', value: 'Photos', depth: 2 }
 	];
 
 	const homeToc: TemplatePost['headings'] = homeSections;
@@ -669,7 +669,7 @@
 		.home-page__toc-rail :global(aside) {
 			position: sticky;
 			top: 2rem;
-			width: 12rem;
+			width: 14rem;
 			margin-left: 2rem;
 		}
 	}
