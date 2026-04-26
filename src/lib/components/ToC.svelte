@@ -6,10 +6,10 @@
   import Card from './Card.svelte'
   import type { TemplatePost } from '$lib/server/template-posts'
 
-  export let post: TemplatePost
+  export let post: TemplatePost | null = null
+  export let headings: TemplatePost['headings'] = post?.headings ?? []
 
   let elements: HTMLElement[] = []
-  let headings: TemplatePost['headings'] = post.headings
   const DESKTOP_OFFSET = 112
   const MOBILE_OFFSET = 88
   const ACTIVE_HEADING_SLACK = 20
@@ -26,7 +26,7 @@
   }
 
   function updateHeadings() {
-    headings = post.headings
+    headings = post?.headings ?? headings
 
     if (browser) {
       elements = headings.map((heading) => {

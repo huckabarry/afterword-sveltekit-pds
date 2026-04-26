@@ -2,6 +2,8 @@
 	import ResponsiveContentCover from '$lib/components/ResponsiveContentCover.svelte';
 	import ArrowRightIcon from '$lib/components/ArrowRightIcon.svelte';
 	import PostDate from '$lib/components/home-template/PostDate.svelte';
+	import ToC from '$lib/components/ToC.svelte';
+	import type { TemplatePost } from '$lib/server/template-posts';
 	import { avatar, authorName, bio, bluesky, email, name } from '$lib/info.js';
 
 	let {
@@ -40,10 +42,12 @@
 	];
 
 	const homeSections = [
-		{ href: '#home-blog-heading', label: 'Latest urbanism post' },
-		{ href: '#home-field-notes-heading', label: 'Latest field note' },
-		{ href: '#latest-photos-heading', label: 'Recent photos' }
+		{ id: 'home-blog-heading', value: 'Latest urbanism post', depth: 2 },
+		{ id: 'home-field-notes-heading', value: 'Latest field note', depth: 2 },
+		{ id: 'latest-photos-heading', value: 'Recent photos', depth: 2 }
 	];
+
+	const homeToc: TemplatePost['headings'] = homeSections;
 </script>
 
 <svelte:head>
@@ -51,9 +55,9 @@
 	<meta name="description" content="Afterword gathers writing, field notes, and media into one small web home." />
 </svelte:head>
 
-<div class="home-page">
-	<section class="home-page__intro">
-		<div class="home-page__intro-grid">
+<div class="home-page-root">
+	<div class="home-page">
+		<section class="home-page__intro">
 			<div class="home-page__hero">
 				<img
 					src={avatar}
@@ -79,22 +83,10 @@
 					</nav>
 				</div>
 			</div>
+		</section>
 
-			<aside class="home-page__toc" aria-labelledby="home-sections-heading">
-				<p id="home-sections-heading" class="home-page__toc-title">On this page</p>
-				<ul class="home-page__toc-list">
-					{#each homeSections as section}
-						<li class="home-page__toc-item">
-							<a class="home-page__toc-link" href={section.href}>{section.label}</a>
-						</li>
-					{/each}
-				</ul>
-			</aside>
-		</div>
-	</section>
-
-	{#if data.latestBlogPosts.length}
-		<section class="home-page__feed-section" id="home-blog" aria-labelledby="home-blog-heading">
+		{#if data.latestBlogPosts.length}
+			<section class="home-page__feed-section" id="home-blog" aria-labelledby="home-blog-heading">
 			<div class="home-page__section-head">
 				<div>
 					<p class="feature-card__label">Blog</p>
@@ -146,11 +138,11 @@
 					</article>
 				{/each}
 			</div>
-		</section>
-	{/if}
+			</section>
+		{/if}
 
-	{#if data.latestFieldNotes.length}
-		<section class="home-page__feed-section" id="home-field-notes" aria-labelledby="home-field-notes-heading">
+		{#if data.latestFieldNotes.length}
+			<section class="home-page__feed-section" id="home-field-notes" aria-labelledby="home-field-notes-heading">
 			<div class="home-page__section-head">
 				<div>
 					<p class="feature-card__label">Field Notes</p>
@@ -202,11 +194,11 @@
 					</article>
 				{/each}
 			</div>
-		</section>
-	{/if}
+			</section>
+		{/if}
 
-	{#if data.latestPhotos.length}
-		<section class="home-page__photos" aria-labelledby="latest-photos-heading">
+		{#if data.latestPhotos.length}
+			<section class="home-page__photos" aria-labelledby="latest-photos-heading">
 			<div class="home-page__section-head">
 				<div>
 					<p class="feature-card__label">Latest Photos</p>
@@ -228,17 +220,27 @@
 					</a>
 				{/each}
 			</div>
-		</section>
-	{/if}
+			</section>
+		{/if}
 
-	<nav class="home-page__lane-links" aria-label="Browse the site">
-		{#each lanes as lane}
-			<a href={lane.href} class="home-page__lane-link">{lane.label}</a>
-		{/each}
-	</nav>
+		<nav class="home-page__lane-links" aria-label="Browse the site">
+			{#each lanes as lane}
+				<a href={lane.href} class="home-page__lane-link">{lane.label}</a>
+			{/each}
+		</nav>
+	</div>
+
+	<aside class="home-page__toc-rail" aria-label="On this page">
+		<ToC headings={homeToc} />
+	</aside>
 </div>
 
 <style>
+	.home-page-root {
+		display: grid;
+		grid-template-columns: 1fr;
+	}
+
 	.home-page {
 		display: flex;
 		flex-direction: column;
@@ -251,12 +253,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.25rem;
-	}
-
-	.home-page__intro-grid {
-		display: grid;
-		gap: 2rem;
-		align-items: start;
 	}
 
 	.home-page__hero {
@@ -336,54 +332,8 @@
 		gap: 0.65rem 1rem;
 	}
 
-	.home-page__toc {
+	.home-page__toc-rail {
 		display: none;
-	}
-
-	.home-page__toc-title {
-		margin: 0;
-		font-size: 0.72rem;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: #71717a;
-	}
-
-	:global(html.dark) .home-page__toc-title {
-		color: #a1a1aa;
-	}
-
-	.home-page__toc-list {
-		margin: 0.85rem 0 0;
-		padding: 0;
-		list-style: none;
-		display: flex;
-		flex-direction: column;
-		gap: 0.55rem;
-	}
-
-	.home-page__toc-item {
-		padding-left: 0.65rem;
-		border-left: 2px solid transparent;
-	}
-
-	.home-page__toc-link {
-		font-size: 0.9rem;
-		line-height: 1.45;
-		color: #71717a;
-		text-decoration: none;
-	}
-
-	.home-page__toc-link:hover {
-		color: #18181b;
-	}
-
-	:global(html.dark) .home-page__toc-link {
-		color: #a1a1aa;
-	}
-
-	:global(html.dark) .home-page__toc-link:hover {
-		color: #f4f4f5;
 	}
 
 	.home-page__hero-link {
@@ -659,11 +609,6 @@
 	}
 
 	@media (min-width: 768px) {
-		.home-page__intro-grid {
-			grid-template-columns: minmax(0, 1fr) 13rem;
-			gap: 2.5rem;
-		}
-
 		.home-page__hero {
 			gap: 1.25rem;
 		}
@@ -676,13 +621,6 @@
 		.home-page__field-notes-list {
 			border-left: 1px solid #f4f4f5;
 			padding-left: 1.5rem;
-		}
-
-		.home-page__toc {
-			display: block;
-			position: sticky;
-			top: 6rem;
-			align-self: start;
 		}
 
 		:global(html.dark) .home-page__field-notes-list {
@@ -710,6 +648,29 @@
 	@media (max-width: 639px) {
 		.home-page__hero {
 			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (min-width: 1280px) {
+		.home-page-root {
+			grid-template-columns: 1fr 42rem 1fr;
+		}
+
+		.home-page {
+			grid-column: 2;
+		}
+
+		.home-page__toc-rail {
+			display: block;
+			grid-column: 3;
+			padding-top: 2.5rem;
+		}
+
+		.home-page__toc-rail :global(aside) {
+			position: sticky;
+			top: 2rem;
+			width: 12rem;
+			margin-left: 2rem;
 		}
 	}
 </style>
