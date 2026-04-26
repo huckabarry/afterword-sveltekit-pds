@@ -637,6 +637,7 @@
 
 		.home-page {
 			grid-row: 2;
+			margin-left: -3rem;
 		}
 
 		.home-page__toc-rail {
