@@ -14,12 +14,6 @@
 
 	const primaryNav = [
 		{ href: '/', label: 'Home', match: (path: string) => path === '/' },
-		{ href: '/blog', label: 'Blog', match: (path: string) => path.startsWith('/blog') },
-		{
-			href: '/field-notes',
-			label: 'Field Notes',
-			match: (path: string) => path.startsWith('/field-notes')
-		},
 		{ href: '/status', label: 'Status', match: (path: string) => path.startsWith('/status') },
 		{ href: '/about', label: 'About', match: (path: string) => path.startsWith('/about') }
 	];
