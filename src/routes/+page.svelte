@@ -632,12 +632,12 @@
 
 		.home-page__intro {
 			grid-row: 1;
-			margin-left: -3rem;
+			margin-left: 0;
 		}
 
 		.home-page {
 			grid-row: 2;
-			margin-left: -3rem;
+			margin-left: 0;
 		}
 
 		.home-page__toc-rail {
