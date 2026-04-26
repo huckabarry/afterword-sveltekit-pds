@@ -1,159 +1,141 @@
 <script lang="ts">
-	import { formatDate } from '$lib/format';
-	import ResponsiveContentCover from '$lib/components/ResponsiveContentCover.svelte';
-	import type { BlogPost } from '$lib/server/ghost';
+	import ArrowRightIcon from '$lib/components/home-template/ArrowRightIcon.svelte';
+	import PostsList from '$lib/components/home-template/PostsList.svelte';
+	import SocialLinks from '$lib/components/home-template/SocialLinks.svelte';
+
+	type SocialLink = {
+		label: string;
+		url: string;
+	};
+
+	type HomePost = {
+		href: string;
+		title: string;
+		description: string;
+		publishedAt: Date;
+	};
+
+	type Profile = {
+		displayName: string;
+		avatarUrl: string;
+		bio: string;
+		verificationLinks: SocialLink[];
+	};
 
 	let {
 		data
 	}: {
-		data: { planningPosts: BlogPost[]; fieldNotesPosts: BlogPost[] };
+		data: {
+			profile: Profile;
+			posts: HomePost[];
+		};
 	} = $props();
-
-	function blogUrl(slug: string) {
-		return `/blog/${slug}`;
-	}
 </script>
 
 <svelte:head>
-	<title>Bryan Robb</title>
+	<title>{data.profile.displayName}</title>
+	<meta name="description" content={data.profile.bio} />
 </svelte:head>
 
-<section class="stream-head">
-	<div class="stream-head__lede">
-		<p>
-			Urban planner, photographer, gardener, and habitual maker of things. I use this
-			space for short updates, photos, and longer reflections on place, music, design, and
-			daily life. If you've found your way here and want to say hello, I'd love to hear from
-			you.
-		</p>
-	</div>
-</section>
-
-<div class="section-stack">
-	<section class="section-block section-block-writing">
-		<h2 class="section-title">Field Notes</h2>
-		{#if data.fieldNotesPosts.length}
-			<section class="blog-list">
-				{#each data.fieldNotesPosts as post, index}
-					<article class="blog-row home-feature-row">
-						<a class="blog-row__link home-feature-row__link" href={blogUrl(post.slug)}>
-							{#if post.coverImage}
-								<div class="home-feature-row__media">
-									<ResponsiveContentCover
-										imageClass="home-feature-row__image"
-										sourceUrl={post.coverImage}
-										alt={post.title}
-										hint={post.path}
-										loading={index === 0 ? 'eager' : 'lazy'}
-										fetchpriority={index === 0 ? 'high' : 'auto'}
-									/>
-								</div>
-							{/if}
-							<div class="home-feature-row__body">
-								<time class="blog-row__date" datetime={post.publishedAt.toISOString()}>
-									{formatDate(post.publishedAt)}
-								</time>
-								<h3>{post.title}</h3>
-								<p>{post.excerpt}</p>
-							</div>
-						</a>
-					</article>
-				{/each}
-			</section>
-			<div class="home-stream-tags">
-				<a class="tag-pill" href="/tags/field-notes">Field Notes</a>
-				<a class="home-updates__more-link" href="/field-notes">Read more field notes <span aria-hidden="true">→</span></a>
-			</div>
-		{:else}
-			<p class="empty-state">No field notes are available yet.</p>
-		{/if}
+<div class="template-home">
+	<section class="template-home__hero">
+		<div class="template-home__hero-card">
+			<img src={data.profile.avatarUrl} alt={data.profile.displayName} class="template-home__avatar" />
+			<SocialLinks links={data.profile.verificationLinks || []} />
+			<p class="template-home__bio">{data.profile.bio}</p>
+		</div>
 	</section>
 
-	<section class="section-block section-block-writing">
-		<h2 class="section-title">Planning & Urbanism</h2>
-		{#if data.planningPosts.length}
-			<section class="blog-list">
-				{#each data.planningPosts as post, index}
-					<article class="blog-row home-feature-row">
-						<a class="blog-row__link home-feature-row__link" href={blogUrl(post.slug)}>
-							{#if post.coverImage}
-								<div class="home-feature-row__media">
-									<ResponsiveContentCover
-										imageClass="home-feature-row__image"
-										sourceUrl={post.coverImage}
-										alt={post.title}
-										hint={post.path}
-										loading={index === 0 ? 'eager' : 'lazy'}
-										fetchpriority={index === 0 ? 'high' : 'auto'}
-									/>
-								</div>
-							{/if}
-							<div class="home-feature-row__body">
-								<time class="blog-row__date" datetime={post.publishedAt.toISOString()}>
-									{formatDate(post.publishedAt)}
-								</time>
-								<h3>{post.title}</h3>
-								<p>{post.excerpt}</p>
-							</div>
-						</a>
-					</article>
-				{/each}
-			</section>
-			<div class="home-stream-tags">
-				<a class="tag-pill" href="/tags/urbanism">Urbanism</a>
-				<a class="home-updates__more-link" href="/planning">Read more planning & urbanism posts <span aria-hidden="true">→</span></a>
-			</div>
+	<section class="template-home__recent">
+		<div class="template-home__recent-head">
+			<h2>Recently Published</h2>
+			<a href="/blog" class="template-home__view-all">
+				<span>View All</span>
+				<ArrowRightIcon />
+			</a>
+		</div>
+
+		{#if data.posts.length}
+			<PostsList posts={data.posts} />
 		{:else}
-			<p class="empty-state">No planning posts are available yet.</p>
+			<p class="template-home__empty">No published standard.site documents are available yet.</p>
 		{/if}
 	</section>
-
 </div>
 
 <style>
-	.stream-head {
-		margin-top: 0.1rem;
-		padding-bottom: 1.45rem;
-		border-bottom: 1px solid var(--border);
+	.template-home {
+		display: flex;
+		flex-direction: column;
+		gap: 2rem;
+		flex-grow: 1;
+		padding-bottom: 4rem;
 	}
 
-	.home-feature-row__link {
-		display: grid;
-		grid-template-columns: 11rem minmax(0, 1fr);
-		gap: 1rem;
-		align-items: start;
+	.template-home__hero {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4rem;
+		padding: 2rem 0 4rem;
 	}
 
-	.home-feature-row__media {
-		display: grid;
-	}
-
-	:global(.home-feature-row__image) {
-		display: block;
+	.template-home__hero-card {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 		width: 100%;
-		aspect-ratio: 4 / 5;
-		height: auto;
+		gap: 1.5rem;
+	}
+
+	.template-home__avatar {
+		width: 9rem;
+		height: 9rem;
+		border-radius: 999px;
 		object-fit: cover;
-		border-radius: 0.5rem;
+		border: 2px solid color-mix(in srgb, var(--border) 85%, transparent);
 	}
 
-	.home-feature-row__body {
-		min-width: 0;
+	.template-home__bio {
+		max-width: 38rem;
+		margin: 0;
+		text-align: center;
+		color: var(--muted);
+		line-height: 1.7;
 	}
 
-	.home-feature-row__body p {
-		line-clamp: 4;
-		-webkit-line-clamp: 4;
+	.template-home__recent {
+		width: 100%;
 	}
 
-	.empty-state {
+	.template-home__recent-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 2rem;
+	}
+
+	.template-home__recent-head h2 {
+		margin: 0;
+		font-size: 0.98rem;
+		font-weight: 600;
+		color: var(--muted);
+		letter-spacing: 0;
+	}
+
+	.template-home__view-all {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-size: 0.92rem;
+		font-weight: 600;
+		color: var(--accent, var(--text));
+		text-decoration: none;
+	}
+
+	.template-home__empty {
 		margin: 0;
 		color: var(--muted);
-	}
-
-	@media (max-width: 640px) {
-		.home-feature-row__link {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>
