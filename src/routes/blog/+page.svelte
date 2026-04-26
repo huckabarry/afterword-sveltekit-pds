@@ -20,4 +20,6 @@
 	showPhotos={false}
 	showLaneLinks={false}
 	showSectionLinks={false}
+	introTitle="Writings on place, cities, and the human experience of living in them."
+	introBody="All of my longer writing collected in one place."
 />

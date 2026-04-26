@@ -28,6 +28,8 @@
 	export let showPhotos = true;
 	export let showLaneLinks = true;
 	export let showSectionLinks = true;
+	export let introTitle: string | null = null;
+	export let introBody: string | null = null;
 
 	const lanes = [
 		{ href: '/', label: 'Home' },
@@ -39,6 +41,15 @@
 
 <div class="home-page">
 	<section class="home-page__intro">
+		{#if introTitle}
+			<div class="home-page__intro-copy">
+				<h1 class="home-page__intro-title">{introTitle}</h1>
+				{#if introBody}
+					<p class="home-page__intro-body">{introBody}</p>
+				{/if}
+			</div>
+		{/if}
+
 		<div class="home-page__byline">
 			<img src={avatar} alt={authorName} class="home-page__byline-avatar" />
 			<div class="home-page__byline-copy">
@@ -212,6 +223,37 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.25rem;
+	}
+
+	.home-page__intro-copy {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.home-page__intro-title {
+		margin: 0;
+		font-size: clamp(1.9rem, 4vw, 2.5rem);
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		line-height: 1.05;
+		color: #18181b;
+	}
+
+	:global(html.dark) .home-page__intro-title {
+		color: #f4f4f5;
+	}
+
+	.home-page__intro-body {
+		margin: 0;
+		max-width: 38rem;
+		font-size: 1rem;
+		line-height: 1.7;
+		color: #71717a;
+	}
+
+	:global(html.dark) .home-page__intro-body {
+		color: #a1a1aa;
 	}
 
 	.home-page__byline {
