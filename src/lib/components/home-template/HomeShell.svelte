@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 
-	let { title, children }: { title: string; children?: import('svelte').Snippet } = $props();
+	let {
+		title,
+		wide = false,
+		children
+	}: {
+		title: string;
+		wide?: boolean;
+		children?: import('svelte').Snippet;
+	} = $props();
 
 	let isDarkMode = $state(true);
 
@@ -71,7 +79,7 @@
 			</button>
 		</header>
 
-		<main class="template-shell__main">
+		<main class:template-shell__main--wide={wide} class="template-shell__main">
 			{@render children?.()}
 		</main>
 	</div>
@@ -115,7 +123,9 @@
 	.template-shell__brand {
 		font-size: 1.125rem;
 		font-weight: 700;
+		letter-spacing: 0.02em;
 		text-decoration: none;
+		text-transform: uppercase;
 		color: transparent;
 		background-image: linear-gradient(to right, rgb(20 184 166), rgb(13 148 136));
 		background-clip: text;
@@ -152,6 +162,10 @@
 		width: 100%;
 		max-width: 42rem;
 		margin: 0 auto;
+	}
+
+	.template-shell__main--wide {
+		max-width: none;
 	}
 
 	@media (min-width: 640px) {
