@@ -27,9 +27,11 @@
 	export let latestPhotos: PhotoItem[] = [];
 	export let showPhotos = true;
 	export let showLaneLinks = true;
+	export let showSectionLinks = true;
 
 	const lanes = [
 		{ href: '/', label: 'Home' },
+		{ href: '/blog', label: 'Blog' },
 		{ href: '/status', label: 'Status' },
 		{ href: '/about', label: 'About' }
 	];
@@ -53,7 +55,9 @@
 					<p class="feature-card__label">Blog</p>
 					<h2 id="home-blog-heading" class="home-page__section-title">Latest posts</h2>
 				</div>
-				<a class="home-page__section-link" href="/blog">View all</a>
+				{#if showSectionLinks}
+					<a class="home-page__section-link" href="/blog">View all</a>
+				{/if}
 			</div>
 
 			<div class="home-page__field-notes-list" aria-label="Latest blog posts">
@@ -103,13 +107,15 @@
 	{/if}
 
 	{#if latestFieldNotes.length}
-		<section class="home-page__feed-section" aria-labelledby="home-field-notes-heading">
+		<section class="home-page__feed-section" id="field-notes" aria-labelledby="home-field-notes-heading">
 			<div class="home-page__section-head">
 				<div>
 					<p class="feature-card__label">Field Notes</p>
 					<h2 id="home-field-notes-heading" class="home-page__section-title">Recent notes</h2>
 				</div>
-				<a class="home-page__section-link" href="/field-notes">View all</a>
+				{#if showSectionLinks}
+					<a class="home-page__section-link" href="/blog#field-notes">View all</a>
+				{/if}
 			</div>
 
 			<div class="home-page__field-notes-list" aria-label="Recent field notes">

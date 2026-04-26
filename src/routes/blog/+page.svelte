@@ -19,4 +19,5 @@
 	latestFieldNotes={data.latestFieldNotes}
 	showPhotos={false}
 	showLaneLinks={false}
+	showSectionLinks={false}
 />
