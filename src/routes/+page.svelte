@@ -56,31 +56,29 @@
 </svelte:head>
 
 <div class="home-page-root">
-	<div class="home-page">
-		<section class="home-page__intro">
-			<div class="home-page__hero">
-				<img
-					src={avatar}
-					alt={authorName}
-					class="home-page__hero-avatar"
-				/>
+	<section class="home-page__intro">
+		<div class="home-page__hero">
+			<img
+				src={avatar}
+				alt={authorName}
+				class="home-page__hero-avatar"
+			/>
 
-				<div class="home-page__hero-copy">
-					<div class="home-page__hero-header">
-						<p class="home-page__hero-name">{authorName}</p>
-						<p class="home-page__hero-role">{bio}</p>
-					</div>
-
-					<p class="home-page__hero-body">
-						Afterword is where I keep longer writing and field notes, mostly about cities,
-						photographs, books, weather, and wandering.
-					</p>
+			<div class="home-page__hero-copy">
+				<div class="home-page__hero-header">
+					<p class="home-page__hero-name">{authorName}</p>
+					<p class="home-page__hero-role">{bio}</p>
 				</div>
-			</div>
-		</section>
 
-		<div class="home-page__content-grid">
-			<div class="home-page__content-stack">
+				<p class="home-page__hero-body">
+					Afterword is where I keep longer writing and field notes, mostly about cities,
+					photographs, books, weather, and wandering.
+				</p>
+			</div>
+		</div>
+	</section>
+
+	<div class="home-page">
 		{#if data.latestBlogPosts.length}
 			<section class="home-page__feed-section" id="home-blog" aria-labelledby="home-blog-heading">
 			<div class="home-page__section-head">
@@ -219,31 +217,27 @@
 			</section>
 		{/if}
 
-			<nav class="home-page__lane-links" aria-label="Browse the site">
-				{#each lanes as lane}
-					<a href={lane.href} class="home-page__lane-link">{lane.label}</a>
-				{/each}
-			</nav>
-			</div>
-
-			<aside class="home-page__toc-rail" aria-label="On this page">
-				<ToC headings={homeToc} />
-			</aside>
-		</div>
+		<nav class="home-page__lane-links" aria-label="Browse the site">
+			{#each lanes as lane}
+				<a href={lane.href} class="home-page__lane-link">{lane.label}</a>
+			{/each}
+		</nav>
 	</div>
+
+	<aside class="home-page__toc-rail" aria-label="On this page">
+		<ToC headings={homeToc} />
+	</aside>
 </div>
 
 <style>
 	.home-page-root {
-		display: grid;
-		grid-template-columns: 1fr;
+		display: block;
 	}
 
 	.home-page {
 		display: flex;
 		flex-direction: column;
 		gap: 3.5rem;
-		padding-top: 1.5rem;
 		padding-bottom: 4rem;
 	}
 
@@ -251,17 +245,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.25rem;
-	}
-
-	.home-page__content-grid {
-		display: grid;
-		grid-template-columns: 1fr;
-	}
-
-	.home-page__content-stack {
-		display: flex;
-		flex-direction: column;
-		gap: 3.5rem;
+		padding-top: 1.5rem;
 	}
 
 	.home-page__hero {
@@ -635,21 +619,20 @@
 
 	@media (min-width: 1280px) {
 		.home-page-root {
-			grid-template-columns: 1fr 42rem 1fr;
-		}
-
-		.home-page {
-			grid-column: 2;
-		}
-
-		.home-page__content-grid {
-			grid-template-columns: minmax(0, 1fr) 18rem;
+			display: grid;
+			grid-template-columns: 1fr 42rem 18rem 1fr;
 			column-gap: 3.5rem;
 			align-items: start;
 		}
 
+		.home-page__intro,
+		.home-page {
+			grid-column: 2;
+		}
+
 		.home-page__toc-rail {
 			display: block;
+			grid-column: 3;
 			position: sticky;
 			top: 2rem;
 			align-self: start;
