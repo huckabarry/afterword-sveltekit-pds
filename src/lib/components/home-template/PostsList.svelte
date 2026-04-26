@@ -18,11 +18,7 @@
 			<PostDate class="template-posts-list__date" {post} />
 
 			<div class="template-posts-list__preview">
-				<PostPreview post={post}>
-					{#snippet eyebrow()}
-						<PostDate class="template-posts-list__mobile-date" {post} collapsed decorate />
-					{/snippet}
-				</PostPreview>
+				<PostPreview post={post} />
 			</div>
 		</article>
 	{/each}
@@ -51,10 +47,6 @@
 		grid-column: span 4 / span 4;
 	}
 
-	:global(.template-post-date.template-posts-list__mobile-date) {
-		display: flex;
-	}
-
 	@media (min-width: 768px) {
 		.template-posts-list {
 			border-left: 1px solid #f4f4f5;
@@ -73,10 +65,6 @@
 
 		.template-posts-list__preview {
 			grid-column: span 3 / span 3;
-		}
-
-		:global(.template-post-date.template-posts-list__mobile-date) {
-			display: none;
 		}
 	}
 </style>
