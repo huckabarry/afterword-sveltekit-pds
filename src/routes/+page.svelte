@@ -632,6 +632,7 @@
 
 		.home-page__intro {
 			grid-row: 1;
+			margin-left: -1.5rem;
 		}
 
 		.home-page {
