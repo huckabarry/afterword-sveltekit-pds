@@ -90,7 +90,7 @@
 			<div class="home-page__section-head">
 				<div>
 					<p class="feature-card__label">Blog</p>
-					<h2 id="home-blog-heading" class="home-page__section-title">Latest urbanism post</h2>
+					<h2 id="home-blog-heading" class="home-page__section-title">Urbanism</h2>
 				</div>
 				<a class="home-page__section-link" href="/blog">View all</a>
 			</div>
@@ -146,7 +146,7 @@
 			<div class="home-page__section-head">
 				<div>
 					<p class="feature-card__label">Field Notes</p>
-					<h2 id="home-field-notes-heading" class="home-page__section-title">Latest field note</h2>
+					<h2 id="home-field-notes-heading" class="home-page__section-title">Field Notes</h2>
 				</div>
 				<a class="home-page__section-link" href="/blog#field-notes">View all</a>
 			</div>
@@ -202,7 +202,7 @@
 			<div class="home-page__section-head">
 				<div>
 					<p class="feature-card__label">Latest Photos</p>
-					<h2 id="latest-photos-heading" class="home-page__section-title">Recent images</h2>
+					<h2 id="latest-photos-heading" class="home-page__section-title">Photos</h2>
 				</div>
 				<a class="home-page__section-link" href="/photos">View all</a>
 			</div>
@@ -663,14 +663,14 @@
 		.home-page__toc-rail {
 			display: block;
 			grid-column: 3;
-			padding-top: 2.5rem;
+			padding-top: 3.5rem;
 		}
 
 		.home-page__toc-rail :global(aside) {
 			position: sticky;
 			top: 2rem;
-			width: 14rem;
-			margin-left: 2rem;
+			width: 16rem;
+			margin-left: 2.75rem;
 		}
 	}
 </style>
