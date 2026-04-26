@@ -669,8 +669,16 @@
 		.home-page__toc-rail :global(aside) {
 			position: sticky;
 			top: 2rem;
-			width: 16rem;
-			margin-left: 2.75rem;
+			width: 18rem;
+			margin-left: 3.5rem;
+		}
+
+		.home-page__toc-rail :global(ul) {
+			gap: 0.7rem;
+		}
+
+		.home-page__toc-rail :global(li) {
+			white-space: nowrap;
 		}
 	}
 </style>
