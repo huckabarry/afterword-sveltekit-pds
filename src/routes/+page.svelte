@@ -61,9 +61,8 @@
 				</div>
 
 				<p class="home-page__hero-body">
-					Afterword is a small web home for longer writing, field notes, and the passing things
-					that seem worth keeping: cities, photographs, books, weather, wandering, and whatever
-					else follows me home.
+					Afterword is where I keep longer writing and field notes, mostly about cities,
+					photographs, books, weather, and wandering.
 				</p>
 
 				<nav class="home-page__hero-links" aria-label="Author links">
