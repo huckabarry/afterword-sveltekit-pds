@@ -55,7 +55,9 @@
 	<meta name="description" content="Afterword gathers writing, field notes, and media into one small web home." />
 </svelte:head>
 
-<div class="home-page-root">
+<div class="home-page-root max-w-2xl mx-auto lg:max-w-none">
+	<div class="hidden lg:block" aria-hidden="true"></div>
+
 	<section class="home-page__intro">
 		<div class="home-page__hero">
 			<img
@@ -77,6 +79,10 @@
 			</div>
 		</div>
 	</section>
+
+	<div class="hidden xl:block" aria-hidden="true"></div>
+
+	<div class="hidden lg:block" aria-hidden="true"></div>
 
 	<div class="home-page">
 		{#if data.latestBlogPosts.length}
@@ -224,14 +230,17 @@
 		</nav>
 	</div>
 
-	<aside class="home-page__toc-rail" aria-label="On this page">
-		<ToC headings={homeToc} />
-	</aside>
+	<div class="home-page__toc-column hidden xl:block">
+		<aside class="home-page__toc-rail" aria-label="On this page">
+			<ToC headings={homeToc} />
+		</aside>
+	</div>
 </div>
 
 <style>
 	.home-page-root {
-		display: block;
+		display: grid;
+		grid-template-columns: 1fr;
 	}
 
 	.home-page {
@@ -239,6 +248,8 @@
 		flex-direction: column;
 		gap: 3.5rem;
 		padding-bottom: 4rem;
+		width: 100%;
+		overflow-x: hidden;
 	}
 
 	.home-page__intro {
@@ -246,6 +257,8 @@
 		flex-direction: column;
 		gap: 1.25rem;
 		padding-top: 1.5rem;
+		width: 100%;
+		overflow-x: hidden;
 	}
 
 	.home-page__hero {
@@ -320,6 +333,10 @@
 	}
 
 	.home-page__toc-rail {
+		display: none;
+	}
+
+	.home-page__toc-column {
 		display: none;
 	}
 
@@ -617,38 +634,36 @@
 		}
 	}
 
-	@media (min-width: 1280px) {
+	@media (min-width: 1024px) {
 		.home-page-root {
-			display: grid;
-			grid-template-columns: 1fr 42rem 18rem 1fr;
-			column-gap: 3.5rem;
-			align-items: start;
-		}
-
-		.home-page__intro,
-		.home-page {
-			grid-column: 2;
+			grid-template-columns: 1fr 42rem 1fr;
 		}
 
 		.home-page__intro {
+			grid-column: 2;
 			grid-row: 1;
-			margin-left: 0;
 		}
 
 		.home-page {
+			grid-column: 2;
 			grid-row: 2;
-			margin-left: 0;
+		}
+	}
+
+	@media (min-width: 1280px) {
+		.home-page__toc-column {
+			display: block;
+			grid-column: 3;
+			grid-row: 2;
+			padding-top: 2rem;
 		}
 
 		.home-page__toc-rail {
 			display: block;
-			grid-column: 3;
-			grid-row: 2;
 			position: sticky;
 			top: 2rem;
-			align-self: start;
-			width: 18rem;
-			margin-top: 1.35rem;
+			width: 12rem;
+			margin-left: 2rem;
 		}
 
 		.home-page__toc-rail :global(ul) {
