@@ -260,13 +260,13 @@
 	/>
 </svelte:head>
 
-{#if isAdminRoute}
-	{@render children()}
-{:else if isHomeRoute || isTemplatePostRoute}
-	<HomeShell title={profile.displayName}>
+	{#if isAdminRoute}
 		{@render children()}
-	</HomeShell>
-{:else}
+	{:else if isHomeRoute || isTemplatePostRoute}
+		<HomeShell title={siteTitle} wide={isTemplatePostRoute}>
+			{@render children()}
+		</HomeShell>
+	{:else}
 	<div class="site-shell">
 		<header class="site-header h-card">
 			<a class="site-header-avatar-link u-url u-uid" href="/">

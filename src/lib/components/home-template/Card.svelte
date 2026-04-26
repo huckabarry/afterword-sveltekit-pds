@@ -14,7 +14,7 @@
 	} = $props();
 </script>
 
-<article class="template-card">
+<article class:template-card--linked={Boolean(href)} class="template-card">
 	{#if eyebrow}
 		<div class="template-card__eyebrow">
 			{@render eyebrow()}
@@ -42,7 +42,7 @@
 	{/if}
 
 	{#if actions}
-		<div aria-hidden="true" class="template-card__actions">
+		<div class="template-card__actions">
 			{@render actions()}
 		</div>
 	{/if}
@@ -93,12 +93,14 @@
 		background: rgba(39, 39, 42, 0.5);
 	}
 
-	.template-card:hover .template-card__hover {
+	.template-card--linked:hover .template-card__hover,
+	.template-card--linked:focus-within .template-card__hover {
 		opacity: 1;
 		transform: scale(1);
 	}
 
 	.template-card__title-link {
+		display: block;
 		text-decoration: none;
 		color: inherit;
 	}

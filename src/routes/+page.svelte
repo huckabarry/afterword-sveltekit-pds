@@ -41,6 +41,7 @@
 	<section class="template-home__bio-section">
 		<div class="template-home__bio-card">
 			<img src={data.profile.avatarUrl} alt={data.profile.displayName} class="template-home__avatar" />
+			<h1 class="template-home__name">{data.profile.displayName}</h1>
 			<div class="template-home__socials">
 				<SocialLinks links={data.profile.verificationLinks || []} />
 			</div>
@@ -104,6 +105,19 @@
 	.template-home__socials {
 		display: flex;
 		gap: 1.5rem;
+	}
+
+	.template-home__name {
+		margin: -0.5rem 0 0;
+		font-size: 1rem;
+		font-weight: 600;
+		line-height: 1.2;
+		text-align: center;
+		color: #27272a;
+	}
+
+	:global(html.dark) .template-home__name {
+		color: #f4f4f5;
 	}
 
 	.template-home__bio {

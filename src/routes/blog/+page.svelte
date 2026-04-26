@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ResponsiveContentCover from '$lib/components/ResponsiveContentCover.svelte';
+	import PostsList from '$lib/components/home-template/PostsList.svelte';
 
 	let {
 		data
@@ -7,9 +7,8 @@
 		data: {
 			posts: Array<{
 				title: string;
-				excerpt: string;
-				path: string;
-				coverImage: string | null;
+				description: string;
+				href: string;
 				publishedAt: string | Date;
 			}>;
 		};
@@ -17,71 +16,65 @@
 </script>
 
 <svelte:head>
-	<title>Blog | Bryan Robb</title>
+	<title>Afterword | Blog</title>
 </svelte:head>
 
-<section class="stream-head">
-	<h1 class="stream-head__title">Latest writing</h1>
-	<p class="stream-head__lede">
-		A compact archive for field notes, gallery posts, and urbanism writing.
-	</p>
-</section>
+<div class="template-blog-index">
+	<header class="template-blog-index__header">
+		<h1 class="template-blog-index__title">Writing on place, cities, photographs, and whatever else sticks.</h1>
+		<p class="template-blog-index__lede">All of my longer writing collected in one place.</p>
+	</header>
 
-<section class="blog-list blog-list--archive" aria-label="Blog posts">
-	{#each data.posts as post}
-		<article class="blog-row blog-row--with-image h-entry">
-			<a class="blog-row__link u-url" href={post.path}>
-				{#if post.coverImage}
-					<ResponsiveContentCover
-						imageClass="blog-row__image"
-						sourceUrl={post.coverImage}
-						alt={post.title}
-						hint={post.path}
-					/>
-				{/if}
-				<div class="blog-row__body">
-					<time class="blog-row__date dt-published" datetime={new Date(post.publishedAt).toISOString()}>
-						{new Date(post.publishedAt).toLocaleDateString('en-GB', {
-							day: '2-digit',
-							month: 'short',
-							year: 'numeric'
-						})}
-					</time>
-					<h2 class="p-name">{post.title}</h2>
-					<p class="p-summary">{post.excerpt}</p>
-					<span class="blog-row__read-more">Read more <span aria-hidden="true">→</span></span>
-				</div>
-			</a>
-		</article>
-	{:else}
-		<article class="blog-row">
-			<p>No blog posts are available yet.</p>
-		</article>
-	{/each}
-</section>
+	<div class="template-blog-index__list">
+		<PostsList posts={data.posts} />
+	</div>
+</div>
 
 <style>
-	.blog-row--with-image .blog-row__link {
-		display: grid;
-		grid-template-columns: 11rem minmax(0, 1fr);
-		gap: 1rem;
-		align-items: start;
+	.template-blog-index {
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
 	}
 
-	:global(.blog-row__image) {
-		display: block;
-		width: 100%;
-		height: auto;
-		border-radius: 0.5rem;
+	.template-blog-index__header {
+		padding-top: 1rem;
 	}
 
-	.blog-row__body {
-		min-width: 0;
+	.template-blog-index__title {
+		margin: 0;
+		font-size: 2.25rem;
+		font-weight: 700;
+		line-height: 1.05;
+		letter-spacing: -0.035em;
+		color: #27272a;
 	}
 
-	@media (max-width: 640px) {
-		.blog-row--with-image .blog-row__link {
-			grid-template-columns: 1fr;
+	:global(html.dark) .template-blog-index__title {
+		color: #f4f4f5;
+	}
+
+	.template-blog-index__lede {
+		margin: 1.5rem 0 0;
+		font-size: 1rem;
+		color: #52525b;
+	}
+
+	:global(html.dark) .template-blog-index__lede {
+		color: #a1a1aa;
+	}
+
+	.template-blog-index__list {
+		margin-top: 4rem;
+	}
+
+	@media (min-width: 640px) {
+		.template-blog-index__title {
+			font-size: 3rem;
+		}
+
+		.template-blog-index__list {
+			margin-top: 5rem;
 		}
 	}
 </style>

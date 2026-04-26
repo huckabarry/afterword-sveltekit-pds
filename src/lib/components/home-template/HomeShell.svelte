@@ -50,7 +50,7 @@
 	<div class="template-shell__inner">
 		<header class="template-shell__header">
 			<a class="template-shell__brand" href="/">
-				{title}
+				<span class="template-shell__brand-title">{title}</span>
 			</a>
 
 			<button
@@ -123,13 +123,18 @@
 	.template-shell__brand {
 		font-size: 1.125rem;
 		font-weight: 700;
-		letter-spacing: 0.02em;
 		text-decoration: none;
-		text-transform: uppercase;
 		color: transparent;
 		background-image: linear-gradient(to right, rgb(20 184 166), rgb(13 148 136));
 		background-clip: text;
 		-webkit-background-clip: text;
+	}
+
+	.template-shell__brand-title {
+		display: block;
+		font-size: 1em;
+		font-weight: 700;
+		line-height: 1;
 	}
 
 	:global(html.dark) .template-shell__brand {

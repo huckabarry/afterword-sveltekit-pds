@@ -13,10 +13,10 @@
 
 <Card href={post.href} title={post.title} description={post.description} {eyebrow}>
 	{#snippet actions()}
-		<div class="template-post-preview__actions">
+		<a href={post.href} data-sveltekit-preload-data="hover" class="template-post-preview__actions">
 			<span class="template-post-preview__actions-label">Read</span>
 			<ArrowRightIcon class="template-post-preview__actions-icon" />
-		</div>
+		</a>
 	{/snippet}
 </Card>
 
@@ -25,6 +25,7 @@
 		display: flex;
 		align-items: center;
 		color: rgb(20 184 166);
+		text-decoration: none;
 	}
 
 	:global(html.dark) .template-post-preview__actions {

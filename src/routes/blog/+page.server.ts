@@ -14,6 +14,13 @@ export async function load() {
 	const posts = await getBlogPosts();
 
 	return {
-		posts: posts.filter((post) => post.publicTags.some((tag) => BLOG_INDEX_TAGS.has(tag.slug)))
+		posts: posts
+			.filter((post) => post.publicTags.some((tag) => BLOG_INDEX_TAGS.has(tag.slug)))
+			.map((post) => ({
+				title: post.title,
+				description: post.excerpt,
+				href: post.path,
+				publishedAt: post.publishedAt
+			}))
 	};
 }
