@@ -1,4 +1,4 @@
-import { getStatusSnapshotPage } from '$lib/server/status-snapshot';
+import { getActivityFeed } from '$lib/server/activity-feed';
 
 export async function load(event) {
 	const parentData = await event.parent();
@@ -7,12 +7,8 @@ export async function load(event) {
 		'cache-control': 'public, max-age=60, s-maxage=240, stale-while-revalidate=600'
 	});
 
-	const page = await getStatusSnapshotPage({
-		platform: event.platform
-	});
-
 	return {
-		statusPage: page,
+		activityFeed: await getActivityFeed(event),
 		authorAvatarUrl: parentData.profile?.avatarUrl || '/assets/images/status-avatar.jpg'
 	};
 }

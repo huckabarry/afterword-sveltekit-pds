@@ -149,25 +149,19 @@
 	<meta name="description" content={data.intro.description} />
 </svelte:head>
 
-<section class="section-block">
-	<h1 class="section-title">{data.intro.title}</h1>
-	<article class="content content-page">
-		<div class="post-full-content">
-			<section class="content-body">
-				{#each data.intro.paragraphs as paragraph}
-					<p>{paragraph}</p>
-				{/each}
-			</section>
+<div class="media-page">
+	<header class="media-page__header">
+		<h1 class="media-page__title">{data.intro.title}</h1>
+		<div class="media-page__intro">
+			{#each data.intro.paragraphs as paragraph}
+				<p>{paragraph}</p>
+			{/each}
 		</div>
-	</article>
-</section>
+	</header>
 
 {#if isLoadingInitial}
-	<section class="section-block">
-		<p class="page-head__lede">Loading media timeline…</p>
-	</section>
+	<p class="media-page__status">Loading media timeline…</p>
 {:else if timelineItems.length}
-	<section class="section-block">
 		<div class="media-timeline" aria-label="Media timeline">
 			{#each timelineItems as item (item.id)}
 				<article class="media-timeline__entry" id={item.id}>
@@ -432,19 +426,77 @@
 				<p class="media-timeline__error">{loadError}</p>
 			{/if}
 		</div>
-	</section>
 {:else}
-	<section class="section-block">
-		<p class="page-head__lede">{loadError || 'No media notes are available yet.'}</p>
-	</section>
+	<p class="media-page__status">{loadError || 'No media notes are available yet.'}</p>
 {/if}
+</div>
 
 <style>
+	.media-page {
+		display: flex;
+		flex-direction: column;
+		gap: 2rem;
+		padding-top: 1rem;
+		padding-bottom: 4rem;
+	}
+
+	.media-page__header {
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+	}
+
+	.media-page__title {
+		margin: 0;
+		font-size: clamp(2.25rem, 5vw, 3rem);
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		color: #18181b;
+	}
+
+	:global(html.dark) .media-page__title {
+		color: #f4f4f5;
+	}
+
+	.media-page__intro {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		color: #52525b;
+		font-size: 1rem;
+		line-height: 1.75;
+	}
+
+	:global(html.dark) .media-page__intro {
+		color: #a1a1aa;
+	}
+
+	.media-page__intro p,
+	.media-page__status {
+		margin: 0;
+	}
+
+	.media-page__status {
+		font-size: 1rem;
+		line-height: 1.75;
+		color: #71717a;
+	}
+
+	:global(html.dark) .media-page__status {
+		color: #a1a1aa;
+	}
+
 	.media-timeline {
 		--timeline-date-column: 4.5rem;
 		--timeline-rail-column: 1.4rem;
 		--timeline-gap: 1rem;
 		position: relative;
+	}
+
+	@media (min-width: 640px) {
+		.media-page {
+			gap: 2.5rem;
+		}
 	}
 
 	.media-timeline::before {

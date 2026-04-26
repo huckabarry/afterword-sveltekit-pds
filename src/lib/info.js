@@ -1,0 +1,14 @@
+export const website = 'https://sync.afterword.blog';
+
+export const firstName = 'Bryan';
+export const lastName = 'Robb';
+export const authorName = `${firstName} ${lastName}`;
+export const name = 'Afterword';
+
+export const avatar = '/assets/images/status-avatar.jpg';
+export const bio = 'Writer, photographer, and urban planner publishing from Afterword.';
+
+export const github = '';
+export const twitter = '';
+export const linkedin = '';
+export const instagram = '';

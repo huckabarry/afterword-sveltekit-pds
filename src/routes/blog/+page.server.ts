@@ -1,26 +1,16 @@
 import { getBlogPosts } from '$lib/server/ghost';
+import { toTemplatePosts } from '$lib/server/template-posts';
+import type { PageServerLoad } from './$types';
 
-const BLOG_INDEX_TAGS = new Set([
-	'field-notes',
-	'gallery',
-	'photography',
-	'urbanism',
-	'housing',
-	'transportation',
-	'public-finance'
-]);
+export const prerender = false;
+const PLANNING_TAGS = new Set(['urbanism', 'housing', 'transportation', 'public-finance']);
 
-export async function load() {
-	const posts = await getBlogPosts();
-
+export const load: PageServerLoad = async () => {
 	return {
-		posts: posts
-			.filter((post) => post.publicTags.some((tag) => BLOG_INDEX_TAGS.has(tag.slug)))
-			.map((post) => ({
-				title: post.title,
-				description: post.excerpt,
-				href: post.path,
-				publishedAt: post.publishedAt
-			}))
+		posts: toTemplatePosts(
+			(await getBlogPosts()).filter((post) =>
+				post.publicTags.some((tag) => PLANNING_TAGS.has(tag.slug))
+			)
+		)
 	};
-}
+};

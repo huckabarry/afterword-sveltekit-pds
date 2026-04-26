@@ -1,305 +1,1188 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
-	import { formatDate } from '$lib/format';
-	import type { StatusFeedPage, StatusPost } from '$lib/server/atproto';
+	import CheckinMap from '$lib/components/CheckinMap.svelte';
+	import { excerpt, formatDate } from '$lib/format';
+	import type { ActivityFeedItem } from '$lib/server/activity-feed';
+	import type { StatusPost } from '$lib/server/atproto';
+	import type { MediaTimelineItem } from '$lib/types/media-timeline';
 
 	let {
 		data
 	}: {
 		data: {
-			statusPage: StatusFeedPage;
+			activityFeed: ActivityFeedItem[];
 			authorAvatarUrl: string;
 		};
 	} = $props();
 
-	let statuses = $state<StatusPost[]>(untrack(() => data.statusPage.statuses));
-	let nextCursor = $state<string | null>(untrack(() => data.statusPage.cursor));
-	let isLoadingMore = $state(false);
-	let loadError = $state('');
-
-	const pageSize = $derived(data.statusPage.limit);
-
-	function infiniteLoad(node: HTMLElement) {
-		if (typeof IntersectionObserver === 'undefined') {
-			return;
-		}
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries.some((entry) => entry.isIntersecting)) {
-					void loadMore();
-				}
-			},
-			{
-				rootMargin: '320px 0px'
-			}
-		);
-
-		observer.observe(node);
-
-		return {
-			destroy() {
-				observer.disconnect();
-			}
-		};
+	function usesPosterRatio(item: MediaTimelineItem) {
+		return item.kind === 'popfeed' && (item.mediaType === 'movie' || item.mediaType === 'tv_show');
 	}
 
-	async function loadMore() {
-		if (isLoadingMore || !nextCursor) {
-			return;
-		}
-
-		isLoadingMore = true;
-		loadError = '';
-
-		try {
-			const response = await fetch(
-				`/status/feed.json?cursor=${encodeURIComponent(nextCursor)}&limit=${encodeURIComponent(String(pageSize))}`
-			);
-
-			if (!response.ok) {
-				throw new Error(`Status request failed with ${response.status}`);
-			}
-
-			const page = (await response.json()) as StatusFeedPage;
-			statuses = [...statuses, ...page.statuses];
-			nextCursor = page.cursor;
-		} catch (error) {
-			loadError = error instanceof Error ? error.message : 'Unable to load more status updates.';
-		} finally {
-			isLoadingMore = false;
-		}
+	function isBookPopfeed(item: MediaTimelineItem) {
+		return item.kind === 'popfeed' && item.mediaType === 'book';
 	}
 
 	function socialRepostCount(post: StatusPost) {
 		return (post.repostCount || 0) + (post.quoteCount || 0);
 	}
+
+	function getVideoLabel(post: StatusPost) {
+		return post.video?.alt?.trim() || 'Watch video on Bluesky';
+	}
+
+	function getFeedKicker(entry: ActivityFeedItem) {
+		if (entry.type === 'status') return 'Status';
+		if (entry.type === 'checkin') return 'Check-In';
+		return entry.item.label;
+	}
+
+	function isGifUrl(url: string | null | undefined) {
+		const value = String(url || '').trim().toLowerCase();
+		return (
+			value.includes('.gif') ||
+			value.includes('tenor.com') ||
+			value.includes('giphy.com') ||
+			value.includes('media.giphy.com')
+		);
+	}
+
+	function getExternalPreviewImage(
+		external: { uri: string; thumb: string; title: string } | null | undefined
+	) {
+		if (!external) return '';
+		return isGifUrl(external.uri) ? external.uri : external.thumb;
+	}
+
+	function isGifExternal(
+		external: { uri: string; thumb: string; title: string } | null | undefined
+	) {
+		return Boolean(external && (isGifUrl(external.uri) || isGifUrl(external.thumb)));
+	}
 </script>
 
 <svelte:head>
-	<title>Status | Bryan Robb</title>
+	<title>What’s Going On | Bryan Robb</title>
 </svelte:head>
 
-<section class="stream-head">
-	<h1 class="stream-head__title">Status Updates</h1>
-</section>
+<div class="activity-page">
+	<header class="activity-page__header">
+		<h1 class="activity-page__title">What’s Going On</h1>
+		<p class="activity-page__lede">
+			A running stream of shorter notes, current obsessions, and the books, music, films,
+			and shows that have been in the air lately.
+		</p>
+	</header>
 
-<section class="status-list">
-	{#each statuses as post}
-		<article class="status-row h-entry">
-			<div class="status-row__avatar h-card">
-				{#if post.avatar}
-					<img
-						class="u-photo"
-						src={data.authorAvatarUrl}
-						alt={post.displayName}
-						loading="lazy"
-						decoding="async"
-						width="48"
-						height="48"
-					/>
-				{/if}
-			</div>
-			<div class="status-row__body">
-				{#if post.replyTo}
-					<p class="status-row__reply-context">
-						In reply to
-						<a href={post.replyTo.blueskyUrl} target="_blank" rel="noreferrer">
-							{post.replyTo.displayName || post.replyTo.handle}
-						</a>
-					</p>
-				{/if}
-				<div class="status-row__meta">
-					<div class="status-row__byline">
-						<span class="status-row__name p-author h-card">
-							<span class="p-name">{post.displayName}</span>
-							<span class="u-url" hidden>{post.blueskyUrl}</span>
-						</span>
-						<span class="status-row__handle p-nickname">{post.handle}</span>
-						<span>·</span>
-						<time class="dt-published" datetime={new Date(post.date).toISOString()}
-							>{formatDate(post.date)}</time
-						>
+	{#if data.activityFeed.length}
+		<div class="activity-feed" aria-label="What’s going on feed">
+			{#each data.activityFeed as entry (entry.id)}
+				<article class="activity-feed__entry" id={entry.id}>
+					<div class="activity-feed__meta-column">
+						<time class="activity-feed__date" datetime={entry.dateIso}>
+							{entry.type === 'status'
+								? formatDate(entry.post.date)
+								: entry.type === 'checkin'
+									? formatDate(entry.checkin.visitedAt)
+									: entry.item.dateLabel}
+						</time>
 					</div>
-				</div>
-				{#if post.html}
-					<a class="status-row__permalink u-url" href={`/status/${post.slug}`}>
-						<div class="status-row__content e-content">
-							{@html post.html}
+
+					<div class="activity-feed__content">
+						<div class="activity-feed__eyebrow">
+							<time class="activity-feed__date-mobile" datetime={entry.dateIso}>
+								{entry.type === 'status'
+									? formatDate(entry.post.date)
+									: entry.type === 'checkin'
+										? formatDate(entry.checkin.visitedAt)
+										: entry.item.dateLabel}
+							</time>
+							<p class="activity-feed__kicker">{getFeedKicker(entry)}</p>
 						</div>
-					</a>
-				{/if}
-				{#if post.quotedPost}
-					<a
-						class="status-quote"
-						href={post.quotedPost.blueskyUrl}
-						target="_blank"
-						rel="noreferrer"
-					>
-						<div class="status-quote__meta">
-							{#if post.quotedPost.avatar}
-								<img
-									class="status-quote__avatar"
-									src={post.quotedPost.avatar}
-									alt={post.quotedPost.displayName}
-									loading="lazy"
-								/>
-							{/if}
-							<div class="status-quote__byline">
-								<strong>{post.quotedPost.displayName}</strong>
-								<span>{post.quotedPost.handle}</span>
-								<span>·</span>
-								<time datetime={new Date(post.quotedPost.date).toISOString()}>
-									{formatDate(post.quotedPost.date)}
-								</time>
-							</div>
-						</div>
-						{#if post.quotedPost.html}
-							<div class="status-quote__content">
-								{@html post.quotedPost.html}
-							</div>
-						{/if}
-						{#if post.quotedPost.images.length}
-							<div
-								class="status-row__media status-row__media--quoted {post.quotedPost.images.length >
-								1
-									? 'status-row__media--multi'
-									: ''}"
-							>
-								{#each post.quotedPost.images as image}
-									<img src={image.thumb} alt={image.alt || 'Quoted post image'} loading="lazy" />
-								{/each}
-							</div>
-						{/if}
-						{#if post.quotedPost.external}
-							<span class="status-card status-card--quoted">
-								<span class="status-card__domain">{post.quotedPost.external.domain}</span>
-								<strong class="status-card__title">{post.quotedPost.external.title}</strong>
-								{#if post.quotedPost.external.description}
-									<span class="status-card__description"
-										>{post.quotedPost.external.description}</span
-									>
+
+						{#if entry.type === 'status'}
+							<div class="status-card">
+								{#if entry.post.replyTo}
+									<p class="status-card__reply-context">
+										In reply to
+										<a href={entry.post.replyTo.blueskyUrl} target="_blank" rel="noreferrer">
+											{entry.post.replyTo.displayName || entry.post.replyTo.handle}
+										</a>
+									</p>
 								{/if}
-							</span>
+
+								<a class="status-card__permalink" href={`/status/${entry.post.slug}`}>
+									<div class="status-card__content">
+										{@html entry.post.html}
+									</div>
+								</a>
+
+								{#if entry.post.quotedPost}
+									<a
+										class="status-quote"
+										href={entry.post.quotedPost.blueskyUrl}
+										target="_blank"
+										rel="noreferrer"
+									>
+										<div class="status-quote__meta">
+											{#if entry.post.quotedPost.avatar}
+												<img
+													class="status-quote__avatar"
+													src={entry.post.quotedPost.avatar}
+													alt={entry.post.quotedPost.displayName}
+													loading="lazy"
+												/>
+											{/if}
+											<div class="status-quote__byline">
+												<strong>{entry.post.quotedPost.displayName}</strong>
+												<span>{entry.post.quotedPost.handle}</span>
+												<span>·</span>
+												<time datetime={entry.post.quotedPost.date.toISOString()}>
+													{formatDate(entry.post.quotedPost.date)}
+												</time>
+											</div>
+										</div>
+
+										{#if entry.post.quotedPost.html}
+											<div class="status-quote__content">
+												{@html entry.post.quotedPost.html}
+											</div>
+										{/if}
+
+								{#if entry.post.quotedPost.images.length}
+											<div
+												class={`status-card__media status-card__media--quoted ${entry.post.quotedPost.images.length > 1 ? 'status-card__media--multi' : ''}`}
+											>
+												<div
+													class={`status-card__carousel ${entry.post.quotedPost.images.length > 1 ? 'status-card__carousel--multi' : ''}`}
+												>
+													{#each entry.post.quotedPost.images as image}
+														<div class="status-card__slide">
+															<img src={image.thumb} alt={image.alt || 'Quoted post image'} loading="lazy" />
+														</div>
+													{/each}
+												</div>
+											</div>
+										{/if}
+
+										{#if entry.post.quotedPost.external}
+											{#if isGifExternal(entry.post.quotedPost.external)}
+												<span class="status-card__gif status-card__gif--quoted">
+													{#if getExternalPreviewImage(entry.post.quotedPost.external)}
+														<img
+															class="status-card__gif-image"
+															src={getExternalPreviewImage(entry.post.quotedPost.external)}
+															alt={entry.post.quotedPost.external.title || entry.post.quotedPost.external.domain}
+															loading="lazy"
+														/>
+													{/if}
+													<span class="status-card__gif-badge">GIF</span>
+													<span class="status-card__external-domain">{entry.post.quotedPost.external.domain}</span>
+													<strong class="status-card__external-title">
+														{entry.post.quotedPost.external.title}
+													</strong>
+													{#if entry.post.quotedPost.external.description}
+														<span class="status-card__external-description">
+															{entry.post.quotedPost.external.description}
+														</span>
+													{/if}
+												</span>
+											{:else}
+												<span class="status-card__external status-card__external--quoted">
+													{#if entry.post.quotedPost.external.thumb}
+														<img
+															class="status-card__external-thumb"
+															src={entry.post.quotedPost.external.thumb}
+															alt={entry.post.quotedPost.external.title || entry.post.quotedPost.external.domain}
+															loading="lazy"
+														/>
+													{/if}
+													<span class="status-card__external-domain">{entry.post.quotedPost.external.domain}</span>
+													<strong class="status-card__external-title">
+														{entry.post.quotedPost.external.title}
+													</strong>
+													{#if entry.post.quotedPost.external.description}
+														<span class="status-card__external-description">
+															{entry.post.quotedPost.external.description}
+														</span>
+													{/if}
+												</span>
+											{/if}
+										{/if}
+									</a>
+								{/if}
+
+								{#if entry.post.images.length}
+									<div
+										class={`status-card__media ${entry.post.images.length > 1 ? 'status-card__media--multi' : ''}`}
+									>
+										<div
+											class={`status-card__carousel ${entry.post.images.length > 1 ? 'status-card__carousel--multi' : ''}`}
+										>
+											{#each entry.post.images as image}
+												<a class="status-card__image status-card__slide" href={`/status/${entry.post.slug}`}>
+													<img src={image.thumb} alt={image.alt || 'Status image'} loading="lazy" />
+												</a>
+											{/each}
+										</div>
+										{#if entry.post.images.length > 1}
+											<p class="status-card__carousel-note">{entry.post.images.length} images — swipe or scroll</p>
+										{/if}
+									</div>
+								{/if}
+
+								{#if entry.post.external}
+									{#if isGifExternal(entry.post.external)}
+										<a
+											class="status-card__gif"
+											href={entry.post.external.uri}
+											target="_blank"
+											rel="noreferrer"
+										>
+											{#if getExternalPreviewImage(entry.post.external)}
+												<img
+													class="status-card__gif-image"
+													src={getExternalPreviewImage(entry.post.external)}
+													alt={entry.post.external.title || entry.post.external.domain}
+													loading="lazy"
+												/>
+											{/if}
+											<span class="status-card__gif-badge">GIF</span>
+											<span class="status-card__external-domain">{entry.post.external.domain}</span>
+											<strong class="status-card__external-title">{entry.post.external.title}</strong>
+											{#if entry.post.external.description}
+												<span class="status-card__external-description">
+													{entry.post.external.description}
+												</span>
+											{/if}
+										</a>
+									{:else}
+										<a
+											class="status-card__external"
+											href={entry.post.external.uri}
+											target="_blank"
+											rel="noreferrer"
+										>
+											{#if entry.post.external.thumb}
+												<img
+													class="status-card__external-thumb"
+													src={entry.post.external.thumb}
+													alt={entry.post.external.title || entry.post.external.domain}
+													loading="lazy"
+												/>
+											{/if}
+											<span class="status-card__external-domain">{entry.post.external.domain}</span>
+											<strong class="status-card__external-title">{entry.post.external.title}</strong>
+											{#if entry.post.external.description}
+												<span class="status-card__external-description">
+													{entry.post.external.description}
+												</span>
+											{/if}
+										</a>
+									{/if}
+								{/if}
+
+								{#if entry.post.video}
+									<a class="status-card__video" href={entry.post.blueskyUrl} target="_blank" rel="noreferrer">
+										{#if entry.post.video.thumbnail}
+											<span class="status-card__video-thumb-wrap">
+												<img
+													class="status-card__video-thumb"
+													src={entry.post.video.thumbnail}
+													alt={getVideoLabel(entry.post)}
+													loading="lazy"
+												/>
+												<span class="status-card__video-badge" aria-hidden="true">Video</span>
+											</span>
+										{/if}
+										<span class="status-card__video-link">{getVideoLabel(entry.post)}</span>
+									</a>
+								{/if}
+
+								<div class="status-card__actions">
+									<a class="status-card__action" href={`/status/${entry.post.slug}`}>
+										<span>Open</span>
+										<span>{entry.post.replyCount} replies</span>
+									</a>
+									<a class="status-card__action" href={entry.post.blueskyUrl} target="_blank" rel="noreferrer">
+										<span>Bluesky</span>
+										<span>{socialRepostCount(entry.post)} reposts</span>
+									</a>
+								</div>
+							</div>
+						{:else if entry.type === 'checkin'}
+							<div class="checkin-card">
+								<a class="checkin-card__link" href={entry.checkin.canonicalPath}>
+									{#if entry.checkin.coverImage}
+										<div class="checkin-card__media">
+											<img
+												class="checkin-card__image"
+												src={entry.checkin.coverImage}
+												alt={entry.checkin.name}
+												loading="lazy"
+											/>
+										</div>
+									{:else if entry.checkin.latitude !== null && entry.checkin.longitude !== null}
+										<div class="checkin-card__media checkin-card__media--map">
+											<CheckinMap
+												latitude={entry.checkin.latitude}
+												longitude={entry.checkin.longitude}
+												name={entry.checkin.name}
+												compact={true}
+												variant="preview"
+											/>
+										</div>
+									{/if}
+
+									<div class="checkin-card__body">
+										<h2 class="checkin-card__title">{entry.checkin.name}</h2>
+										{#if entry.checkin.place}
+											<p class="checkin-card__place">{entry.checkin.place}</p>
+										{/if}
+										{#if entry.checkin.venueCategory}
+											<p class="checkin-card__category">{entry.checkin.venueCategory}</p>
+										{/if}
+										{#if entry.checkin.note || entry.checkin.excerpt}
+											<p class="checkin-card__excerpt">
+												{excerpt(entry.checkin.excerpt || entry.checkin.note, 220)}
+											</p>
+										{/if}
+									</div>
+								</a>
+
+								<div class="checkin-card__actions">
+									<a class="status-card__action" href={entry.checkin.canonicalPath}>
+										<span>Open</span>
+										<span>Check-in</span>
+									</a>
+									{#if entry.checkin.appleMapsUrl}
+										<a
+											class="status-card__action"
+											href={entry.checkin.appleMapsUrl}
+											target="_blank"
+											rel="noreferrer"
+										>
+											<span>Map</span>
+											<span>Apple Maps</span>
+										</a>
+									{/if}
+								</div>
+							</div>
+						{:else}
+							{#if entry.item.kind === 'track'}
+								<div class="media-entry media-entry--track">
+									<a class="media-entry__cover media-entry__cover--mini" href={entry.item.href}>
+										{#if entry.item.imageUrl}
+											<img
+												class="media-entry__art media-entry__art--mini"
+												src={entry.item.imageUrl}
+												alt={entry.item.imageAlt}
+												loading="lazy"
+											/>
+										{:else}
+											<div class="media-entry__fallback media-entry__fallback--mini" aria-hidden="true">
+												Track
+											</div>
+										{/if}
+									</a>
+
+									<div class="media-entry__mini-player">
+										<div class="media-entry__body">
+											<div class="media-entry__heading">
+												<h2
+													class="media-timeline__title media-timeline__title--media media-timeline__title--mini"
+												>
+													<a href={entry.item.href}>{entry.item.title}</a>
+												</h2>
+											</div>
+
+											<p class="media-timeline__meta media-timeline__meta--artist">
+												{entry.item.artist}
+											</p>
+										</div>
+
+										{#if entry.item.audioUrl}
+											<div class="media-entry__audio media-entry__audio--mini">
+												<audio
+													controls
+													preload="none"
+													src={entry.item.audioUrl}
+													aria-label={`Preview ${entry.item.title}`}
+												></audio>
+											</div>
+										{/if}
+
+										{#if entry.item.summary}
+											<p
+												class="media-timeline__lede media-timeline__lede--compact media-timeline__lede--mini"
+											>
+												{entry.item.summary}
+											</p>
+										{/if}
+
+										{#if entry.item.links.length}
+											<div class="media-timeline__actions media-timeline__actions--mini">
+												{#each entry.item.links as link}
+													<a
+														class="tag-pill media-timeline__action"
+														href={link.url}
+														target={link.external ? '_blank' : undefined}
+														rel={link.external ? 'noreferrer' : undefined}
+													>
+														{link.label}
+													</a>
+												{/each}
+											</div>
+										{/if}
+									</div>
+								</div>
+							{:else if entry.item.kind === 'album'}
+								<div class="media-entry media-entry--album">
+									<div class="media-entry__body">
+										<div class="media-entry__heading">
+											<h2 class="media-timeline__title media-timeline__title--media">
+												<a href={entry.item.href}>{entry.item.title}</a>
+											</h2>
+										</div>
+
+										<p class="media-timeline__meta media-timeline__meta--artist">{entry.item.artist}</p>
+									</div>
+
+									<a class="media-entry__cover media-entry__cover--full" href={entry.item.href}>
+										{#if entry.item.imageUrl}
+											<img
+												class="media-entry__art"
+												src={entry.item.imageUrl}
+												alt={entry.item.imageAlt}
+												loading="lazy"
+											/>
+										{:else}
+											<div class="media-entry__fallback" aria-hidden="true">Album</div>
+										{/if}
+									</a>
+
+									{#if entry.item.summary}
+										<p class="media-timeline__lede media-timeline__lede--compact">
+											{entry.item.summary}
+										</p>
+									{/if}
+
+									{#if entry.item.links.length}
+										<div class="media-timeline__actions">
+											{#each entry.item.links as link}
+												<a
+													class="tag-pill media-timeline__action"
+													href={link.url}
+													target={link.external ? '_blank' : undefined}
+													rel={link.external ? 'noreferrer' : undefined}
+												>
+													{link.label}
+												</a>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<div class="media-entry media-entry--popfeed">
+									<div class="media-entry__body">
+										<div class="media-entry__heading">
+											<h2 class="media-timeline__title media-timeline__title--media">
+												<a href={entry.item.href}>{entry.item.title}</a>
+											</h2>
+										</div>
+
+										{#if entry.item.credit}
+											<p class="media-timeline__meta media-timeline__meta--artist">{entry.item.credit}</p>
+										{/if}
+									</div>
+
+									{#if !isBookPopfeed(entry.item) && entry.item.imageUrl}
+										<a
+											class={`media-entry__cover media-entry__cover--full ${usesPosterRatio(entry.item) ? 'media-entry__cover--poster' : 'media-entry__cover--natural'}`}
+											href={entry.item.href}
+										>
+											<img
+												class={`media-entry__art ${usesPosterRatio(entry.item) ? 'media-entry__art--poster' : 'media-entry__art--natural'}`}
+												src={entry.item.imageUrl}
+												alt={entry.item.imageAlt}
+												loading="lazy"
+											/>
+										</a>
+									{:else if !isBookPopfeed(entry.item)}
+										<a
+											class={`media-entry__cover media-entry__cover--full ${usesPosterRatio(entry.item) ? 'media-entry__cover--poster' : 'media-entry__cover--natural'}`}
+											href={entry.item.href}
+										>
+											<div
+												class={`media-entry__fallback ${usesPosterRatio(entry.item) ? 'media-entry__fallback--poster' : 'media-entry__fallback--natural'}`}
+												aria-hidden="true"
+											>
+												{entry.item.label}
+											</div>
+										</a>
+									{/if}
+
+									{#if entry.item.summary}
+										<p class="media-timeline__lede media-timeline__lede--compact">{entry.item.summary}</p>
+									{/if}
+
+									<div class="media-timeline__actions">
+										<a class="tag-pill media-timeline__action" href={entry.item.href}>Open entry</a>
+										{#each entry.item.links as link}
+											<a
+												class="tag-pill media-timeline__action"
+												href={link.url}
+												target={link.external ? '_blank' : undefined}
+												rel={link.external ? 'noreferrer' : undefined}
+											>
+												{link.label}
+											</a>
+										{/each}
+									</div>
+								</div>
+							{/if}
 						{/if}
-					</a>
-				{/if}
-				{#if post.images.length}
-					<div class="status-row__media {post.images.length > 1 ? 'status-row__media--multi' : ''}">
-						{#each post.images as image}
-							<a class="status-row__image" href={`/status/${post.slug}`}>
-								<img src={image.thumb} alt={image.alt || 'Bluesky image'} loading="lazy" />
-							</a>
-						{/each}
 					</div>
-				{/if}
-				{#if post.external}
-					<a class="status-card" href={post.external.uri} target="_blank" rel="noreferrer">
-						<span class="status-card__domain">{post.external.domain}</span>
-						<strong class="status-card__title">{post.external.title}</strong>
-						{#if post.external.description}
-							<span class="status-card__description">{post.external.description}</span>
-						{/if}
-					</a>
-				{/if}
-				<div class="status-row__actions">
-					<div class="status-row__metrics">
-						<a class="status-row__action" href={`/status/${post.slug}`}>
-							<span class="status-row__icon" aria-hidden="true">
-								<svg viewBox="0 0 24 24" focusable="false">
-									<path
-										d="M6.37 3.93c.53-.51 1.28-.83 2.35-.83h8.03c1.07 0 1.82.32 2.35.83.51.49.83 1.18.83 2.18v5.78c0 1-.32 1.69-.83 2.18-.53.51-1.28.83-2.35.83h-2.84l-4.1 4.1c-.24.24-.49.36-.79.36-.57 0-1.01-.42-1.01-.99V14.9H8.72c-1.07 0-1.82-.32-2.35-.83-.51-.49-.83-1.18-.83-2.18V6.11c0-1 .32-1.69.83-2.18Zm2.35.77c-.72 0-1.05.2-1.25.39-.18.17-.33.45-.33 1.02v5.78c0 .57.15.85.33 1.02.2.19.53.39 1.25.39h1.95v3.07l3.07-3.07h3.03c.72 0 1.05-.2 1.25-.39.18-.17.33-.45.33-1.02V6.11c0-.57-.15-.85-.33-1.02-.2-.19-.53-.39-1.25-.39H8.72Z"
-									></path>
-								</svg>
-							</span>
-							<span>{post.replyCount}</span>
-						</a>
-						<a class="status-row__action" href={`/status/${post.slug}`}>
-							<span class="status-row__icon" aria-hidden="true">
-								<svg viewBox="0 0 24 24" focusable="false">
-									<path
-										d="M5.05 4.86a.75.75 0 0 1 1.06 0l2.76 2.76a.75.75 0 1 1-1.06 1.06L6.33 7.2v7.05c0 .7.17 1.12.45 1.39.27.27.69.45 1.39.45h5.5a.75.75 0 0 1 0 1.5h-5.5c-1.02 0-1.87-.28-2.45-.86-.58-.58-.89-1.43-.89-2.48V7.2L3.99 8.68a.75.75 0 1 1-1.06-1.06l2.12-2.12Zm13.9 10.46a.75.75 0 0 1 1.06 1.06l-2.76 2.76a.75.75 0 0 1-1.06 0l-2.76-2.76a.75.75 0 1 1 1.06-1.06l1.48 1.48V9.75c0-.7-.17-1.12-.45-1.39-.27-.27-.69-.45-1.39-.45h-5.5a.75.75 0 0 1 0-1.5h5.5c1.02 0 1.87.28 2.45.86.58.58.89 1.43.89 2.48v7.05l1.48-1.48Z"
-									></path>
-								</svg>
-							</span>
-							<span>{socialRepostCount(post)}</span>
-						</a>
-						<a class="status-row__action" href={`/status/${post.slug}`}>
-							<span class="status-row__icon" aria-hidden="true">
-								<svg viewBox="0 0 24 24" focusable="false">
-									<path
-										d="M16.72 3.8c2.87 0 4.93 2.16 4.93 5.13 0 1.89-.77 3.32-2.08 4.7-1.28 1.35-3.09 2.71-5.17 4.28l-1.89 1.43a.82.82 0 0 1-1 0l-1.89-1.43c-2.08-1.57-3.89-2.93-5.17-4.28-1.31-1.38-2.08-2.81-2.08-4.7 0-2.97 2.06-5.13 4.93-5.13 1.79 0 3.03.89 3.83 1.83.35.41.64.85.87 1.25.23-.4.52-.84.87-1.25.8-.94 2.04-1.83 3.83-1.83Zm0 1.6c-1.19 0-2.02.56-2.61 1.25-.61.71-.96 1.53-1.12 2.03a.82.82 0 0 1-1.56 0c-.16-.5-.51-1.32-1.12-2.03-.59-.69-1.42-1.25-2.61-1.25-1.88 0-3.33 1.38-3.33 3.53 0 1.33.51 2.38 1.64 3.57 1.15 1.21 2.82 2.47 4.94 4.08L12 17.68l1.84-1.39c2.12-1.61 3.79-2.87 4.94-4.08 1.13-1.19 1.64-2.24 1.64-3.57 0-2.15-1.45-3.53-3.33-3.53Z"
-									></path>
-								</svg>
-							</span>
-							<span>{post.likeCount}</span>
-						</a>
-					</div>
-					<div class="status-row__reply-pills">
-						<a
-							class="status-row__reply-pill"
-							href={post.blueskyUrl}
-							target="_blank"
-							rel="noreferrer"
-						>
-							<span class="status-row__reply-pill-icon" aria-hidden="true">
-								<svg viewBox="0 0 24 24" focusable="false">
-									<path
-										d="M5.69 4.78c2.35 1.76 4.88 5.33 5.81 7.27.93-1.94 3.46-5.51 5.81-7.27 1.69-1.27 4.43-2.26 4.43.87 0 .63-.36 5.29-.57 6.05-.72 2.66-3.35 3.34-5.69 2.94 4.09.7 5.13 3.04 2.88 5.39-4.27 4.46-6.14-1.12-6.62-2.55-.09-.26-.13-.38-.24-.38s-.15.12-.24.38c-.48 1.43-2.35 7.01-6.62 2.55-2.25-2.35-1.21-4.69 2.88-5.39-2.34.4-4.97-.28-5.69-2.94-.21-.76-.57-5.42-.57-6.05 0-3.13 2.74-2.14 4.43-.87Z"
-									></path>
-								</svg>
-							</span>
-							<span>Reply on Bluesky</span>
-						</a>
-					</div>
-				</div>
-			</div>
-		</article>
-	{/each}
-</section>
-
-{#if statuses.length}
-	<div class="status-list__footer">
-		<p class="status-list__status">Showing {statuses.length} updates</p>
-
-		{#if nextCursor}
-			<div class="status-list__load-more" use:infiniteLoad>
-				<button
-					class="tag-pill status-list__load-button"
-					type="button"
-					disabled={isLoadingMore}
-					onclick={loadMore}
-				>
-					{isLoadingMore ? 'Loading more…' : 'Load older updates'}
-				</button>
-			</div>
-		{/if}
-
-		{#if loadError}
-			<p class="status-list__error">{loadError}</p>
-		{/if}
-	</div>
-{/if}
+				</article>
+			{/each}
+		</div>
+	{:else}
+		<p class="activity-page__empty">Nothing to show just yet.</p>
+	{/if}
+</div>
 
 <style>
-	.status-list__footer {
-		display: grid;
-		gap: 0.75rem;
-		padding-top: 1.5rem;
+	.activity-page {
+		display: flex;
+		flex-direction: column;
+		gap: 2rem;
+		padding-top: 1rem;
+		padding-bottom: 4rem;
 	}
 
-	.status-list__status,
-	.status-list__error {
+	.activity-page__header {
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+	}
+
+	.activity-page__title {
 		margin: 0;
+		font-size: clamp(2.25rem, 5vw, 3rem);
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		color: #18181b;
+	}
+
+	:global(html.dark) .activity-page__title {
+		color: #f4f4f5;
+	}
+
+	.activity-page__lede,
+	.activity-page__empty {
+		margin: 0;
+		font-size: 1rem;
+		line-height: 1.75;
+		color: #52525b;
+	}
+
+	:global(html.dark) .activity-page__lede,
+	:global(html.dark) .activity-page__empty {
+		color: #a1a1aa;
+	}
+
+	.activity-feed {
+		display: flex;
+		flex-direction: column;
+		gap: 3rem;
+	}
+
+	.activity-feed__entry {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.activity-feed__date {
+		font-size: 0.82rem;
+		line-height: 1.25;
 		color: var(--muted);
 	}
 
-	.status-list__load-more {
-		display: flex;
+	.activity-feed__content {
+		min-width: 0;
 	}
 
-	.status-list__load-button:disabled {
-		cursor: wait;
-		opacity: 0.7;
+	.activity-feed__eyebrow {
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+		margin-bottom: 0.85rem;
+	}
+
+	.activity-feed__date-mobile {
+		font-size: 0.84rem;
+		line-height: 1.25;
+		color: var(--muted);
+	}
+
+	.activity-feed__kicker {
+		margin: 0;
+		font-size: 0.76rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: #c06a63;
+	}
+
+	:global(html.dark) .activity-feed__kicker {
+		color: #e08a7a;
+	}
+
+	.status-card,
+	.media-card,
+	.checkin-card {
+		display: grid;
+		gap: 0.95rem;
+	}
+
+	.status-card__reply-context {
+		color: var(--muted);
+		font-size: 0.88rem;
+	}
+
+	.status-card__reply-context,
+	.status-card__content,
+	.status-card__external-description {
+		line-height: 1.68;
+	}
+
+	.status-card__reply-context,
+	.status-card__content,
+	.status-card__actions,
+	.status-card__external {
+		margin: 0;
+	}
+
+	.status-card__permalink {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.status-card__content :global(p) {
+		margin: 0;
+	}
+
+	.status-card__content :global(p + p) {
+		margin-top: 0.9rem;
+	}
+
+	.status-card__content {
+		font-size: 1rem;
+		color: #27272a;
+	}
+
+	.status-quote__content {
+		line-height: 1.68;
+	}
+
+	.status-quote__content :global(p) {
+		margin: 0;
+	}
+
+	.status-quote__content :global(p + p) {
+		margin-top: 0.75rem;
+	}
+
+	:global(html.dark) .status-card__content {
+		color: #e4e4e7;
+	}
+
+	.status-quote {
+		display: grid;
+		gap: 0.75rem;
+		padding: 0.95rem 1rem;
+		border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+		border-radius: 0.9rem;
+		text-decoration: none;
+		color: inherit;
+		background: color-mix(in srgb, var(--surface) 86%, white 14%);
+	}
+
+	.status-quote__meta {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.status-quote__avatar {
+		width: 1.9rem;
+		height: 1.9rem;
+		border-radius: 999px;
+		object-fit: cover;
+	}
+
+	.status-quote__byline {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+		font-size: 0.86rem;
+		color: var(--muted);
+	}
+
+	.status-quote__byline strong {
+		color: #18181b;
+	}
+
+	:global(html.dark) .status-quote__byline strong {
+		color: #f4f4f5;
+	}
+
+	.status-card__media {
+		display: grid;
+		gap: 0.75rem;
+	}
+
+	.status-card__carousel {
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: 100%;
+		gap: 0.75rem;
+		overflow-x: auto;
+		overscroll-behavior-x: contain;
+		scroll-snap-type: x mandatory;
+		scrollbar-width: thin;
+		padding-bottom: 0.15rem;
+	}
+
+	.status-card__carousel--multi {
+		grid-auto-columns: minmax(86%, 86%);
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.status-card__slide {
+		scroll-snap-align: start;
+		min-width: 0;
+	}
+
+	.status-card__image {
+		display: block;
+	}
+
+	.status-card__image img,
+	.status-card__slide img {
+		display: block;
+		width: 100%;
+		height: auto;
+		border-radius: 0.75rem;
+	}
+
+	.status-card__carousel-note {
+		margin: 0;
+		font-size: 0.82rem;
+		line-height: 1.35;
+		color: var(--muted);
+	}
+
+	.status-card__external {
+		display: grid;
+		gap: 0.25rem;
+		padding: 0.9rem 1rem;
+		border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+		border-radius: 0.9rem;
+		text-decoration: none;
+		color: inherit;
+		background: color-mix(in srgb, var(--surface) 78%, white 22%);
+	}
+
+	.status-card__gif {
+		display: grid;
+		gap: 0.45rem;
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.status-card__gif-image {
+		display: block;
+		width: 100%;
+		height: auto;
+		border-radius: 0.75rem;
+	}
+
+	.status-card__gif-badge {
+		display: inline-flex;
+		align-items: center;
+		justify-self: start;
+		padding: 0.22rem 0.5rem;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--accent) 16%, transparent);
+		color: var(--accent);
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.status-card__gif--quoted {
+		gap: 0.4rem;
+	}
+
+	.status-card__external-thumb {
+		display: block;
+		width: 100%;
+		height: auto;
+		border-radius: 0.65rem;
+		margin-bottom: 0.35rem;
+	}
+
+	.status-card__external--quoted {
+		padding: 0.8rem 0.9rem;
+	}
+
+	.status-card__external-domain,
+	.status-card__external-description {
+		color: var(--muted);
+		font-size: 0.9rem;
+	}
+
+	.status-card__external-title {
+		color: #18181b;
+	}
+
+	:global(html.dark) .status-card__external-title {
+		color: #f4f4f5;
+	}
+
+	.status-card__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.7rem;
+		padding-top: 0.15rem;
+	}
+
+	.status-card__action {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 0.85rem;
+		color: var(--muted);
+		text-decoration: none;
+	}
+
+	.status-card__video {
+		display: grid;
+		gap: 0.75rem;
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.status-card__video-thumb-wrap {
+		position: relative;
+		display: block;
+	}
+
+	.status-card__video-thumb {
+		display: block;
+		width: 100%;
+		height: auto;
+		border-radius: 0.75rem;
+	}
+
+	.status-card__video-badge {
+		position: absolute;
+		left: 0.75rem;
+		bottom: 0.75rem;
+		display: inline-flex;
+		align-items: center;
+		padding: 0.22rem 0.5rem;
+		border-radius: 999px;
+		background: rgba(24, 24, 27, 0.78);
+		color: white;
+		font-size: 0.74rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+
+	.status-card__video-link {
+		font-size: 0.92rem;
+		color: var(--muted);
+	}
+
+	.checkin-card__link {
+		display: grid;
+		gap: 0.95rem;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.checkin-card__media {
+		display: block;
+		overflow: hidden;
+		border-radius: 0.9rem;
+		aspect-ratio: 16 / 10;
+		background: color-mix(in srgb, var(--surface) 82%, white 18%);
+	}
+
+	.checkin-card__media--map :global(.checkin-map__frame--compact) {
+		min-height: 0;
+		height: 100%;
+	}
+
+	.checkin-card__image {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.checkin-card__body {
+		display: grid;
+		gap: 0.5rem;
+	}
+
+	.checkin-card__title {
+		margin: 0;
+		font-family: 'Fira Sans', sans-serif;
+		font-size: clamp(1.2rem, 2vw, 1.45rem);
+		line-height: 1.15;
+		letter-spacing: -0.02em;
+		color: #18181b;
+	}
+
+	:global(html.dark) .checkin-card__title {
+		color: #f4f4f5;
+	}
+
+	.checkin-card__place,
+	.checkin-card__excerpt {
+		margin: 0;
+		color: var(--muted);
+		line-height: 1.65;
+	}
+
+	.checkin-card__category {
+		margin: 0.1rem 0 0;
+		color: var(--muted);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		font-size: 0.76rem;
+		font-weight: 700;
+	}
+
+	.checkin-card__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.7rem;
+		padding-top: 0.1rem;
+	}
+
+	.media-entry {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1rem;
+		align-items: start;
+	}
+
+	.media-entry--track {
+		grid-template-columns: minmax(4.9rem, 5.5rem) minmax(0, 1fr);
+		gap: 0.95rem;
+		padding: 0.95rem;
+		border-radius: 1rem;
+		background: color-mix(in srgb, var(--surface) 78%, white 22%);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+	}
+
+	.media-entry__mini-player {
+		display: grid;
+		gap: 0.65rem;
+		min-width: 0;
+	}
+
+	.media-entry__body {
+		display: grid;
+		gap: 0.55rem;
+		min-width: 0;
+	}
+
+	.media-entry__heading {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.8rem;
+	}
+
+	.media-timeline__title {
+		margin: 0;
+		font-family: 'Fira Sans', sans-serif;
+		font-size: clamp(1.28rem, 2.35vw, 1.72rem);
+		line-height: 1.14;
+		letter-spacing: -0.02em;
+		color: #18181b;
+	}
+
+	.media-timeline__title a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	:global(html.dark) .media-timeline__title {
+		color: #f4f4f5;
+	}
+
+	.media-timeline__title--media {
+		font-size: clamp(1.18rem, 2.1vw, 1.55rem);
+	}
+
+	.media-timeline__title--mini {
+		font-size: clamp(1rem, 1.65vw, 1.18rem);
+		line-height: 1.2;
+	}
+
+	.media-timeline__meta,
+	.media-timeline__lede {
+		margin: 0;
+	}
+
+	.media-timeline__meta {
+		font-size: 0.95rem;
+		line-height: 1.5;
+		color: var(--muted);
+	}
+
+	.media-timeline__meta--artist {
+		margin-top: 0.1rem;
+	}
+
+	.media-timeline__lede {
+		font-size: 1rem;
+		line-height: 1.68;
+		color: var(--muted);
+	}
+
+	.media-timeline__lede--compact {
+		margin-top: 0.1rem;
+	}
+
+	.media-timeline__lede--mini {
+		font-size: 0.95rem;
+		line-height: 1.55;
+	}
+
+	.media-entry__cover {
+		display: block;
+		width: 100%;
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.media-entry__cover--mini {
+		width: 100%;
+		align-self: start;
+	}
+
+	.media-entry__art {
+		display: block;
+		width: 100%;
+		aspect-ratio: 1 / 1;
+		object-fit: cover;
+		border-radius: 0.85rem;
+	}
+
+	.media-entry__art--mini {
+		aspect-ratio: 1 / 1;
+		border-radius: 0.95rem;
+		box-shadow: 0 0.7rem 1.5rem rgba(0, 0, 0, 0.16);
+	}
+
+	.media-entry__art--poster {
+		aspect-ratio: 2 / 3;
+	}
+
+	.media-entry__art--natural {
+		aspect-ratio: auto;
+		height: auto;
+		object-fit: contain;
+	}
+
+	.media-entry__fallback {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		aspect-ratio: 1 / 1;
+		border-radius: 0.85rem;
+		background: color-mix(in srgb, var(--surface) 82%, white 18%);
+		color: var(--muted);
+		font-size: 0.82rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.media-entry__fallback--mini {
+		border-radius: 0.95rem;
+		font-size: 0.74rem;
+	}
+
+	.media-entry__fallback--poster {
+		aspect-ratio: 2 / 3;
+	}
+
+	.media-entry__fallback--natural {
+		aspect-ratio: auto;
+		min-height: 12rem;
+	}
+
+	.media-entry__audio audio {
+		display: block;
+		width: 100%;
+		height: 2rem;
+	}
+
+	.media-timeline__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.media-timeline__actions--mini {
+		gap: 0.45rem;
+	}
+
+	@media (max-width: 767px) {
+		.activity-feed__meta-column {
+			display: none;
+		}
+	}
+
+	@media (min-width: 768px) {
+		.activity-feed {
+			gap: 4rem;
+			border-left: 1px solid rgba(228, 228, 231, 1);
+			padding-left: 1.5rem;
+		}
+
+		:global(html.dark) .activity-feed {
+			border-left-color: rgba(63, 63, 70, 0.4);
+		}
+
+		.activity-feed__entry {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+			gap: 2rem;
+		}
+
+		.activity-feed__meta-column {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-start;
+			padding-top: 0.1rem;
+		}
+
+		.activity-feed__content {
+			grid-column: span 3 / span 3;
+		}
+
+		.activity-feed__date-mobile {
+			display: none;
+		}
 	}
 </style>

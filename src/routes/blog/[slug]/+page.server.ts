@@ -1,46 +1,25 @@
 import { error } from '@sveltejs/kit';
-import { getBlogPostBySlug, getBlogPosts, type BlogPost } from '$lib/server/ghost';
-import { getStandardSiteDocumentAtUri } from '$lib/server/standard-site';
+import { getBlogPostBySlug, getBlogPosts } from '$lib/server/ghost';
+import { toTemplatePosts } from '$lib/server/template-posts';
+import type { PageServerLoad } from './$types';
 
-function truncateExcerpt(text: string, maxLength = 180) {
-	const normalized = text.replace(/\s+/g, ' ').trim();
-	if (normalized.length <= maxLength) return normalized;
+export const prerender = false;
 
-	const truncated = normalized.slice(0, maxLength);
-	const lastSpace = truncated.lastIndexOf(' ');
-	return `${(lastSpace > 100 ? truncated.slice(0, lastSpace) : truncated).trim()}…`;
-}
-
-export async function load(event) {
-	const { params } = event;
-	const [post, posts, standardSiteDocumentAtUri] = await Promise.all([
-		getBlogPostBySlug(params.slug),
-		getBlogPosts(),
-		getStandardSiteDocumentAtUri(params.slug)
-	]);
+export const load: PageServerLoad = async ({ params }) => {
+	const post = await getBlogPostBySlug(params.slug);
 
 	if (!post) {
-		throw error(404, 'Blog post not found');
+		throw error(404, 'Post not found');
 	}
 
-	const currentIndex = posts.findIndex((entry: BlogPost) => entry.slug === params.slug);
-	const previousPost = currentIndex >= 0 ? posts[currentIndex + 1] || null : null;
-	const nextPost = currentIndex >= 0 ? posts[currentIndex - 1] || null : null;
+	const posts = toTemplatePosts(await getBlogPosts());
+	const templatePost = posts.find((entry) => entry.slug === params.slug);
+
+	if (!templatePost) {
+		throw error(404, 'Post not found');
+	}
 
 	return {
-		post,
-		previousPost: previousPost
-			? {
-					...previousPost,
-					excerpt: truncateExcerpt(previousPost.excerpt)
-				}
-			: null,
-		nextPost: nextPost
-			? {
-					...nextPost,
-					excerpt: truncateExcerpt(nextPost.excerpt)
-				}
-			: null,
-		standardSiteDocumentAtUri
+		post: templatePost
 	};
-}
+};

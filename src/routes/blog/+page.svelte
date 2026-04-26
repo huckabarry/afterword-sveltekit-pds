@@ -1,80 +1,38 @@
 <script lang="ts">
-	import PostsList from '$lib/components/home-template/PostsList.svelte';
+	import PostsList from '$lib/components/PostsList.svelte';
+	import { avatar, authorName, bio, name } from '$lib/info.js';
+	import type { PageProps } from './$types';
 
-	let {
-		data
-	}: {
-		data: {
-			posts: Array<{
-				title: string;
-				description: string;
-				href: string;
-				publishedAt: string | Date;
-			}>;
-		};
-	} = $props();
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
-	<title>Afterword | Blog</title>
+	<title>{name} | Posts</title>
 </svelte:head>
 
-<div class="template-blog-index">
-	<header class="template-blog-index__header">
-		<h1 class="template-blog-index__title">Writing on place, cities, photographs, and whatever else sticks.</h1>
-		<p class="template-blog-index__lede">All of my longer writing collected in one place.</p>
+<div class="flex flex-col flex-grow gap-8 pb-16">
+	<header class="pt-4">
+		<h1 class="text-4xl font-bold tracking-tight sm:text-5xl">
+			Writings on place, cities, and the human experience of living in them.
+		</h1>
+		<div class="flex items-center gap-4 mt-8">
+			<img
+				src={avatar}
+				alt={authorName}
+				class="w-11 h-11 rounded-full ring-1 ring-zinc-200 dark:ring-zinc-700"
+			/>
+			<div class="min-w-0">
+				<p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+					{authorName}
+				</p>
+				<p class="text-sm text-zinc-500 dark:text-zinc-400">
+					{bio}
+				</p>
+			</div>
+		</div>
 	</header>
 
-	<div class="template-blog-index__list">
+	<div class="mt-4 sm:mt-8">
 		<PostsList posts={data.posts} />
 	</div>
 </div>
-
-<style>
-	.template-blog-index {
-		display: flex;
-		flex-direction: column;
-		flex-grow: 1;
-	}
-
-	.template-blog-index__header {
-		padding-top: 1rem;
-	}
-
-	.template-blog-index__title {
-		margin: 0;
-		font-size: 2.25rem;
-		font-weight: 700;
-		line-height: 1.05;
-		letter-spacing: -0.035em;
-		color: #27272a;
-	}
-
-	:global(html.dark) .template-blog-index__title {
-		color: #f4f4f5;
-	}
-
-	.template-blog-index__lede {
-		margin: 1.5rem 0 0;
-		font-size: 1rem;
-		color: #52525b;
-	}
-
-	:global(html.dark) .template-blog-index__lede {
-		color: #a1a1aa;
-	}
-
-	.template-blog-index__list {
-		margin-top: 4rem;
-	}
-
-	@media (min-width: 640px) {
-		.template-blog-index__title {
-			font-size: 3rem;
-		}
-
-		.template-blog-index__list {
-			margin-top: 5rem;
-		}
-	}
-</style>

@@ -26,23 +26,31 @@
 		"@sveltejs/adapter-cloudflare": "^7.2.8",
 		"@sveltejs/kit": "^2.57.0",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
+		"@tailwindcss/typography": "^0.5.7",
 		"@types/leaflet": "^1.9.21",
 		"@types/node": "^25.5.2",
+		"autoprefixer": "^10.4.8",
 		"eslint": "^10.2.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.17.0",
 		"globals": "^17.4.0",
+		"postcss": "^8.4.21",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.5.1",
 		"svelte": "^5.55.2",
 		"svelte-check": "^4.4.6",
+		"svelte-preprocess": "^6.0.3",
+		"tailwindcss": "^3.1.8",
 		"typescript": "^6.0.2",
 		"typescript-eslint": "^8.58.1",
 		"vite": "^8.0.7",
 		"wrangler": "^4.81.0"
 	},
 	"dependencies": {
+		"date-fns": "^4.1.0",
+		"heroicons-svelte": "^2.0.2",
 		"leaflet": "^1.9.4",
-		"markdown-it": "^14.1.1"
+		"markdown-it": "^14.1.1",
+		"reading-time": "^1.5.0"
 	}
 }
