@@ -30,7 +30,7 @@
 	let galleryThumbsPrewarmed = false;
 	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
 	const isHomeRoute = $derived(data.pathname === '/');
-	const isTemplatePostRoute = $derived(data.pathname.startsWith('/blog/'));
+	const isTemplateBlogRoute = $derived(data.pathname === '/blog' || data.pathname.startsWith('/blog/'));
 	const profile = $derived(data.profile);
 	const siteSettings = $derived(data.cms.settings);
 	const siteTitle = $derived(siteSettings.siteTitle || profile.displayName);
@@ -262,8 +262,8 @@
 
 	{#if isAdminRoute}
 		{@render children()}
-	{:else if isHomeRoute || isTemplatePostRoute}
-		<HomeShell title={siteTitle} wide={isTemplatePostRoute}>
+	{:else if isHomeRoute || isTemplateBlogRoute}
+		<HomeShell title={siteTitle} wide={isTemplateBlogRoute}>
 			{@render children()}
 		</HomeShell>
 	{:else}
