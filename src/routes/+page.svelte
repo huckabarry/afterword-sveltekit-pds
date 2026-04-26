@@ -1,12 +1,6 @@
 <script lang="ts">
 	import ArrowRightIcon from '$lib/components/home-template/ArrowRightIcon.svelte';
 	import PostsList from '$lib/components/home-template/PostsList.svelte';
-	import SocialLinks from '$lib/components/home-template/SocialLinks.svelte';
-
-	type SocialLink = {
-		label: string;
-		url: string;
-	};
 
 	type HomePost = {
 		href: string;
@@ -19,7 +13,6 @@
 		displayName: string;
 		avatarUrl: string;
 		bio: string;
-		verificationLinks: SocialLink[];
 	};
 
 	let {
@@ -42,9 +35,6 @@
 		<div class="template-home__bio-card">
 			<img src={data.profile.avatarUrl} alt={data.profile.displayName} class="template-home__avatar" />
 			<h1 class="template-home__name">{data.profile.displayName}</h1>
-			<div class="template-home__socials">
-				<SocialLinks links={data.profile.verificationLinks || []} />
-			</div>
 			<p class="template-home__bio">{data.profile.bio}</p>
 		</div>
 	</section>
@@ -100,11 +90,6 @@
 
 	:global(html.dark) .template-home__avatar {
 		box-shadow: 0 0 0 2px #3f3f46;
-	}
-
-	.template-home__socials {
-		display: flex;
-		gap: 1.5rem;
 	}
 
 	.template-home__name {
