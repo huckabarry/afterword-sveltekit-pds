@@ -28,6 +28,8 @@
 	export let showPhotos = true;
 	export let showLaneLinks = true;
 	export let showSectionLinks = true;
+	export let heroMode = false;
+	export let introEyebrow: string | null = null;
 	export let introTitle: string | null = null;
 	export let introBody: string | null = null;
 
@@ -40,9 +42,12 @@
 </script>
 
 <div class="home-page">
-	<section class="home-page__intro">
+	<section class:home-page__intro--hero={heroMode} class="home-page__intro">
 		{#if introTitle}
 			<div class="home-page__intro-copy">
+				{#if introEyebrow}
+					<p class="home-page__intro-eyebrow">{introEyebrow}</p>
+				{/if}
 				<h1 class="home-page__intro-title">{introTitle}</h1>
 				{#if introBody}
 					<p class="home-page__intro-body">{introBody}</p>
@@ -225,10 +230,34 @@
 		gap: 1.25rem;
 	}
 
+	.home-page__intro--hero {
+		gap: 1.5rem;
+		padding-bottom: 1.25rem;
+		border-bottom: 1px solid #e4e4e7;
+	}
+
+	:global(html.dark) .home-page__intro--hero {
+		border-bottom-color: rgba(63, 63, 70, 0.6);
+	}
+
 	.home-page__intro-copy {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.65rem;
+		max-width: 42rem;
+	}
+
+	.home-page__intro-eyebrow {
+		margin: 0;
+		font-size: 0.72rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: #71717a;
+	}
+
+	:global(html.dark) .home-page__intro-eyebrow {
+		color: #a1a1aa;
 	}
 
 	.home-page__intro-title {
@@ -254,6 +283,16 @@
 
 	:global(html.dark) .home-page__intro-body {
 		color: #a1a1aa;
+	}
+
+	.home-page__intro--hero .home-page__intro-title {
+		font-size: clamp(2.4rem, 5vw, 3.4rem);
+		max-width: 44rem;
+	}
+
+	.home-page__intro--hero .home-page__intro-body {
+		font-size: 1.04rem;
+		max-width: 40rem;
 	}
 
 	.home-page__byline {

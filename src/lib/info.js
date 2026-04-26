@@ -7,6 +7,8 @@ export const name = 'Afterword';
 
 export const avatar = '/assets/images/status-avatar.jpg';
 export const bio = 'Writer, photographer, and urban planner publishing from Afterword.';
+export const email = 'bryan.robb@icloud.com';
+export const bluesky = 'https://bsky.app/profile/bryanrobb.bsky.social';
 
 export const github = '';
 export const twitter = '';

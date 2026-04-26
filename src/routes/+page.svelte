@@ -2,7 +2,7 @@
 	import ResponsiveContentCover from '$lib/components/ResponsiveContentCover.svelte';
 	import ArrowRightIcon from '$lib/components/ArrowRightIcon.svelte';
 	import PostDate from '$lib/components/home-template/PostDate.svelte';
-	import { avatar, authorName, bio, name } from '$lib/info.js';
+	import { avatar, authorName, bio, bluesky, email, name } from '$lib/info.js';
 
 	let {
 		data
@@ -47,15 +47,30 @@
 
 <div class="home-page">
 	<section class="home-page__intro">
-		<div class="home-page__byline">
+		<div class="home-page__hero">
 			<img
 				src={avatar}
 				alt={authorName}
-				class="home-page__byline-avatar"
+				class="home-page__hero-avatar"
 			/>
-			<div class="home-page__byline-copy">
-				<p class="home-page__byline-name">{authorName}</p>
-				<p class="home-page__byline-bio">{bio}</p>
+
+			<div class="home-page__hero-copy">
+				<div class="home-page__hero-header">
+					<p class="home-page__hero-name">{authorName}</p>
+					<p class="home-page__hero-role">{bio}</p>
+				</div>
+
+				<p class="home-page__hero-body">
+					Afterword is a small web home for longer writing, field notes, and the passing things
+					that seem worth keeping: cities, photographs, books, weather, wandering, and whatever
+					else follows me home.
+				</p>
+
+				<nav class="home-page__hero-links" aria-label="Author links">
+					<a class="home-page__hero-link" href={bluesky} rel="me noopener noreferrer" target="_blank">Bluesky</a>
+					<a class="home-page__hero-link" href={`mailto:${email}`}>Email</a>
+					<a class="home-page__hero-link" href="/about">About</a>
+				</nav>
 			</div>
 		</div>
 	</section>
@@ -220,52 +235,109 @@
 		gap: 1.25rem;
 	}
 
-	.home-page__byline {
-		display: flex;
-		align-items: center;
+	.home-page__hero {
+		display: grid;
+		grid-template-columns: auto 1fr;
 		gap: 1rem;
-		margin-top: 0.5rem;
+		align-items: start;
+		padding-bottom: 0.5rem;
 	}
 
-	.home-page__byline-avatar {
-		width: 2.75rem;
-		height: 2.75rem;
+	.home-page__hero-avatar {
+		width: 3.75rem;
+		height: 3.75rem;
 		border-radius: 999px;
 		object-fit: cover;
 		box-shadow: 0 0 0 1px rgba(228, 228, 231, 1);
 	}
 
-	:global(html.dark) .home-page__byline-avatar {
+	:global(html.dark) .home-page__hero-avatar {
 		box-shadow: 0 0 0 1px rgba(63, 63, 70, 1);
 	}
 
-	.home-page__byline-copy {
+	.home-page__hero-copy {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
 		min-width: 0;
+		max-width: 38rem;
 	}
 
-	.home-page__byline-name,
-	.home-page__byline-bio {
+	.home-page__hero-header {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.home-page__hero-name,
+	.home-page__hero-role,
+	.home-page__hero-body {
 		margin: 0;
 	}
 
-	.home-page__byline-name {
-		font-size: 0.95rem;
-		font-weight: 500;
+	.home-page__hero-name {
+		font-size: 1rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
 		color: #18181b;
 	}
 
-	:global(html.dark) .home-page__byline-name {
+	:global(html.dark) .home-page__hero-name {
 		color: #f4f4f5;
 	}
 
-	.home-page__byline-bio {
-		margin-top: 0.2rem;
-		font-size: 0.95rem;
+	.home-page__hero-role {
+		font-size: 0.92rem;
+		line-height: 1.5;
 		color: #71717a;
 	}
 
-	:global(html.dark) .home-page__byline-bio {
+	:global(html.dark) .home-page__hero-role {
 		color: #a1a1aa;
+	}
+
+	.home-page__hero-body {
+		font-size: 1rem;
+		line-height: 1.75;
+		color: #52525b;
+	}
+
+	:global(html.dark) .home-page__hero-body {
+		color: #d4d4d8;
+	}
+
+	.home-page__hero-links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.65rem 1rem;
+	}
+
+	.home-page__hero-link {
+		font-size: 0.82rem;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: #71717a;
+		text-decoration: none;
+	}
+
+	.home-page__hero-link:hover {
+		color: #c06a63;
+	}
+
+	:global(html.dark) .home-page__hero-link {
+		color: #a1a1aa;
+	}
+
+	:global(html.dark) .home-page__hero-link:hover {
+		color: #e08a7a;
+	}
+
+	.home-page__section-link {
+		display: inline-flex;
+		align-items: center;
+		color: #71717a;
+		text-decoration: none;
 	}
 
 	.feature-card__label {
@@ -287,19 +359,15 @@
 		gap: 1.5rem;
 	}
 
-	.home-page__section-link,
 	.home-page__lane-link {
 		color: inherit;
 		text-decoration: none;
 	}
 
 	.home-page__section-link {
-		display: inline-flex;
-		align-items: center;
 		font-size: 0.95rem;
 		font-weight: 600;
 		color: #c06a63;
-		text-decoration: none;
 	}
 
 	:global(html.dark) .home-page__section-link {
@@ -517,6 +585,15 @@
 	}
 
 	@media (min-width: 768px) {
+		.home-page__hero {
+			gap: 1.25rem;
+		}
+
+		.home-page__hero-avatar {
+			width: 4.5rem;
+			height: 4.5rem;
+		}
+
 		.home-page__field-notes-list {
 			border-left: 1px solid #f4f4f5;
 			padding-left: 1.5rem;
@@ -541,6 +618,12 @@
 			left: -1.5rem;
 			right: -1.5rem;
 			border-radius: 1rem;
+		}
+	}
+
+	@media (max-width: 639px) {
+		.home-page__hero {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>
