@@ -1,70 +1,82 @@
 <script lang="ts">
+	import PostDate from '$lib/components/home-template/PostDate.svelte';
 	import PostPreview from '$lib/components/home-template/PostPreview.svelte';
-	import { formatDate } from '$lib/format';
 
-	type StandardSiteHomePost = {
+	type HomePost = {
 		title: string;
 		href: string;
 		description: string;
 		publishedAt: string | Date;
 	};
 
-	let { posts = [] }: { posts?: StandardSiteHomePost[] } = $props();
+	let { posts = [] }: { posts?: HomePost[] } = $props();
 </script>
 
-<div class="posts-list">
+<div class="template-posts-list">
 	{#each posts as post}
-		<article class="posts-list__row">
-			<div class="posts-list__date">
-				<time datetime={post.publishedAt instanceof Date ? post.publishedAt.toISOString() : post.publishedAt}>
-					{formatDate(post.publishedAt)}
-				</time>
-			</div>
-			<div class="posts-list__preview">
-				<PostPreview post={post} eyebrow={formatDate(post.publishedAt)} />
+		<article class="template-posts-list__row">
+			<PostDate class="template-posts-list__date" {post} />
+
+			<div class="template-posts-list__preview">
+				<PostPreview post={post}>
+					{#snippet eyebrow()}
+						<PostDate class="template-posts-list__mobile-date" {post} collapsed decorate />
+					{/snippet}
+				</PostPreview>
 			</div>
 		</article>
 	{/each}
 </div>
 
 <style>
-	.posts-list {
+	.template-posts-list {
 		display: flex;
 		flex-direction: column;
-		gap: 2.4rem;
+		gap: 4rem;
 	}
 
-	.posts-list__row {
+	.template-posts-list__row {
 		display: grid;
-		grid-template-columns: minmax(8rem, 9rem) minmax(0, 1fr);
-		gap: 1.5rem;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 2rem;
 		align-items: start;
 	}
 
-	.posts-list__date {
-		display: flex;
-		flex-direction: column;
-		padding-top: 0.2rem;
-		font-size: 0.88rem;
-		color: var(--muted);
-	}
-
-	.posts-list__preview :global(.card__eyebrow) {
+	:global(.template-post-date.template-posts-list__date) {
 		display: none;
+		font-size: 0.875rem;
 	}
 
-	@media (max-width: 720px) {
-		.posts-list__row {
-			grid-template-columns: 1fr;
-			gap: 0.5rem;
+	.template-posts-list__preview {
+		grid-column: span 4 / span 4;
+	}
+
+	:global(.template-post-date.template-posts-list__mobile-date) {
+		display: flex;
+	}
+
+	@media (min-width: 768px) {
+		.template-posts-list {
+			border-left: 1px solid #f4f4f5;
+			padding-left: 1.5rem;
 		}
 
-		.posts-list__date {
+		:global(html.dark) .template-posts-list {
+			border-left-color: rgba(63, 63, 70, 0.4);
+		}
+
+		:global(.template-post-date.template-posts-list__date) {
+			display: flex;
+			flex-direction: column;
+			grid-column: span 1 / span 1;
+		}
+
+		.template-posts-list__preview {
+			grid-column: span 3 / span 3;
+		}
+
+		:global(.template-post-date.template-posts-list__mobile-date) {
 			display: none;
-		}
-
-		.posts-list__preview :global(.card__eyebrow) {
-			display: block;
 		}
 	}
 </style>

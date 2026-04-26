@@ -2,6 +2,8 @@ import { getRecentBlogPosts } from '$lib/server/ghost';
 import { getSiteProfile } from '$lib/server/profile';
 import type { PageServerLoad } from './$types';
 
+export const prerender = false;
+
 export const load: PageServerLoad = async (event) => {
 	const [profile, recentPosts] = await Promise.all([
 		getSiteProfile(event),

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ArrowRightIcon from '$lib/components/home-template/ArrowRightIcon.svelte';
+	import Card from '$lib/components/home-template/Card.svelte';
 
 	type PostPreviewData = {
 		title: string;
@@ -7,63 +8,37 @@
 		description: string;
 	};
 
-	let { post, eyebrow = '' }: { post: PostPreviewData; eyebrow?: string } = $props();
+	let { post, eyebrow }: { post: PostPreviewData; eyebrow?: import('svelte').Snippet } = $props();
 </script>
 
-<article class="post-preview">
-	{#if eyebrow}
-		<div class="post-preview__eyebrow">{eyebrow}</div>
-	{/if}
-
-	<h3 class="post-preview__title">
-		<a href={post.href} data-sveltekit-preload-data="hover">{post.title}</a>
-	</h3>
-
-	<p class="post-preview__description">{post.description}</p>
-
-	<div class="post-preview__actions">
-		<span>Read</span>
-		<ArrowRightIcon />
-	</div>
-</article>
+<Card href={post.href} title={post.title} description={post.description} {eyebrow}>
+	{#snippet actions()}
+		<div class="template-post-preview__actions">
+			<span class="template-post-preview__actions-label">Read</span>
+			<ArrowRightIcon class="template-post-preview__actions-icon" />
+		</div>
+	{/snippet}
+</Card>
 
 <style>
-	.post-preview {
-		position: relative;
+	.template-post-preview__actions {
 		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0.6rem;
-	}
-
-	.post-preview__eyebrow {
-		font-size: 0.88rem;
-		color: var(--muted);
-	}
-
-	.post-preview__title {
-		margin: 0;
-		font-size: 1.08rem;
-		line-height: 1.25;
-	}
-
-	.post-preview__title a {
-		color: var(--text);
-		text-decoration: none;
-	}
-
-	.post-preview__description {
-		margin: 0;
-		color: var(--muted);
-		line-height: 1.65;
-	}
-
-	.post-preview__actions {
-		display: inline-flex;
 		align-items: center;
-		gap: 0.25rem;
-		font-size: 0.92rem;
-		font-weight: 600;
-		color: var(--accent, var(--text));
+		color: rgb(20 184 166);
+	}
+
+	:global(html.dark) .template-post-preview__actions {
+		color: rgb(45 212 191);
+	}
+
+	.template-post-preview__actions-label {
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	:global(.template-post-preview__actions-icon) {
+		width: 1rem;
+		height: 1rem;
+		margin-left: 0.25rem;
 	}
 </style>

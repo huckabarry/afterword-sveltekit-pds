@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { afterNavigate, preloadCode, preloadData } from '$app/navigation';
+	import HomeShell from '$lib/components/home-template/HomeShell.svelte';
 	import { tick } from 'svelte';
 	import '../app.css';
 
@@ -28,6 +29,8 @@
 	let searchRequest = 0;
 	let galleryThumbsPrewarmed = false;
 	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
+	const isHomeRoute = $derived(data.pathname === '/');
+	const isTemplatePostRoute = $derived(data.pathname.startsWith('/blog/'));
 	const profile = $derived(data.profile);
 	const siteSettings = $derived(data.cms.settings);
 	const siteTitle = $derived(siteSettings.siteTitle || profile.displayName);
@@ -221,34 +224,36 @@
 	<link rel="icon" href={profile.avatarUrl} />
 	<link rel="apple-touch-icon" href={profile.avatarUrl} />
 	<link rel="webmention" href="/webmention" />
-	<link
-		rel="preload"
-		href="/fonts/fira-sans-latin-400-normal.woff2"
-		as="font"
-		type="font/woff2"
-		crossorigin="anonymous"
-	/>
-	<link
-		rel="preload"
-		href="/fonts/fira-sans-latin-800-normal.woff2"
-		as="font"
-		type="font/woff2"
-		crossorigin="anonymous"
-	/>
-	<link
-		rel="preload"
-		href="/fonts/ibm-plex-mono-latin-400-normal.woff2"
-		as="font"
-		type="font/woff2"
-		crossorigin="anonymous"
-	/>
-	<link
-		rel="preload"
-		href="/fonts/ibm-plex-mono-latin-500-italic.woff2"
-		as="font"
-		type="font/woff2"
-		crossorigin="anonymous"
-	/>
+	{#if !isHomeRoute}
+		<link
+			rel="preload"
+			href="/fonts/fira-sans-latin-400-normal.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin="anonymous"
+		/>
+		<link
+			rel="preload"
+			href="/fonts/fira-sans-latin-800-normal.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin="anonymous"
+		/>
+		<link
+			rel="preload"
+			href="/fonts/ibm-plex-mono-latin-400-normal.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin="anonymous"
+		/>
+		<link
+			rel="preload"
+			href="/fonts/ibm-plex-mono-latin-500-italic.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin="anonymous"
+		/>
+	{/if}
 	<meta
 		name="description"
 		content="Short updates, photos, and longer reflections on place, music, design, and daily life."
@@ -257,6 +262,10 @@
 
 {#if isAdminRoute}
 	{@render children()}
+{:else if isHomeRoute || isTemplatePostRoute}
+	<HomeShell title={profile.displayName}>
+		{@render children()}
+	</HomeShell>
 {:else}
 	<div class="site-shell">
 		<header class="site-header h-card">
