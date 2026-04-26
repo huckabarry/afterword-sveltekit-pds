@@ -29,14 +29,14 @@ export const load: PageServerLoad = async (event) => {
 	});
 
 	return {
-		latestBlogPosts: planningPosts.slice(0, 3).map((post) => ({
+		latestBlogPosts: planningPosts.slice(0, 1).map((post) => ({
 			title: post.title,
 			excerpt: post.excerpt,
 			path: post.path,
 			coverImage: post.coverImage,
 			publishedAt: post.publishedAt.toISOString()
 		})),
-		latestFieldNotes: fieldNotePosts.slice(0, 3).map((post) => ({
+		latestFieldNotes: fieldNotePosts.slice(0, 1).map((post) => ({
 			title: post.title,
 			excerpt: post.excerpt,
 			path: post.path,

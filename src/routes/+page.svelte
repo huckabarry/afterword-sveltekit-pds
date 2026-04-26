@@ -38,6 +38,12 @@
 		{ href: '/status', label: 'Status' },
 		{ href: '/about', label: 'About' }
 	];
+
+	const homeSections = [
+		{ href: '#home-blog-heading', label: 'Latest urbanism post' },
+		{ href: '#home-field-notes-heading', label: 'Latest field note' },
+		{ href: '#latest-photos-heading', label: 'Recent photos' }
+	];
 </script>
 
 <svelte:head>
@@ -47,39 +53,52 @@
 
 <div class="home-page">
 	<section class="home-page__intro">
-		<div class="home-page__hero">
-			<img
-				src={avatar}
-				alt={authorName}
-				class="home-page__hero-avatar"
-			/>
+		<div class="home-page__intro-grid">
+			<div class="home-page__hero">
+				<img
+					src={avatar}
+					alt={authorName}
+					class="home-page__hero-avatar"
+				/>
 
-			<div class="home-page__hero-copy">
-				<div class="home-page__hero-header">
-					<p class="home-page__hero-name">{authorName}</p>
-					<p class="home-page__hero-role">{bio}</p>
+				<div class="home-page__hero-copy">
+					<div class="home-page__hero-header">
+						<p class="home-page__hero-name">{authorName}</p>
+						<p class="home-page__hero-role">{bio}</p>
+					</div>
+
+					<p class="home-page__hero-body">
+						Afterword is where I keep longer writing and field notes, mostly about cities,
+						photographs, books, weather, and wandering.
+					</p>
+
+					<nav class="home-page__hero-links" aria-label="Author links">
+						<a class="home-page__hero-link" href={bluesky} rel="me noopener noreferrer" target="_blank">Bluesky</a>
+						<a class="home-page__hero-link" href={`mailto:${email}`}>Email</a>
+						<a class="home-page__hero-link" href="/about">About</a>
+					</nav>
 				</div>
-
-				<p class="home-page__hero-body">
-					Afterword is where I keep longer writing and field notes, mostly about cities,
-					photographs, books, weather, and wandering.
-				</p>
-
-				<nav class="home-page__hero-links" aria-label="Author links">
-					<a class="home-page__hero-link" href={bluesky} rel="me noopener noreferrer" target="_blank">Bluesky</a>
-					<a class="home-page__hero-link" href={`mailto:${email}`}>Email</a>
-					<a class="home-page__hero-link" href="/about">About</a>
-				</nav>
 			</div>
+
+			<aside class="home-page__toc" aria-labelledby="home-sections-heading">
+				<p id="home-sections-heading" class="home-page__toc-title">On this page</p>
+				<ul class="home-page__toc-list">
+					{#each homeSections as section}
+						<li class="home-page__toc-item">
+							<a class="home-page__toc-link" href={section.href}>{section.label}</a>
+						</li>
+					{/each}
+				</ul>
+			</aside>
 		</div>
 	</section>
 
 	{#if data.latestBlogPosts.length}
-		<section class="home-page__feed-section" aria-labelledby="home-blog-heading">
+		<section class="home-page__feed-section" id="home-blog" aria-labelledby="home-blog-heading">
 			<div class="home-page__section-head">
 				<div>
 					<p class="feature-card__label">Blog</p>
-					<h2 id="home-blog-heading" class="home-page__section-title">Latest posts</h2>
+					<h2 id="home-blog-heading" class="home-page__section-title">Latest urbanism post</h2>
 				</div>
 				<a class="home-page__section-link" href="/blog">View all</a>
 			</div>
@@ -131,11 +150,11 @@
 	{/if}
 
 	{#if data.latestFieldNotes.length}
-		<section class="home-page__feed-section" aria-labelledby="home-field-notes-heading">
+		<section class="home-page__feed-section" id="home-field-notes" aria-labelledby="home-field-notes-heading">
 			<div class="home-page__section-head">
 				<div>
 					<p class="feature-card__label">Field Notes</p>
-					<h2 id="home-field-notes-heading" class="home-page__section-title">Recent notes</h2>
+					<h2 id="home-field-notes-heading" class="home-page__section-title">Latest field note</h2>
 				</div>
 				<a class="home-page__section-link" href="/blog#field-notes">View all</a>
 			</div>
@@ -234,6 +253,12 @@
 		gap: 1.25rem;
 	}
 
+	.home-page__intro-grid {
+		display: grid;
+		gap: 2rem;
+		align-items: start;
+	}
+
 	.home-page__hero {
 		display: grid;
 		grid-template-columns: auto 1fr;
@@ -309,6 +334,56 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.65rem 1rem;
+	}
+
+	.home-page__toc {
+		display: none;
+	}
+
+	.home-page__toc-title {
+		margin: 0;
+		font-size: 0.72rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: #71717a;
+	}
+
+	:global(html.dark) .home-page__toc-title {
+		color: #a1a1aa;
+	}
+
+	.home-page__toc-list {
+		margin: 0.85rem 0 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+	}
+
+	.home-page__toc-item {
+		padding-left: 0.65rem;
+		border-left: 2px solid transparent;
+	}
+
+	.home-page__toc-link {
+		font-size: 0.9rem;
+		line-height: 1.45;
+		color: #71717a;
+		text-decoration: none;
+	}
+
+	.home-page__toc-link:hover {
+		color: #18181b;
+	}
+
+	:global(html.dark) .home-page__toc-link {
+		color: #a1a1aa;
+	}
+
+	:global(html.dark) .home-page__toc-link:hover {
+		color: #f4f4f5;
 	}
 
 	.home-page__hero-link {
@@ -584,6 +659,11 @@
 	}
 
 	@media (min-width: 768px) {
+		.home-page__intro-grid {
+			grid-template-columns: minmax(0, 1fr) 13rem;
+			gap: 2.5rem;
+		}
+
 		.home-page__hero {
 			gap: 1.25rem;
 		}
@@ -596,6 +676,13 @@
 		.home-page__field-notes-list {
 			border-left: 1px solid #f4f4f5;
 			padding-left: 1.5rem;
+		}
+
+		.home-page__toc {
+			display: block;
+			position: sticky;
+			top: 6rem;
+			align-self: start;
 		}
 
 		:global(html.dark) .home-page__field-notes-list {
