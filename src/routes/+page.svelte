@@ -85,6 +85,8 @@
 			</div>
 		</section>
 
+		<div class="home-page__content-grid">
+			<div class="home-page__content-stack">
 		{#if data.latestBlogPosts.length}
 			<section class="home-page__feed-section" id="home-blog" aria-labelledby="home-blog-heading">
 			<div class="home-page__section-head">
@@ -223,16 +225,18 @@
 			</section>
 		{/if}
 
-		<nav class="home-page__lane-links" aria-label="Browse the site">
-			{#each lanes as lane}
-				<a href={lane.href} class="home-page__lane-link">{lane.label}</a>
-			{/each}
-		</nav>
-	</div>
+			<nav class="home-page__lane-links" aria-label="Browse the site">
+				{#each lanes as lane}
+					<a href={lane.href} class="home-page__lane-link">{lane.label}</a>
+				{/each}
+			</nav>
+			</div>
 
-	<aside class="home-page__toc-rail" aria-label="On this page">
-		<ToC headings={homeToc} />
-	</aside>
+			<aside class="home-page__toc-rail" aria-label="On this page">
+				<ToC headings={homeToc} />
+			</aside>
+		</div>
+	</div>
 </div>
 
 <style>
@@ -253,6 +257,17 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.25rem;
+	}
+
+	.home-page__content-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+	}
+
+	.home-page__content-stack {
+		display: flex;
+		flex-direction: column;
+		gap: 3.5rem;
 	}
 
 	.home-page__hero {
@@ -660,17 +675,18 @@
 			grid-column: 2;
 		}
 
-		.home-page__toc-rail {
-			display: block;
-			grid-column: 3;
-			padding-top: 3.5rem;
+		.home-page__content-grid {
+			grid-template-columns: minmax(0, 1fr) 18rem;
+			column-gap: 3.5rem;
+			align-items: start;
 		}
 
-		.home-page__toc-rail :global(aside) {
+		.home-page__toc-rail {
+			display: block;
 			position: sticky;
 			top: 2rem;
+			align-self: start;
 			width: 18rem;
-			margin-left: 3.5rem;
 		}
 
 		.home-page__toc-rail :global(ul) {
