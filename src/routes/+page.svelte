@@ -4,7 +4,7 @@
 	import PostDate from '$lib/components/home-template/PostDate.svelte';
 	import ToC from '$lib/components/ToC.svelte';
 	import type { TemplatePost } from '$lib/server/template-posts';
-	import { avatar, authorName, bio, bluesky, email, name } from '$lib/info.js';
+	import { avatar, authorName, bio, name } from '$lib/info.js';
 
 	let {
 		data
@@ -75,12 +75,6 @@
 						Afterword is where I keep longer writing and field notes, mostly about cities,
 						photographs, books, weather, and wandering.
 					</p>
-
-					<nav class="home-page__hero-links" aria-label="Author links">
-						<a class="home-page__hero-link" href={bluesky} rel="me noopener noreferrer" target="_blank">Bluesky</a>
-						<a class="home-page__hero-link" href={`mailto:${email}`}>Email</a>
-						<a class="home-page__hero-link" href="/about">About</a>
-					</nav>
 				</div>
 			</div>
 		</section>
@@ -341,35 +335,8 @@
 		color: #d4d4d8;
 	}
 
-	.home-page__hero-links {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.65rem 1rem;
-	}
-
 	.home-page__toc-rail {
 		display: none;
-	}
-
-	.home-page__hero-link {
-		font-size: 0.82rem;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: #71717a;
-		text-decoration: none;
-	}
-
-	.home-page__hero-link:hover {
-		color: #c06a63;
-	}
-
-	:global(html.dark) .home-page__hero-link {
-		color: #a1a1aa;
-	}
-
-	:global(html.dark) .home-page__hero-link:hover {
-		color: #e08a7a;
 	}
 
 	.home-page__section-link {
