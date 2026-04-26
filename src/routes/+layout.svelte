@@ -31,6 +31,7 @@
 	const isAdminRoute = $derived(data.pathname.startsWith('/admin'));
 	const isHomeRoute = $derived(data.pathname === '/');
 	const isTemplateBlogRoute = $derived(data.pathname === '/blog' || data.pathname.startsWith('/blog/'));
+	const isTemplateBlogPostRoute = $derived(data.pathname.startsWith('/blog/'));
 	const profile = $derived(data.profile);
 	const siteSettings = $derived(data.cms.settings);
 	const siteTitle = $derived(siteSettings.siteTitle || profile.displayName);
@@ -263,7 +264,7 @@
 	{#if isAdminRoute}
 		{@render children()}
 	{:else if isHomeRoute || isTemplateBlogRoute}
-		<HomeShell title={siteTitle} wide={isTemplateBlogRoute}>
+		<HomeShell title={siteTitle} wide={isTemplateBlogPostRoute}>
 			{@render children()}
 		</HomeShell>
 	{:else}

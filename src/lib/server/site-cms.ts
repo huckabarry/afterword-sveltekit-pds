@@ -263,49 +263,34 @@ async function ensureCmsTables(db: CmsDb) {
 }
 
 async function seedCmsDefaults(db: CmsDb) {
-	const settingsRow = await db.prepare(`SELECT id FROM cms_site_settings WHERE id = 1 LIMIT 1`).first();
-	if (!settingsRow) {
+	await db
+		.prepare(
+			`INSERT OR IGNORE INTO cms_site_settings (id, site_title, site_tagline, footer_tagline, search_placeholder)
+			 VALUES (1, ?, ?, ?, ?)`
+		)
+		.bind(
+			DEFAULT_SITE_SETTINGS.siteTitle,
+			DEFAULT_SITE_SETTINGS.siteTagline,
+			DEFAULT_SITE_SETTINGS.footerTagline,
+			DEFAULT_SITE_SETTINGS.searchPlaceholder
+		)
+		.run();
+
+	for (const [name, items] of Object.entries(DEFAULT_NAVIGATION)) {
 		await db
-			.prepare(
-				`INSERT INTO cms_site_settings (id, site_title, site_tagline, footer_tagline, search_placeholder)
-				 VALUES (1, ?, ?, ?, ?)`
-			)
-			.bind(
-				DEFAULT_SITE_SETTINGS.siteTitle,
-				DEFAULT_SITE_SETTINGS.siteTagline,
-				DEFAULT_SITE_SETTINGS.footerTagline,
-				DEFAULT_SITE_SETTINGS.searchPlaceholder
-			)
+			.prepare(`INSERT OR IGNORE INTO cms_navigation (name, items_json) VALUES (?, ?)`)
+			.bind(name, serializeLinks(items))
 			.run();
 	}
 
-	for (const [name, items] of Object.entries(DEFAULT_NAVIGATION)) {
-		const existing = await db
-			.prepare(`SELECT name FROM cms_navigation WHERE name = ? LIMIT 1`)
-			.bind(name)
-			.first();
-		if (!existing) {
-			await db
-				.prepare(`INSERT INTO cms_navigation (name, items_json) VALUES (?, ?)`)
-				.bind(name, serializeLinks(items))
-				.run();
-		}
-	}
-
 	for (const page of DEFAULT_PAGES) {
-		const existing = await db
-			.prepare(`SELECT slug FROM cms_pages WHERE slug = ? LIMIT 1`)
-			.bind(page.slug)
-			.first();
-		if (!existing) {
-			await db
-				.prepare(
-					`INSERT INTO cms_pages (slug, title, description, body)
-					 VALUES (?, ?, ?, ?)`
-				)
-				.bind(page.slug, page.title, page.description, page.body)
-				.run();
-		}
+		await db
+			.prepare(
+				`INSERT OR IGNORE INTO cms_pages (slug, title, description, body)
+				 VALUES (?, ?, ?, ?)`
+			)
+			.bind(page.slug, page.title, page.description, page.body)
+			.run();
 	}
 }
 
