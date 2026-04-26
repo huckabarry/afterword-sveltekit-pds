@@ -630,9 +630,18 @@
 			grid-column: 2;
 		}
 
+		.home-page__intro {
+			grid-row: 1;
+		}
+
+		.home-page {
+			grid-row: 2;
+		}
+
 		.home-page__toc-rail {
 			display: block;
 			grid-column: 3;
+			grid-row: 2;
 			position: sticky;
 			top: 2rem;
 			align-self: start;
