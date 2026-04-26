@@ -647,6 +647,7 @@
 			top: 2rem;
 			align-self: start;
 			width: 18rem;
+			margin-top: 1.35rem;
 		}
 
 		.home-page__toc-rail :global(ul) {
