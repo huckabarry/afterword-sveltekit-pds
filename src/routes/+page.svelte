@@ -267,7 +267,6 @@
 		flex-direction: column;
 		gap: 0.75rem;
 		min-width: 0;
-		max-width: 38rem;
 	}
 
 	.home-page__hero-header {
@@ -621,6 +620,10 @@
 	}
 
 	@media (min-width: 1280px) {
+		.home-page__intro {
+			grid-column: 2 / 4;
+		}
+
 		.home-page__toc-column {
 			display: block;
 			grid-column: 3;
