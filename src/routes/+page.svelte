@@ -66,10 +66,9 @@
 					<p class="home-page__hero-role">{bio}</p>
 				</div>
 
-				<p class="home-page__hero-body">
-					Afterword is where I keep longer writing and field notes, mostly about cities,
-					photographs, books, weather, and wandering.
-				</p>
+				<h1 class="home-page__hero-title">
+					Writing, field notes, photographs, and the usual preoccupations.
+				</h1>
 			</div>
 		</div>
 	</section>
@@ -277,7 +276,7 @@
 
 	.home-page__hero-name,
 	.home-page__hero-role,
-	.home-page__hero-body {
+	.home-page__hero-title {
 		margin: 0;
 	}
 
@@ -302,14 +301,17 @@
 		color: #a1a1aa;
 	}
 
-	.home-page__hero-body {
-		font-size: 1rem;
-		line-height: 1.75;
-		color: #52525b;
+	.home-page__hero-title {
+		font-size: 2.5rem;
+		font-weight: 700;
+		line-height: 1.05;
+		letter-spacing: -0.04em;
+		color: #18181b;
+		text-wrap: balance;
 	}
 
-	:global(html.dark) .home-page__hero-body {
-		color: #d4d4d8;
+	:global(html.dark) .home-page__hero-title {
+		color: #f4f4f5;
 	}
 
 	.home-page__toc-rail {
@@ -574,6 +576,10 @@
 	@media (min-width: 768px) {
 		.home-page__hero {
 			gap: 1.25rem;
+		}
+
+		.home-page__hero-title {
+			font-size: 3rem;
 		}
 
 		.home-page__field-notes-list {
