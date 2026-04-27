@@ -253,6 +253,7 @@
 
 	.home-page__hero {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
 		gap: 1rem;
 		padding-bottom: 0.5rem;
@@ -271,12 +272,15 @@
 		flex-direction: column;
 		gap: 0.75rem;
 		min-width: 0;
+		align-items: center;
+		text-align: center;
 	}
 
 	.home-page__hero-header {
 		display: flex;
 		flex-direction: column;
 		gap: 0.2rem;
+		align-items: center;
 	}
 
 	.home-page__hero-name,
