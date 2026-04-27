@@ -4,11 +4,13 @@
 	import { MoonIcon, SunIcon } from 'heroicons-svelte/20/solid';
 	import { browser } from '$app/environment';
 	import { name } from '$lib/info';
+	import { simpleSite } from '$lib/simple-site';
 
 	let { children, data } = $props();
 
 	let isDarkMode = $state(browser ? Boolean(document.documentElement.classList.contains('dark')) : true);
 	const isAdminRoute = $derived(String(data.pathname || '').startsWith('/admin'));
+	const isSimpleSite = $derived(Boolean(data.simpleSite));
 	const fullWidth = $derived(String(data.pathname || '').startsWith('/blog/'));
 	const pathname = $derived(String(data.pathname || ''));
 
@@ -17,6 +19,12 @@
 		{ href: '/blog', label: 'Blog', match: (path: string) => path.startsWith('/blog') },
 		{ href: '/status', label: 'Status', match: (path: string) => path.startsWith('/status') },
 		{ href: '/about', label: 'About', match: (path: string) => path.startsWith('/about') }
+	];
+
+	const simpleNav = [
+		{ href: '/', label: 'Home', match: (path: string) => path === '/' },
+		{ href: '/about', label: 'About', match: (path: string) => path.startsWith('/about') },
+		{ href: '/notes', label: 'Notes', match: (path: string) => path.startsWith('/notes') }
 	];
 
 	function disableTransitionsTemporarily() {
@@ -41,6 +49,27 @@
 
 {#if isAdminRoute}
 	{@render children()}
+{:else if isSimpleSite}
+	<div class="simple-site-shell">
+		<header class="simple-site-header">
+			<a class="simple-site-title" href="/">{simpleSite.title}</a>
+
+			<nav class="simple-site-nav" aria-label="Primary">
+				{#each simpleNav as item}
+					<a
+						href={item.href}
+						class:simple-site-nav__active={item.match(pathname)}
+					>
+						{item.label}
+					</a>
+				{/each}
+			</nav>
+		</header>
+
+		<main class="simple-site-main">
+			{@render children()}
+		</main>
+	</div>
 {:else}
 	<div class="flex flex-col min-h-screen">
 		<div class="flex flex-col flex-grow w-full px-4 py-2">
@@ -88,3 +117,99 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	.simple-site-shell {
+		max-width: 42rem;
+		margin: 0 auto;
+		padding: 2.5rem 1.25rem 4rem;
+	}
+
+	.simple-site-header {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 2.25rem;
+	}
+
+	.simple-site-title {
+		font-size: 1.05rem;
+		font-weight: 600;
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.simple-site-nav {
+		display: flex;
+		gap: 1rem;
+		font-size: 0.9rem;
+	}
+
+	.simple-site-nav a {
+		color: #6f685f;
+		text-decoration: none;
+	}
+
+	.simple-site-nav a:hover,
+	.simple-site-nav a.simple-site-nav__active {
+		color: inherit;
+		text-decoration: underline;
+		text-underline-offset: 0.16em;
+	}
+
+	.simple-site-main {
+		max-width: 40rem;
+	}
+
+	:global(.simple-home h1),
+	:global(.simple-page h1),
+	:global(.simple-post h1) {
+		margin: 0 0 0.85rem;
+		font-size: clamp(2.5rem, 6vw, 4rem);
+		line-height: 0.95;
+		font-weight: 700;
+		color: inherit;
+	}
+
+	:global(.simple-home p),
+	:global(.simple-page p),
+	:global(.simple-post p) {
+		font-size: 1rem;
+		line-height: 1.75;
+	}
+
+	:global(.simple-home p),
+	:global(.simple-page p) {
+		color: #6f685f;
+	}
+
+	:global(.simple-post time) {
+		display: block;
+		margin-bottom: 2rem;
+		color: #6f685f;
+		font-size: 0.88rem;
+	}
+
+	:global(.simple-post .back) {
+		margin: 0 0 1rem;
+	}
+
+	:global(.simple-post .back a) {
+		color: #6f685f;
+		text-decoration: none;
+	}
+
+	:global(.simple-post .back a:hover) {
+		text-decoration: underline;
+		text-underline-offset: 0.16em;
+	}
+
+	@media (max-width: 640px) {
+		.simple-site-header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.6rem;
+		}
+	}
+</style>

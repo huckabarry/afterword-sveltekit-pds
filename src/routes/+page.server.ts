@@ -1,5 +1,6 @@
 import { getGallerySnapshot } from '$lib/server/gallery-snapshot';
 import { getBlogPosts } from '$lib/server/ghost';
+import { simplePosts } from '$lib/simple-site';
 import type { PageServerLoad } from './$types';
 
 export const prerender = false;
@@ -8,6 +9,12 @@ const PLANNING_TAGS = new Set(['urbanism', 'housing', 'transportation', 'public-
 const FIELD_NOTE_TAGS = new Set(['field-notes', 'gallery', 'photography']);
 
 export const load: PageServerLoad = async (event) => {
+	if (event.url.hostname === 'svelte.afterword.blog') {
+		return {
+			posts: simplePosts
+		};
+	}
+
 	const [posts, photos] = await Promise.all([
 		getBlogPosts(),
 		getGallerySnapshot(event)

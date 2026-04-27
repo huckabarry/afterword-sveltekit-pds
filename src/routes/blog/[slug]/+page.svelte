@@ -7,8 +7,13 @@
 	import PostDate from '$lib/components/PostDate.svelte';
 	import type { TemplatePost } from '$lib/server/template-posts';
 
-	let { data }: { data: { post: TemplatePost } } = $props();
+	let { data }: { data: any } = $props();
 	const post = $derived(data.post);
+	const formatter = new Intl.DateTimeFormat('en-US', {
+		month: 'long',
+		day: 'numeric',
+		year: 'numeric'
+	});
 
 	const ogImage = $derived.by(
 		() =>
@@ -34,22 +39,37 @@
 </script>
 
 <svelte:head>
-	<title>{post.title} - {name}</title>
-	<meta name="description" content={post.preview.text} />
-	<meta name="author" content={authorName} />
-	<meta property="og:url" content={url} />
-	<meta property="og:type" content="website" />
-	<meta property="og:title" content={post.title} />
-	<meta property="og:description" content={post.preview.text} />
-	<meta property="og:image" content={ogImage} />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta property="twitter:domain" content={website} />
-	<meta property="twitter:url" content={url} />
-	<meta name="twitter:title" content={post.title} />
-	<meta name="twitter:description" content={post.preview.text} />
-	<meta name="twitter:image" content={ogImage} />
+	<title>{data.simpleSite ? `${data.simplePost.title} / Afterword` : `${post.title} - ${name}`}</title>
+	{#if !data.simpleSite}
+		<meta name="description" content={post.preview.text} />
+		<meta name="author" content={authorName} />
+		<meta property="og:url" content={url} />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content={post.title} />
+		<meta property="og:description" content={post.preview.text} />
+		<meta property="og:image" content={ogImage} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta property="twitter:domain" content={website} />
+		<meta property="twitter:url" content={url} />
+		<meta name="twitter:title" content={post.title} />
+		<meta name="twitter:description" content={post.preview.text} />
+		<meta name="twitter:image" content={ogImage} />
+	{/if}
 </svelte:head>
 
+{#if data.simpleSite}
+	<article class="simple-post">
+		<p class="back"><a href="/">Back</a></p>
+		<h1>{data.simplePost.title}</h1>
+		<time datetime={data.simplePost.date}>{formatter.format(new Date(data.simplePost.date))}</time>
+
+		<div class="body">
+			{#each data.simplePost.body as paragraph}
+				<p>{paragraph}</p>
+			{/each}
+		</div>
+	</article>
+{:else}
 <div class="root max-w-2xl mx-auto lg:max-w-none">
 	<div class="hidden lg:block pt-8">
 		<div class="sticky top-0 w-full flex justify-end pt-11 pr-8">
@@ -137,3 +157,4 @@
 		}
 	}
 </style>
+{/if}

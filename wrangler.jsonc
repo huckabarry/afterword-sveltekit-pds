@@ -29,6 +29,10 @@
 		{
 			"pattern": "sync.afterword.blog",
 			"custom_domain": true
+		},
+		{
+			"pattern": "svelte.afterword.blog",
+			"custom_domain": true
 		}
 	],
 	"main": ".svelte-kit/cloudflare/_worker.js",

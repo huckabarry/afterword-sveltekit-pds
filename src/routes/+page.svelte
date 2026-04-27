@@ -6,33 +6,7 @@
 	import type { TemplatePost } from '$lib/server/template-posts';
 	import { authorName, avatar, bio, name } from '$lib/info.js';
 
-	let {
-		data
-	}: {
-		data: {
-			latestBlogPosts: Array<{
-				title: string;
-				excerpt: string;
-				path: string;
-				coverImage: string | null;
-				publishedAt: string;
-			}>;
-			latestFieldNotes: Array<{
-				title: string;
-				path: string;
-				excerpt: string;
-				coverImage: string | null;
-				publishedAt: string;
-			}>;
-			latestPhotos: Array<{
-				postTitle: string;
-				postPath: string;
-				displayUrl: string;
-				alt: string;
-				publishedAt: string;
-			}>;
-		};
-	} = $props();
+	let { data }: { data: any } = $props();
 
 	const lanes = [
 		{ href: '/', label: 'Home' },
@@ -48,6 +22,11 @@
 	];
 
 	const homeToc: TemplatePost['headings'] = homeSections;
+	const formatter = new Intl.DateTimeFormat('en-US', {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric'
+	});
 </script>
 
 <svelte:head>
@@ -55,6 +34,27 @@
 	<meta name="description" content="Afterword gathers writing, field notes, and media into one small web home." />
 </svelte:head>
 
+{#if data.simpleSite}
+	<section class="simple-home">
+		<h1>Afterword</h1>
+		<p>
+			I’m Bryan, an urban planner and musician in the Pacific Northwest. This is where I keep
+			longer writing, field notes, and photographs, usually about cities, books, wandering
+			around, and whatever else has been taking up space in my head lately.
+		</p>
+
+		<ol class="simple-post-list">
+			{#each data.posts as post}
+				<li class="simple-post-list__item">
+					<a class="simple-post-list__link" href={`/blog/${post.slug}`}>{post.title}</a>
+					<time class="simple-post-list__date" datetime={post.date}>
+						{formatter.format(new Date(post.date))}
+					</time>
+				</li>
+			{/each}
+		</ol>
+	</section>
+{:else}
 <div class="home-page-root max-w-2xl mx-auto lg:max-w-none">
 	<div class="hidden lg:block" aria-hidden="true"></div>
 
@@ -226,8 +226,43 @@
 		</aside>
 	</div>
 </div>
+{/if}
 
 <style>
+	.simple-post-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		border-top: 1px solid #ddd7cf;
+	}
+
+	.simple-post-list__item {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.8rem 0;
+		border-bottom: 1px solid #ddd7cf;
+	}
+
+	.simple-post-list__link {
+		text-decoration: underline;
+		text-underline-offset: 0.16em;
+		font-size: 1rem;
+		line-height: 1.4;
+		color: inherit;
+	}
+
+	.simple-post-list__link:hover {
+		color: #6f685f;
+	}
+
+	.simple-post-list__date {
+		flex-shrink: 0;
+		font-size: 0.84rem;
+		color: #6f685f;
+	}
+
 	.home-page-root {
 		display: grid;
 		grid-template-columns: 1fr;
@@ -256,6 +291,14 @@
 		align-items: center;
 		gap: 1rem;
 		padding-bottom: 0.5rem;
+	}
+
+	@media (max-width: 640px) {
+		.simple-post-list__item {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.3rem;
+		}
 	}
 
 	.home-page__hero-avatar {

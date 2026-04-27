@@ -1,23 +1,10 @@
 <script lang="ts">
-	let {
-		data
-	}: {
-		data: {
-			title: string;
-			description: string;
-			paragraphs: string[];
-			interests: string[];
-			profile: {
-				aboutBody: string;
-				aboutInterests: string[];
-			};
-		};
-	} = $props();
+	let { data }: { data: any } = $props();
 
 	const aboutParagraphs = $derived.by(() =>
 		(data.profile.aboutBody || '')
 			.split(/\r?\n\r?\n+/)
-			.map((paragraph) => paragraph.replace(/\r?\n/g, ' ').trim())
+			.map((paragraph: string) => paragraph.replace(/\r?\n/g, ' ').trim())
 			.filter(Boolean)
 	);
 	const aboutInterests = $derived.by(() =>
@@ -26,9 +13,22 @@
 </script>
 
 <svelte:head>
-	<title>{data.title} | Bryan Robb</title>
+	<title>{data.simpleSite ? 'About / Afterword' : `${data.title} | Bryan Robb`}</title>
 </svelte:head>
 
+{#if data.simpleSite}
+	<article class="simple-page">
+		<h1>About</h1>
+		<p>
+			This is just a second plain page for testing how a very simple SvelteKit site feels when you
+			click around.
+		</p>
+		<p>
+			No CMS, no feed choreography, no extra machinery. Just enough to notice speed and
+			structure.
+		</p>
+	</article>
+{:else}
 <div class="about-page">
 	<header class="about-page__header">
 		<div class="about-page__intro">
@@ -155,3 +155,4 @@
 		}
 	}
 </style>
+{/if}
