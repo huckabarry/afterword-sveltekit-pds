@@ -4,7 +4,7 @@
 	import PostDate from '$lib/components/home-template/PostDate.svelte';
 	import ToC from '$lib/components/ToC.svelte';
 	import type { TemplatePost } from '$lib/server/template-posts';
-	import { authorName, bio, name } from '$lib/info.js';
+	import { authorName, avatar, bio, name } from '$lib/info.js';
 
 	let {
 		data
@@ -60,13 +60,11 @@
 
 	<section class="home-page__intro">
 		<div class="home-page__hero">
-			<div class="home-page__hero-copy">
-				<h1 class="home-page__hero-title">
-					Writing, field notes, photographs, and the usual preoccupations.
-				</h1>
+			<img class="home-page__hero-avatar" src={avatar} alt={authorName} />
 
+			<div class="home-page__hero-copy">
 				<div class="home-page__hero-header">
-					<p class="home-page__hero-name">{authorName}</p>
+					<h1 class="home-page__hero-name">{authorName}</h1>
 					<p class="home-page__hero-role">{bio}</p>
 				</div>
 			</div>
@@ -255,9 +253,17 @@
 
 	.home-page__hero {
 		display: flex;
-		flex-direction: column;
+		align-items: center;
 		gap: 1rem;
 		padding-bottom: 0.5rem;
+	}
+
+	.home-page__hero-avatar {
+		width: 3rem;
+		height: 3rem;
+		flex: 0 0 auto;
+		border-radius: 9999px;
+		object-fit: cover;
 	}
 
 	.home-page__hero-copy {
@@ -274,8 +280,7 @@
 	}
 
 	.home-page__hero-name,
-	.home-page__hero-role,
-	.home-page__hero-title {
+	.home-page__hero-role {
 		margin: 0;
 	}
 
@@ -298,19 +303,6 @@
 
 	:global(html.dark) .home-page__hero-role {
 		color: #a1a1aa;
-	}
-
-	.home-page__hero-title {
-		font-size: 2.5rem;
-		font-weight: 700;
-		line-height: 1.05;
-		letter-spacing: -0.04em;
-		color: #18181b;
-		text-wrap: balance;
-	}
-
-	:global(html.dark) .home-page__hero-title {
-		color: #f4f4f5;
 	}
 
 	.home-page__toc-rail {
@@ -575,10 +567,6 @@
 	@media (min-width: 768px) {
 		.home-page__hero {
 			gap: 1.25rem;
-		}
-
-		.home-page__hero-title {
-			font-size: 3rem;
 		}
 
 		.home-page__field-notes-list {
