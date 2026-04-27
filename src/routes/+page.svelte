@@ -4,7 +4,7 @@
 	import PostDate from '$lib/components/home-template/PostDate.svelte';
 	import ToC from '$lib/components/ToC.svelte';
 	import type { TemplatePost } from '$lib/server/template-posts';
-	import { avatar, authorName, bio, name } from '$lib/info.js';
+	import { authorName, bio, name } from '$lib/info.js';
 
 	let {
 		data
@@ -60,12 +60,6 @@
 
 	<section class="home-page__intro">
 		<div class="home-page__hero">
-			<img
-				src={avatar}
-				alt={authorName}
-				class="home-page__hero-avatar"
-			/>
-
 			<div class="home-page__hero-copy">
 				<div class="home-page__hero-header">
 					<p class="home-page__hero-name">{authorName}</p>
@@ -262,23 +256,10 @@
 	}
 
 	.home-page__hero {
-		display: grid;
-		grid-template-columns: auto 1fr;
+		display: flex;
+		flex-direction: column;
 		gap: 1rem;
-		align-items: start;
 		padding-bottom: 0.5rem;
-	}
-
-	.home-page__hero-avatar {
-		width: 3.75rem;
-		height: 3.75rem;
-		border-radius: 999px;
-		object-fit: cover;
-		box-shadow: 0 0 0 1px rgba(228, 228, 231, 1);
-	}
-
-	:global(html.dark) .home-page__hero-avatar {
-		box-shadow: 0 0 0 1px rgba(63, 63, 70, 1);
 	}
 
 	.home-page__hero-copy {
@@ -596,11 +577,6 @@
 			gap: 1.25rem;
 		}
 
-		.home-page__hero-avatar {
-			width: 4.5rem;
-			height: 4.5rem;
-		}
-
 		.home-page__field-notes-list {
 			border-left: 1px solid #f4f4f5;
 			padding-left: 1.5rem;
@@ -625,12 +601,6 @@
 			left: -1.5rem;
 			right: -1.5rem;
 			border-radius: 1rem;
-		}
-	}
-
-	@media (max-width: 639px) {
-		.home-page__hero {
-			grid-template-columns: 1fr;
 		}
 	}
 
