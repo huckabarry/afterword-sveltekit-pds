@@ -8,7 +8,7 @@
 	src: url('/fonts/fira-sans-latin-400-normal.woff2') format('woff2');
 	font-style: normal;
 	font-weight: 400;
-	font-display: optional;
+	font-display: fallback;
 }
 
 @font-face {
@@ -16,7 +16,7 @@
 	src: url('/fonts/fira-sans-latin-600-normal.woff2') format('woff2');
 	font-style: normal;
 	font-weight: 600;
-	font-display: optional;
+	font-display: fallback;
 }
 
 @font-face {
@@ -24,7 +24,7 @@
 	src: url('/fonts/fira-sans-latin-800-normal.woff2') format('woff2');
 	font-style: normal;
 	font-weight: 800;
-	font-display: optional;
+	font-display: fallback;
 }
 
 @font-face {

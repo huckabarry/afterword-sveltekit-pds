@@ -76,6 +76,7 @@
 	<div class="hidden lg:block" aria-hidden="true"></div>
 
 	<div class="home-page">
+		<div class="home-page__content-stack">
 		{#if data.latestBlogPosts.length}
 			<section class="home-page__feed-section" id="home-blog" aria-labelledby="home-blog-heading">
 			<div class="home-page__section-head">
@@ -219,12 +220,13 @@
 				<a href={lane.href} class="home-page__lane-link">{lane.label}</a>
 			{/each}
 		</nav>
-	</div>
+		</div>
 
-	<div class="home-page__toc-column hidden xl:block">
-		<aside class="home-page__toc-rail" aria-label="On this page">
-			<ToC headings={homeToc} scrollOffset={0} />
-		</aside>
+		<div class="home-page__toc-column hidden xl:block">
+			<aside class="home-page__toc-rail" aria-label="On this page">
+				<ToC headings={homeToc} scrollOffset={0} />
+			</aside>
+		</div>
 	</div>
 </div>
 
@@ -237,9 +239,15 @@
 	.home-page {
 		display: flex;
 		flex-direction: column;
-		gap: 3.5rem;
 		padding-bottom: 4rem;
 		width: 100%;
+	}
+
+	.home-page__content-stack {
+		display: flex;
+		flex-direction: column;
+		gap: 3.5rem;
+		min-width: 0;
 	}
 
 	.home-page__intro {
@@ -571,11 +579,15 @@
 
 		.home-page__field-notes-list {
 			border-left: 1px solid #f4f4f5;
-			padding-left: 1.5rem;
+			padding-left: 0.85rem;
 		}
 
 		:global(html.dark) .home-page__field-notes-list {
 			border-left-color: rgba(63, 63, 70, 0.4);
+		}
+
+		.home-page__field-note-row {
+			gap: 1.35rem;
 		}
 
 		.field-note-card__media {
@@ -613,19 +625,24 @@
 	}
 
 	@media (min-width: 1280px) {
+		.home-page {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) 9rem;
+			column-gap: 1.75rem;
+			align-items: start;
+		}
+
 		.home-page__toc-column {
 			display: block;
-			grid-column: 3;
-			grid-row: 2;
-			padding-top: 2rem;
+			padding-top: 1.9rem;
 		}
 
 		.home-page__toc-rail {
 			display: block;
 			position: sticky;
 			top: 2rem;
-			width: 12rem;
-			margin-left: 2rem;
+			width: 100%;
+			margin-left: 0;
 		}
 
 		.home-page__toc-rail :global(ul) {
