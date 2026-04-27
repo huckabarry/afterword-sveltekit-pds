@@ -47,6 +47,23 @@
 	}
 </script>
 
+<svelte:head>
+	{#if isSimpleSite}
+		<style>
+			:root {
+				color-scheme: dark;
+			}
+
+			html,
+			body {
+				background: #121110;
+				color: #ece7df;
+				font-family: Georgia, 'Times New Roman', serif;
+			}
+		</style>
+	{/if}
+</svelte:head>
+
 {#if isAdminRoute}
 	{@render children()}
 {:else if isSimpleSite}
@@ -120,9 +137,17 @@
 
 <style>
 	.simple-site-shell {
+		--simple-bg: #121110;
+		--simple-text: #ece7df;
+		--simple-muted: #a59d91;
+		--simple-rule: #34302c;
 		max-width: 42rem;
 		margin: 0 auto;
 		padding: 2.5rem 1.25rem 4rem;
+		min-height: 100vh;
+		background: var(--simple-bg);
+		color: var(--simple-text);
+		font-family: Georgia, 'Times New Roman', serif;
 	}
 
 	.simple-site-header {
@@ -147,13 +172,13 @@
 	}
 
 	.simple-site-nav a {
-		color: #6f685f;
+		color: var(--simple-muted);
 		text-decoration: none;
 	}
 
 	.simple-site-nav a:hover,
 	.simple-site-nav a.simple-site-nav__active {
-		color: inherit;
+		color: var(--simple-text);
 		text-decoration: underline;
 		text-underline-offset: 0.16em;
 	}
@@ -181,13 +206,13 @@
 
 	:global(.simple-home p),
 	:global(.simple-page p) {
-		color: #6f685f;
+		color: var(--simple-muted);
 	}
 
 	:global(.simple-post time) {
 		display: block;
 		margin-bottom: 2rem;
-		color: #6f685f;
+		color: var(--simple-muted);
 		font-size: 0.88rem;
 	}
 
@@ -196,7 +221,7 @@
 	}
 
 	:global(.simple-post .back a) {
-		color: #6f685f;
+		color: var(--simple-muted);
 		text-decoration: none;
 	}
 
@@ -205,11 +230,51 @@
 		text-underline-offset: 0.16em;
 	}
 
+	:global(.simple-post-list) {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		border-top: 1px solid var(--simple-rule);
+	}
+
+	:global(.simple-post-list__item) {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.8rem 0;
+		border-bottom: 1px solid var(--simple-rule);
+	}
+
+	:global(.simple-post-list__link) {
+		text-decoration: underline;
+		text-underline-offset: 0.16em;
+		font-size: 1rem;
+		line-height: 1.4;
+		color: inherit;
+	}
+
+	:global(.simple-post-list__link:hover) {
+		color: var(--simple-muted);
+	}
+
+	:global(.simple-post-list__date) {
+		flex-shrink: 0;
+		font-size: 0.84rem;
+		color: var(--simple-muted);
+	}
+
 	@media (max-width: 640px) {
 		.simple-site-header {
 			flex-direction: column;
 			align-items: flex-start;
 			gap: 0.6rem;
+		}
+
+		:global(.simple-post-list__item) {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.3rem;
 		}
 	}
 </style>

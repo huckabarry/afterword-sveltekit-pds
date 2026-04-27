@@ -38,9 +38,7 @@
 	<section class="simple-home">
 		<h1>Afterword</h1>
 		<p>
-			I’m Bryan, an urban planner and musician in the Pacific Northwest. This is where I keep
-			longer writing, field notes, and photographs, usually about cities, books, wandering
-			around, and whatever else has been taking up space in my head lately.
+			A tiny local SvelteKit blog test. Just titles, dates, and a narrow column.
 		</p>
 
 		<ol class="simple-post-list">
@@ -233,7 +231,7 @@
 		list-style: none;
 		padding: 0;
 		margin: 0;
-		border-top: 1px solid #ddd7cf;
+		border-top: 1px solid var(--simple-rule);
 	}
 
 	.simple-post-list__item {
@@ -242,7 +240,7 @@
 		justify-content: space-between;
 		gap: 1rem;
 		padding: 0.8rem 0;
-		border-bottom: 1px solid #ddd7cf;
+		border-bottom: 1px solid var(--simple-rule);
 	}
 
 	.simple-post-list__link {
@@ -254,13 +252,13 @@
 	}
 
 	.simple-post-list__link:hover {
-		color: #6f685f;
+		color: var(--simple-muted);
 	}
 
 	.simple-post-list__date {
 		flex-shrink: 0;
 		font-size: 0.84rem;
-		color: #6f685f;
+		color: var(--simple-muted);
 	}
 
 	.home-page-root {
