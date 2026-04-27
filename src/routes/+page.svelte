@@ -225,7 +225,7 @@
 
 	<div class="home-page__toc-column hidden xl:block">
 		<aside class="home-page__toc-rail" aria-label="On this page">
-			<ToC headings={homeToc} />
+			<ToC headings={homeToc} scrollOffset={0} />
 		</aside>
 	</div>
 </div>

@@ -8,6 +8,7 @@
 
   export let post: TemplatePost | null = null
   export let headings: TemplatePost['headings'] = post?.headings ?? []
+  export let scrollOffset: number | null = null
 
   let elements: HTMLElement[] = []
   const DESKTOP_OFFSET = 112
@@ -22,6 +23,7 @@
   let activeHeading = headings[0]
 
   function getScrollOffset() {
+    if (scrollOffset !== null) return scrollOffset
     return window.innerWidth >= 1024 ? DESKTOP_OFFSET : MOBILE_OFFSET
   }
 
