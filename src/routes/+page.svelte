@@ -61,14 +61,14 @@
 	<section class="home-page__intro">
 		<div class="home-page__hero">
 			<div class="home-page__hero-copy">
+				<h1 class="home-page__hero-title">
+					Writing, field notes, photographs, and the usual preoccupations.
+				</h1>
+
 				<div class="home-page__hero-header">
 					<p class="home-page__hero-name">{authorName}</p>
 					<p class="home-page__hero-role">{bio}</p>
 				</div>
-
-				<h1 class="home-page__hero-title">
-					Writing, field notes, photographs, and the usual preoccupations.
-				</h1>
 			</div>
 		</div>
 	</section>
