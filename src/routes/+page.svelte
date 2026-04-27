@@ -64,7 +64,6 @@
 
 			<div class="home-page__hero-copy">
 				<div class="home-page__hero-header">
-					<h1 class="home-page__hero-name">{authorName}</h1>
 					<p class="home-page__hero-role">{bio}</p>
 				</div>
 			</div>
@@ -283,25 +282,14 @@
 		align-items: center;
 	}
 
-	.home-page__hero-name,
 	.home-page__hero-role {
 		margin: 0;
 	}
 
-	.home-page__hero-name {
-		font-size: 1rem;
-		font-weight: 600;
-		letter-spacing: -0.01em;
-		color: #18181b;
-	}
-
-	:global(html.dark) .home-page__hero-name {
-		color: #f4f4f5;
-	}
-
 	.home-page__hero-role {
-		font-size: 0.92rem;
-		line-height: 1.5;
+		max-width: 28rem;
+		font-size: 0.95rem;
+		line-height: 1.65;
 		color: #71717a;
 	}
 
