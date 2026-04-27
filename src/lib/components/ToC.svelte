@@ -39,7 +39,16 @@
     if (!browser || elements.length === 0) return
 
     const offset = getScrollOffset()
+    const bottomSlack = 24
     let nextActive = headings[0]
+
+    const viewportBottom = window.innerHeight + window.scrollY
+    const documentBottom = document.documentElement.scrollHeight
+
+    if (documentBottom - viewportBottom <= bottomSlack) {
+      activeHeading = headings[headings.length - 1]
+      return
+    }
 
     elements.forEach((element, index) => {
       if (element.getBoundingClientRect().top - offset <= ACTIVE_HEADING_SLACK) {
