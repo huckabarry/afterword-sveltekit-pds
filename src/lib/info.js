@@ -6,7 +6,7 @@ export const authorName = `${firstName} ${lastName}`;
 export const name = 'Afterword';
 
 export const avatar = '/assets/images/status-avatar.jpg';
-export const bio = 'Writer, musician, and urban planner exploring the usual preoccupations.';
+export const bio = 'Urban planner and musician in the Pacific Northwest. Cities, photographs, books, and the usual preoccupations.';
 export const email = 'bryan.robb@icloud.com';
 export const bluesky = 'https://bsky.app/profile/bryanrobb.bsky.social';
 
