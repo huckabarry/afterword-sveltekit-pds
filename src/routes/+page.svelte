@@ -620,10 +620,6 @@
 	}
 
 	@media (min-width: 1280px) {
-		.home-page__intro {
-			grid-column: 2 / 4;
-		}
-
 		.home-page__toc-column {
 			display: block;
 			grid-column: 3;
