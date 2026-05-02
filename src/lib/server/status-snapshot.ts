@@ -1,4 +1,9 @@
-import { getStatusPage, STATUS_PAGE_SIZE, type StatusFeedPage, type StatusPost } from '$lib/server/atproto';
+import {
+	getStatusPageWithoutReplies,
+	STATUS_PAGE_SIZE,
+	type StatusFeedPage,
+	type StatusPost
+} from '$lib/server/atproto';
 
 const STATUS_SNAPSHOT_TTL_MS = 1000 * 60 * 4;
 const STATUS_SNAPSHOT_R2_KEY = 'status/page-1.json';
@@ -120,7 +125,7 @@ async function rebuildStatusSnapshot(cacheKey: string, context?: StatusSnapshotC
 	}
 
 	const refresh = (async () => {
-		const page = await getStatusPage(undefined, {
+		const page = await getStatusPageWithoutReplies(undefined, {
 			includeThreadContext: true,
 			limit: STATUS_PAGE_SIZE,
 			freshnessMs: 0

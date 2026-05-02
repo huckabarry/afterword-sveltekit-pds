@@ -6,6 +6,7 @@ const DEFAULT_REPO = 'did:plc:vt4k6d3e5rjw65cuzaf3nufq';
 export const STATUS_PAGE_SIZE = 20;
 const FEED_LIMIT = STATUS_PAGE_SIZE;
 const STATUS_LOOKUP_PAGE_LIMIT = 40;
+const STATUS_NON_REPLY_PAGE_LIMIT = 12;
 const STATUS_CACHE_TTL_MS = 60_000;
 
 export type Checkin = {
@@ -795,6 +796,61 @@ export async function getStatusPage(
 	}
 ) {
 	return getCachedStatusPage(actor, options);
+}
+
+export async function getStatusPageWithoutReplies(
+	actor?: string,
+	options?: {
+		cursor?: string | null;
+		includeThreadContext?: boolean;
+		freshnessMs?: number;
+		limit?: number;
+	}
+) {
+	const includeThreadContext = options?.includeThreadContext ?? true;
+	const freshnessMs = Math.max(0, options?.freshnessMs ?? STATUS_CACHE_TTL_MS);
+	const limit = Math.max(1, Math.min(Math.floor(options?.limit ?? FEED_LIMIT), 100));
+	let cursor = String(options?.cursor || '').trim() || null;
+	const statuses: StatusPost[] = [];
+	let pageCount = 0;
+
+	while (statuses.length < limit && pageCount < STATUS_NON_REPLY_PAGE_LIMIT) {
+		const page = await getCachedStatusPage(actor, {
+			cursor,
+			includeThreadContext,
+			freshnessMs,
+			limit
+		});
+
+		for (const status of page.statuses) {
+			if (status.isReply) {
+				continue;
+			}
+
+			statuses.push(status);
+
+			if (statuses.length >= limit) {
+				break;
+			}
+		}
+
+		if (!page.cursor) {
+			return {
+				statuses,
+				cursor: null,
+				limit
+			};
+		}
+
+		cursor = page.cursor;
+		pageCount += 1;
+	}
+
+	return {
+		statuses,
+		cursor,
+		limit
+	};
 }
 
 export async function getStatuses(actor?: string) {

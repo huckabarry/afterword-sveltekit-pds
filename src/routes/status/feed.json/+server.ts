@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { getStatusPage, STATUS_PAGE_SIZE } from '$lib/server/atproto';
+import { getStatusPageWithoutReplies, STATUS_PAGE_SIZE } from '$lib/server/atproto';
 import { getStatusSnapshotPage } from '$lib/server/status-snapshot';
 
 function normalizeLimit(value: string | null, fallback = STATUS_PAGE_SIZE) {
@@ -20,19 +20,14 @@ export async function GET(event) {
 			? await getStatusSnapshotPage({
 					platform: event.platform
 				})
-			: await getStatusPage(undefined, {
+			: await getStatusPageWithoutReplies(undefined, {
 					cursor,
 					includeThreadContext: true,
 					limit,
 					freshnessMs: 1000 * 60 * 4
 				});
 
-	const filteredPage = {
-		...page,
-		statuses: page.statuses.filter((status) => !status.isReply)
-	};
-
-	return json(filteredPage, {
+	return json(page, {
 		headers: {
 			'cache-control': 'public, max-age=60, s-maxage=240, stale-while-revalidate=600'
 		}
