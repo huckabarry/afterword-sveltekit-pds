@@ -8,6 +8,7 @@ const FEED_LIMIT = STATUS_PAGE_SIZE;
 const STATUS_LOOKUP_PAGE_LIMIT = 40;
 const STATUS_NON_REPLY_PAGE_LIMIT = 12;
 const STATUS_CACHE_TTL_MS = 60_000;
+const STATUS_NON_REPLY_SOURCE_PAGE_MIN = 20;
 
 export type Checkin = {
 	id: string;
@@ -810,23 +811,38 @@ export async function getStatusPageWithoutReplies(
 	const includeThreadContext = options?.includeThreadContext ?? true;
 	const freshnessMs = Math.max(0, options?.freshnessMs ?? STATUS_CACHE_TTL_MS);
 	const limit = Math.max(1, Math.min(Math.floor(options?.limit ?? FEED_LIMIT), 100));
+	const sourcePageLimit = Math.max(
+		limit,
+		Math.min(100, Math.max(STATUS_NON_REPLY_SOURCE_PAGE_MIN, limit * 4))
+	);
 	let cursor = String(options?.cursor || '').trim() || null;
 	const statuses: StatusPost[] = [];
+	const seenStatusIds = new Set<string>();
+	const seenCursors = new Set<string>();
 	let pageCount = 0;
 
 	while (statuses.length < limit && pageCount < STATUS_NON_REPLY_PAGE_LIMIT) {
+		if (cursor && seenCursors.has(cursor)) {
+			break;
+		}
+
+		if (cursor) {
+			seenCursors.add(cursor);
+		}
+
 		const page = await getCachedStatusPage(actor, {
 			cursor,
 			includeThreadContext,
 			freshnessMs,
-			limit
+			limit: sourcePageLimit
 		});
 
 		for (const status of page.statuses) {
-			if (status.isReply) {
+			if (status.isReply || seenStatusIds.has(status.id)) {
 				continue;
 			}
 
+			seenStatusIds.add(status.id);
 			statuses.push(status);
 
 			if (statuses.length >= limit) {
@@ -834,10 +850,10 @@ export async function getStatusPageWithoutReplies(
 			}
 		}
 
-		if (!page.cursor) {
+		if (!page.cursor || page.cursor === cursor) {
 			return {
 				statuses,
-				cursor: null,
+				cursor: page.cursor || null,
 				limit
 			};
 		}
