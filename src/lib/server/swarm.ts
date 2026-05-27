@@ -118,6 +118,16 @@ type SwarmCheckinRecordMapping = {
 	recordKey: string;
 };
 
+type SwarmCheckinMetadataBackfillResult = {
+	ok: boolean;
+	processed: number;
+	updated: number;
+	skipped: number;
+	failed: number;
+	nextOffset: number | null;
+	errors: Array<{ id: string; message: string }>;
+};
+
 function getDatabase(event: Pick<RequestEvent, 'platform'>) {
 	const db =
 		event.platform?.env?.D1_DATABASE ||
@@ -502,6 +512,39 @@ async function saveCheckinRecordMapping(
 	);
 }
 
+async function listCheckinRecordMappings(
+	event: Pick<RequestEvent, 'platform'>,
+	options: { limit: number; offset: number }
+) {
+	await ensureSwarmTables(event);
+	const limit = Math.max(1, Math.min(options.limit || 25, 100));
+	const offset = Math.max(0, options.offset || 0);
+	type SwarmCheckinRecordMappingRow = {
+		source_id?: string;
+		record_uri?: string;
+		record_key?: string;
+	};
+	const { results } = await withD1Retry(async () =>
+		getDatabase(event)
+			.prepare(
+				`SELECT source_id, record_uri, record_key
+				FROM swarm_checkin_records
+				ORDER BY created_at ASC, source_id ASC
+				LIMIT ? OFFSET ?`
+			)
+			.bind(limit, offset)
+			.all<SwarmCheckinRecordMappingRow>()
+	);
+
+	return ((results || []) as SwarmCheckinRecordMappingRow[])
+		.filter((row) => row?.source_id && row?.record_uri && row?.record_key)
+		.map((row) => ({
+			sourceId: String(row.source_id),
+			recordUri: String(row.record_uri),
+			recordKey: String(row.record_key)
+		}));
+}
+
 async function saveStoredState(
 	event: Pick<RequestEvent, 'platform'>,
 	state: Partial<SwarmStoredState> & { accessToken?: string | null }
@@ -711,6 +754,27 @@ function buildCheckinSlug(checkin: SwarmCheckin) {
 	return `${slugify(venueName)}-${id}`;
 }
 
+function getAtgeoPlaceUri(foursquareVenueId: string) {
+	const normalized = normalizeString(foursquareVenueId);
+	if (!normalized) {
+		return '';
+	}
+
+	return `at://places.atgeo.org/org.atgeo.places.foursquare/${normalized}`;
+}
+
+function getCheckinIdentityFields(checkin: SwarmCheckin, sourceId: string) {
+	const venueId = normalizeString(checkin.venue?.id);
+	const placeUri = venueId ? getAtgeoPlaceUri(venueId) : '';
+
+	return {
+		source: 'swarm',
+		sourceId,
+		...(venueId ? { foursquareVenueId: venueId } : {}),
+		...(placeUri ? { placeUri } : {})
+	} satisfies Record<string, unknown>;
+}
+
 async function buildPdsCheckinRecord(
 	checkin: SwarmCheckin,
 	imageCache: Map<string, any>,
@@ -755,6 +819,7 @@ async function buildPdsCheckinRecord(
 	const record = {
 		$type: 'blog.afterword.checkin',
 		slug,
+		...getCheckinIdentityFields(checkin, sourceId),
 		name: normalizeString(venue.name) || 'Untitled place',
 		...(normalizeString(checkin.shout) ? { note: normalizeString(checkin.shout) } : {}),
 		...(normalizeString(checkin.shout)
@@ -787,6 +852,138 @@ async function buildPdsCheckinRecord(
 	return {
 		record,
 		sourceId
+	};
+}
+
+async function fetchSwarmCheckin(accessToken: string, sourceId: string) {
+	const payload = await fetchFoursquareJson<{
+		response?: {
+			checkin?: SwarmCheckin;
+		};
+	}>(`/checkins/${encodeURIComponent(sourceId)}`, accessToken);
+
+	return payload.response?.checkin || null;
+}
+
+async function fetchPdsCheckinRecordByRkey(
+	recordKey: string
+): Promise<{ uri: string; cid: string; value: Record<string, unknown> } | null> {
+	const session = await getCheckinWriterSession();
+	const url = new URL(`${session.serviceUrl}/xrpc/com.atproto.repo.getRecord`);
+	url.searchParams.set('repo', session.did);
+	url.searchParams.set('collection', 'blog.afterword.checkin');
+	url.searchParams.set('rkey', recordKey);
+
+	const response = await fetch(url);
+	if (response.status === 404) {
+		return null;
+	}
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`Unable to fetch existing PDS check-in ${recordKey}: ${response.status} ${text}`);
+	}
+
+	const payload = (await response.json()) as {
+		uri?: string;
+		cid?: string;
+		value?: Record<string, unknown>;
+	};
+
+	if (!payload?.uri || !payload.value) {
+		return null;
+	}
+
+	return {
+		uri: String(payload.uri),
+		cid: String(payload.cid || ''),
+		value: payload.value
+	};
+}
+
+export async function backfillSwarmCheckinMetadata(
+	event: Pick<RequestEvent, 'platform'>,
+	options: { limit?: number; offset?: number } = {}
+): Promise<SwarmCheckinMetadataBackfillResult> {
+	const stored = await getStoredState(event);
+
+	if (!stored.accessToken) {
+		throw new Error('Swarm is not connected yet.');
+	}
+
+	const limit = Math.max(1, Math.min(options.limit || 20, 50));
+	const offset = Math.max(0, options.offset || 0);
+	const mappings = await listCheckinRecordMappings(event, { limit, offset });
+	const errors: Array<{ id: string; message: string }> = [];
+	let updated = 0;
+	let skipped = 0;
+	let failed = 0;
+
+	for (const mapping of mappings) {
+		try {
+			const existingRecord = await fetchPdsCheckinRecordByRkey(mapping.recordKey);
+
+			if (!existingRecord) {
+				skipped += 1;
+				continue;
+			}
+
+			let sourceCheckin: SwarmCheckin | null = null;
+			try {
+				sourceCheckin = await fetchSwarmCheckin(stored.accessToken, mapping.sourceId);
+			} catch (sourceError) {
+				console.warn(
+					'[swarm] Unable to refetch Swarm check-in for metadata backfill:',
+					mapping.sourceId,
+					sourceError
+				);
+			}
+
+			const identityFields = sourceCheckin
+				? getCheckinIdentityFields(sourceCheckin, mapping.sourceId)
+				: {
+						source: 'swarm',
+						sourceId: mapping.sourceId
+					};
+			const mergedRecord = {
+				...existingRecord.value,
+				...identityFields
+			};
+
+			const changed = Object.entries(identityFields).some(
+				([key, value]) => normalizeString(existingRecord.value[key]) !== normalizeString(value)
+			);
+
+			if (!changed) {
+				skipped += 1;
+				continue;
+			}
+
+			await putCheckinRecord({
+				rkey: mapping.recordKey,
+				record: mergedRecord
+			});
+			updated += 1;
+		} catch (backfillError) {
+			failed += 1;
+			errors.push({
+				id: mapping.sourceId,
+				message:
+					backfillError instanceof Error
+						? backfillError.message
+						: 'Unable to backfill Swarm check-in metadata.'
+			});
+		}
+	}
+
+	return {
+		ok: failed === 0,
+		processed: mappings.length,
+		updated,
+		skipped,
+		failed,
+		nextOffset: mappings.length === limit ? offset + mappings.length : null,
+		errors
 	};
 }
 

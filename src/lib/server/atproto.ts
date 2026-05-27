@@ -16,6 +16,10 @@ export type Checkin = {
 	cid: string;
 	slug: string;
 	canonicalPath: string;
+	source: string;
+	sourceId: string;
+	foursquareVenueId: string;
+	placeUri: string;
 	name: string;
 	note: string;
 	excerpt: string;
@@ -304,6 +308,10 @@ export function hydrateCheckinRecord(
 		cid: String(record.cid || ''),
 		slug,
 		canonicalPath,
+		source: String(value.source || '').trim(),
+		sourceId: String(value.sourceId || '').trim(),
+		foursquareVenueId: String(value.foursquareVenueId || '').trim(),
+		placeUri: String(value.placeUri || '').trim(),
 		name: String(value.name || 'Untitled place'),
 		note: String(value.note || '').trim(),
 		excerpt: String(value.excerpt || '').trim(),
