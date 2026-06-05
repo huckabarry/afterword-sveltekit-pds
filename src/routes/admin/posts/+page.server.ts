@@ -33,12 +33,14 @@ export const actions: Actions = {
 			await updateStatusText(rkey, text);
 			return {
 				ok: true,
-				message: 'Bluesky post updated.'
+				message: 'Bluesky post updated.',
+				selectedUri: uri
 			};
 		} catch (editError) {
 			return fail(500, {
 				ok: false,
-				message: editError instanceof Error ? editError.message : 'Unable to update Bluesky post.'
+				message: editError instanceof Error ? editError.message : 'Unable to update Bluesky post.',
+				selectedUri: uri
 			});
 		}
 	},
@@ -60,13 +62,15 @@ export const actions: Actions = {
 			await deleteStatusRecord(rkey);
 			return {
 				ok: true,
-				message: 'Bluesky post deleted.'
+				message: 'Bluesky post deleted.',
+				selectedUri: uri
 			};
 		} catch (deleteError) {
 			return fail(500, {
 				ok: false,
 				message:
-					deleteError instanceof Error ? deleteError.message : 'Unable to delete Bluesky post.'
+					deleteError instanceof Error ? deleteError.message : 'Unable to delete Bluesky post.',
+				selectedUri: uri
 			});
 		}
 	}
