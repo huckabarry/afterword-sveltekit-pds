@@ -24,7 +24,7 @@
 					headers: {
 						'content-type': 'application/json'
 					},
-					body: JSON.stringify({ slug: post.slug })
+					body: JSON.stringify({ slug: post.slug, publicationKey: 'lowvelocity' })
 				});
 				const payload = await response.json().catch(() => null);
 
@@ -61,10 +61,9 @@
 		</div>
 
 		<p class="admin-field-note">
-			This screen syncs Ghost posts into your PDS as <code>site.standard.publication</code> and
-			<code>site.standard.document</code> records. Ghost-backed posts now prefer your own
-			Afterword publication, while still keeping compatible content blocks for clients that know
-			how to read them.
+			This screen syncs Ghost posts into Low Velocity as <code>site.standard.publication</code>
+			and <code>site.standard.document</code> records. Afterword can still surface the writing,
+			but Low Velocity keeps the publication identity.
 		</p>
 
 		{#if form?.success}
@@ -79,18 +78,23 @@
 		{/if}
 
 		<div class="admin-link-list">
-			<p><strong>Publication AT-URI</strong></p>
+			<p><strong>Low Velocity publication AT-URI</strong></p>
 			<p><code>{data.publicationAtUri || 'Not configured yet'}</code></p>
+			<p><strong>Afterword publication AT-URI</strong></p>
+			<p><code>{data.afterwordPublicationAtUri || 'Not configured yet'}</code></p>
 			<p><strong>Well-known</strong></p>
 			<p><code>/.well-known/site.standard.publication</code></p>
 		</div>
 
 		<div class="admin-form-actions">
 			<form method="POST" action="/admin/standard-site?/syncPublication" use:enhance>
-				<button class="admin-button" type="submit">Sync publication record</button>
+				<button class="admin-button" type="submit">Sync Low Velocity publication</button>
+			</form>
+			<form method="POST" action="/admin/standard-site?/syncAfterwordPublication" use:enhance>
+				<button class="admin-button" type="submit">Sync Afterword publication</button>
 			</form>
 			<form method="POST" action="/admin/standard-site?/migrateGhostBackedPosts" use:enhance>
-				<button class="admin-button" type="submit">Migrate Ghost-backed documents</button>
+				<button class="admin-button" type="submit">Migrate Ghost posts to Low Velocity</button>
 			</form>
 		</div>
 	</div>
@@ -105,8 +109,8 @@
 
 		<p class="admin-field-note">
 			This list includes every Ghost post tagged <code>field-notes</code> or
-			<code>urbanism</code>. Bulk sync walks them one at a time so Cloudflare does not try to
-			do the whole archive in a single Worker request.
+			<code>urbanism</code>. Bulk sync walks them into the Low Velocity publication one at a
+			time so Cloudflare does not try to do the whole archive in a single Worker request.
 		</p>
 
 		<div class="admin-form-actions">
@@ -114,7 +118,7 @@
 				{#if bulkSyncing}
 					Syncing {bulkCompleted} / {data.posts.length}…
 				{:else}
-					Sync all field notes + urbanism posts
+					Sync all posts to Low Velocity
 				{/if}
 			</button>
 		</div>
@@ -144,7 +148,7 @@
 						{#if post.documentAtUri}
 							<p class="admin-field-note"><code>{post.documentAtUri}</code></p>
 						{/if}
-						<p class="admin-field-note">Manual sync still works here if you want to rerun a single post.</p>
+						<p class="admin-field-note">Manual sync reruns this post into Low Velocity.</p>
 					</div>
 
 					<form method="POST" action="/admin/standard-site?/syncPost" use:enhance>

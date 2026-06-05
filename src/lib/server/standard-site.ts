@@ -1,6 +1,11 @@
 import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
-import { getBlogPosts, stripImagesFromHtml, type BlogPost } from '$lib/server/ghost';
+import {
+	getBlogPosts,
+	stripImagesFromHtml,
+	writeStandardSiteMetadataToGhost,
+	type BlogPost
+} from '$lib/server/ghost';
 import { inferImageDimensions, inferImageMimeType } from '$lib/server/image-metadata';
 import type { SiteProfile } from '$lib/server/profile';
 import { resolveAtprotoDid, resolveAtprotoService } from '$lib/server/atproto-identity';
@@ -20,6 +25,12 @@ const MAX_INLINE_IMAGE_UPLOADS_PER_SYNC = 3;
 export const STANDARD_SITE_PUBLICATION_COLLECTION = 'site.standard.publication';
 export const STANDARD_SITE_DOCUMENT_COLLECTION = 'site.standard.document';
 export const STANDARD_SITE_PUBLICATION_RKEY = 'default';
+export const STANDARD_SITE_AFTERWORD_PUBLICATION_KEY = 'afterword';
+export const STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY = 'lowvelocity';
+
+export type StandardSitePublicationKey =
+	| typeof STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+	| typeof STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY;
 
 type AtprotoSession = {
 	serviceUrl: string;
@@ -46,6 +57,41 @@ type UploadedLeafletImage = {
 	aspectRatio?: LeafletAspectRatio;
 };
 
+type StandardSiteRgbColor = {
+	$type: 'site.standard.theme.color#rgb';
+	r: number;
+	g: number;
+	b: number;
+};
+
+type StandardSitePublicationConfig = {
+	key: StandardSitePublicationKey;
+	label: string;
+	identifier: string;
+	loginIdentifiers: string[];
+	appPassword: string;
+	serviceUrl: string;
+	publicationUrl: string;
+	name: string;
+	description: string;
+	iconUrl: string | null;
+	contentType: string;
+	blockTypePrefix: string;
+	basicTheme: {
+		accent: StandardSiteRgbColor;
+		background: StandardSiteRgbColor;
+		foreground: StandardSiteRgbColor;
+		accentForeground: StandardSiteRgbColor;
+	};
+	preferences: {
+		$type: 'site.standard.publication#preferences';
+		locale: string;
+		timezone: string;
+		showInDiscover: boolean;
+		showByline?: boolean;
+	};
+};
+
 type LeafletBlock = {
 	$type: 'pub.leaflet.pages.linearDocument#block';
 	block:
@@ -60,8 +106,25 @@ type LeafletBlock = {
 		  };
 };
 
-let standardSiteSessionCache: CachedAtprotoSession | null = null;
-let standardSiteSessionPromise: Promise<AtprotoSession> | null = null;
+let standardSiteSessionCache = new Map<string, CachedAtprotoSession>();
+let standardSiteSessionPromises = new Map<string, Promise<AtprotoSession>>();
+
+function rgb(r: number, g: number, b: number): StandardSiteRgbColor {
+	return {
+		$type: 'site.standard.theme.color#rgb',
+		r,
+		g,
+		b
+	};
+}
+
+function getEnvValue(names: string[]) {
+	for (const name of names) {
+		const value = String(env[name] || '').trim();
+		if (value) return value;
+	}
+	return '';
+}
 
 function getStandardSiteServiceUrl() {
 	return String(
@@ -98,6 +161,133 @@ function getStandardSiteAppPassword() {
 	return String(
 		env.STANDARD_SITE_APP_PASSWORD || env.ATPROTO_APP_PASSWORD || env.ATP_APP_PASSWORD || ''
 	).trim();
+}
+
+function normalizePublicationUrl(value: string) {
+	return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function buildPublicationConfig(
+	key: StandardSitePublicationKey,
+	event?: Pick<RequestEvent, 'url'>,
+	profile?: SiteProfile
+): StandardSitePublicationConfig {
+	if (key === STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY) {
+		const identifier = getEnvValue([
+			'LOWVELOCITY_STANDARD_SITE_IDENTIFIER',
+			'LOW_VELOCITY_STANDARD_SITE_IDENTIFIER'
+		]) || 'lowvelocity.org';
+		const publicationUrl =
+			getEnvValue([
+				'LOWVELOCITY_STANDARD_SITE_PUBLICATION_URL',
+				'LOW_VELOCITY_STANDARD_SITE_PUBLICATION_URL'
+			]) || 'https://lowvelocity.org';
+		const loginIdentifiers = [
+			getEnvValue([
+				'LOWVELOCITY_STANDARD_SITE_LOGIN_IDENTIFIER',
+				'LOW_VELOCITY_STANDARD_SITE_LOGIN_IDENTIFIER'
+			]),
+			getEnvValue(['LOWVELOCITY_ATPROTO_LOGIN_IDENTIFIER', 'LOW_VELOCITY_ATPROTO_LOGIN_IDENTIFIER']),
+			identifier
+		]
+			.map((value) => String(value || '').trim())
+			.filter(Boolean)
+			.filter((value, index, values) => values.indexOf(value) === index);
+
+		return {
+			key,
+			label: 'Low Velocity',
+			identifier,
+			loginIdentifiers,
+			appPassword: getEnvValue([
+				'LOWVELOCITY_STANDARD_SITE_APP_PASSWORD',
+				'LOW_VELOCITY_STANDARD_SITE_APP_PASSWORD',
+				'LOWVELOCITY_ATPROTO_APP_PASSWORD',
+				'LOW_VELOCITY_ATPROTO_APP_PASSWORD'
+			]),
+			serviceUrl:
+				getEnvValue([
+					'LOWVELOCITY_STANDARD_SITE_PDS_URL',
+					'LOW_VELOCITY_STANDARD_SITE_PDS_URL',
+					'LOWVELOCITY_ATPROTO_PDS_URL',
+					'LOW_VELOCITY_ATPROTO_PDS_URL'
+				]) || 'https://enoki.us-east.host.bsky.network',
+			publicationUrl: normalizePublicationUrl(publicationUrl),
+			name:
+				getEnvValue(['LOWVELOCITY_STANDARD_SITE_NAME', 'LOW_VELOCITY_STANDARD_SITE_NAME']) ||
+				'Low Velocity',
+			description:
+				getEnvValue([
+					'LOWVELOCITY_STANDARD_SITE_DESCRIPTION',
+					'LOW_VELOCITY_STANDARD_SITE_DESCRIPTION'
+				]) || 'Urban planning, housing, transportation, and civic life.',
+			iconUrl:
+				getEnvValue(['LOWVELOCITY_STANDARD_SITE_ICON_URL', 'LOW_VELOCITY_STANDARD_SITE_ICON_URL']) ||
+				'https://lowvelocity.org/favicon.png',
+			contentType: 'blog.lowvelocity.content',
+			blockTypePrefix: 'blog.lowvelocity.block',
+			basicTheme: {
+				accent: rgb(0, 96, 80),
+				background: rgb(255, 255, 255),
+				foreground: rgb(22, 24, 27),
+				accentForeground: rgb(255, 255, 255)
+			},
+			preferences: {
+				$type: 'site.standard.publication#preferences',
+				locale: 'en-US',
+				timezone: 'America/Los_Angeles',
+				showInDiscover: true,
+				showByline: true
+			}
+		};
+	}
+
+	const publicationUrl =
+		getEnvValue(['STANDARD_SITE_PUBLICATION_URL', 'AFTERWORD_STANDARD_SITE_PUBLICATION_URL']) ||
+		(event ? getOrigin(event) : 'https://afterword.blog');
+
+	return {
+		key,
+		label: 'Afterword',
+		identifier: getStandardSiteIdentifier(),
+		loginIdentifiers: getStandardSiteLoginIdentifiers(),
+		appPassword: getStandardSiteAppPassword(),
+		serviceUrl: getStandardSiteServiceUrl(),
+		publicationUrl: normalizePublicationUrl(publicationUrl),
+		name:
+			getEnvValue(['STANDARD_SITE_PUBLICATION_NAME', 'AFTERWORD_STANDARD_SITE_NAME']) ||
+			profile?.displayName ||
+			'Bryan Robb',
+		description:
+			getEnvValue(['STANDARD_SITE_PUBLICATION_DESCRIPTION', 'AFTERWORD_STANDARD_SITE_DESCRIPTION']) ||
+			profile?.bio ||
+			'Writer, photographer, and urban planner publishing from Afterword.',
+		iconUrl:
+			getEnvValue(['STANDARD_SITE_PUBLICATION_ICON_URL', 'AFTERWORD_STANDARD_SITE_ICON_URL']) ||
+			profile?.avatarUrl ||
+			'/assets/images/status-avatar.jpg',
+		contentType: 'blog.afterword.content',
+		blockTypePrefix: 'blog.afterword.block',
+		basicTheme: {
+			accent: rgb(192, 106, 99),
+			background: rgb(255, 255, 255),
+			foreground: rgb(24, 24, 27),
+			accentForeground: rgb(255, 255, 255)
+		},
+		preferences: {
+			$type: 'site.standard.publication#preferences',
+			locale: 'en-US',
+			timezone: 'America/Los_Angeles',
+			showInDiscover: true,
+			showByline: true
+		}
+	};
+}
+
+function getPublicationKeyForHost(hostname: string): StandardSitePublicationKey {
+	return hostname === 'lowvelocity.org' || hostname.endsWith('.lowvelocity.org')
+		? STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY
+		: STANDARD_SITE_AFTERWORD_PUBLICATION_KEY;
 }
 
 function formatStandardSiteSessionError(
@@ -171,12 +361,12 @@ function toExcerpt(value: string, maxLength = 280) {
 		: normalized;
 }
 
-async function getStandardSiteIdentity() {
-	const identifier = getStandardSiteIdentifier();
-	const configuredServiceUrl = getStandardSiteServiceUrl();
+async function getStandardSiteIdentity(config: StandardSitePublicationConfig) {
+	const identifier = config.identifier;
+	const configuredServiceUrl = config.serviceUrl;
 
 	if (!identifier) {
-		throw new Error('Standard Site identifier is not configured');
+		throw new Error(`${config.label} Standard Site identifier is not configured`);
 	}
 
 	try {
@@ -193,33 +383,39 @@ async function getStandardSiteIdentity() {
 	}
 }
 
-async function createSession(): Promise<AtprotoSession> {
-	const identifier = getStandardSiteIdentifier();
-	const loginIdentifiers = getStandardSiteLoginIdentifiers();
-	const password = getStandardSiteAppPassword();
+async function createSession(
+	key: StandardSitePublicationKey = STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+): Promise<AtprotoSession> {
+	const config = buildPublicationConfig(key);
+	const identifier = config.identifier;
+	const loginIdentifiers = config.loginIdentifiers;
+	const password = config.appPassword;
 
 	if (!identifier || !password || !loginIdentifiers.length) {
 		throw new Error(
-			'Standard Site credentials are incomplete. Set STANDARD_SITE_APP_PASSWORD plus a repo or login identifier.'
+			`${config.label} Standard Site credentials are incomplete. Set ${config.key === STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY ? 'LOWVELOCITY_STANDARD_SITE_APP_PASSWORD' : 'STANDARD_SITE_APP_PASSWORD'} plus a repo or login identifier.`
 		);
 	}
 
-	const { did: resolvedDid, serviceUrl } = await getStandardSiteIdentity();
+	const { did: resolvedDid, serviceUrl } = await getStandardSiteIdentity(config);
+	const cacheKey = `${config.key}:${serviceUrl}:${loginIdentifiers.join('|')}`;
+	const cachedSession = standardSiteSessionCache.get(cacheKey);
 
 	if (
-		standardSiteSessionCache &&
-		standardSiteSessionCache.expiresAt > Date.now() &&
-		standardSiteSessionCache.serviceUrl === serviceUrl &&
-		loginIdentifiers.includes(standardSiteSessionCache.identifier)
+		cachedSession &&
+		cachedSession.expiresAt > Date.now() &&
+		cachedSession.serviceUrl === serviceUrl &&
+		loginIdentifiers.includes(cachedSession.identifier)
 	) {
-		return standardSiteSessionCache;
+		return cachedSession;
 	}
 
-	if (standardSiteSessionPromise) {
-		return await standardSiteSessionPromise;
+	const existingPromise = standardSiteSessionPromises.get(cacheKey);
+	if (existingPromise) {
+		return await existingPromise;
 	}
 
-	standardSiteSessionPromise = (async () => {
+	const sessionPromise = (async () => {
 		let lastError: Error | null = null;
 		let lastStatus: number | null = null;
 		let lastIdentifier: string | null = null;
@@ -262,7 +458,7 @@ async function createSession(): Promise<AtprotoSession> {
 					identifier: loginIdentifier,
 					expiresAt: Date.now() + SESSION_CACHE_TTL_MS
 				};
-				standardSiteSessionCache = session;
+				standardSiteSessionCache.set(cacheKey, session);
 				return session;
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error('ATProto session creation failed');
@@ -274,11 +470,12 @@ async function createSession(): Promise<AtprotoSession> {
 			new Error(formatStandardSiteSessionError(loginIdentifiers, lastStatus, lastIdentifier))
 		);
 	})();
+	standardSiteSessionPromises.set(cacheKey, sessionPromise);
 
 	try {
-		return await standardSiteSessionPromise;
+		return await sessionPromise;
 	} finally {
-		standardSiteSessionPromise = null;
+		standardSiteSessionPromises.delete(cacheKey);
 	}
 }
 
@@ -433,9 +630,13 @@ async function listRecords(session: AtprotoSession, collection: string, limit = 
 	};
 }
 
-async function findPreferredPublicationRecord(event: Pick<RequestEvent, 'url'>) {
-	const session = await createSession();
-	const origin = getOrigin(event);
+async function findPreferredPublicationRecord(
+	event: Pick<RequestEvent, 'url'>,
+	key: StandardSitePublicationKey = getPublicationKeyForHost(event.url.hostname)
+) {
+	const config = buildPublicationConfig(key, event);
+	const session = await createSession(key);
+	const origin = normalizePublicationUrl(config.publicationUrl);
 	const payload = await listRecords(session, STANDARD_SITE_PUBLICATION_COLLECTION);
 	const records = payload.records || [];
 
@@ -448,10 +649,13 @@ async function findPreferredPublicationRecord(event: Pick<RequestEvent, 'url'>) 
 	};
 }
 
-async function getPreferredDocumentPublicationAtUri(event: Pick<RequestEvent, 'url'>) {
+async function getPreferredDocumentPublicationAtUri(
+	event: Pick<RequestEvent, 'url'>,
+	key: StandardSitePublicationKey
+) {
 	return (
-		(await getStandardSitePublicationAtUri(event)) ||
-		`at://${(await createSession()).did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`
+		(await getStandardSitePublicationAtUri(event, key)) ||
+		`at://${(await createSession(key)).did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`
 	);
 }
 
@@ -464,6 +668,12 @@ function matchesGhostPostRecord(
 	const value = record.value || {};
 	const canonicalUrl = `${origin}${post.path}`;
 	const rkey = getRecordKey(String(record.uri || ''));
+	let sourcePath = '';
+	try {
+		sourcePath = new URL(post.sourceUrl).pathname || '';
+	} catch {
+		sourcePath = '';
+	}
 	return (
 		String(value.sourceUrl || '') === post.sourceUrl ||
 		String(value.ghostPostId || '') === post.id ||
@@ -471,6 +681,7 @@ function matchesGhostPostRecord(
 			String(value.publishedAt || '') === post.publishedAt.toISOString()) ||
 		String(value.url || '') === canonicalUrl ||
 		String(value.path || '') === post.path ||
+		(sourcePath ? String(value.path || '') === sourcePath : false) ||
 		String(value.path || '') === `/${post.slug}` ||
 		rkey === post.slug
 	);
@@ -487,10 +698,15 @@ export async function getStandardSiteDid() {
 	}
 }
 
-export async function getStandardSitePublicationAtUri(event?: Pick<RequestEvent, 'url'>) {
+export async function getStandardSitePublicationAtUri(
+	event?: Pick<RequestEvent, 'url'>,
+	key: StandardSitePublicationKey = event
+		? getPublicationKeyForHost(event.url.hostname)
+		: STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+) {
 	if (event) {
 		try {
-			const { session, record } = await findPreferredPublicationRecord(event);
+			const { session, record } = await findPreferredPublicationRecord(event, key);
 			if (record?.uri) return record.uri;
 			return `at://${session.did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`;
 		} catch {
@@ -498,13 +714,40 @@ export async function getStandardSitePublicationAtUri(event?: Pick<RequestEvent,
 		}
 	}
 
-	const did = await getStandardSiteDid();
-	if (!did) return null;
-	return `at://${did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`;
+	const config = buildPublicationConfig(key, event);
+	if (!config.identifier) return null;
+	try {
+		const did = await resolveAtprotoDid(config.identifier);
+		return `at://${did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`;
+	} catch {
+		return null;
+	}
 }
 
-export async function getStandardSiteDocumentAtUri(slug: string) {
-	const did = await getStandardSiteDid();
+export async function getConfiguredStandardSitePublicationAtUri(
+	event?: Pick<RequestEvent, 'url'>,
+	key: StandardSitePublicationKey = event
+		? getPublicationKeyForHost(event.url.hostname)
+		: STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+) {
+	const config = buildPublicationConfig(key, event);
+	if (!config.identifier) return null;
+
+	try {
+		const did = await resolveAtprotoDid(config.identifier);
+		return `at://${did}/${STANDARD_SITE_PUBLICATION_COLLECTION}/${STANDARD_SITE_PUBLICATION_RKEY}`;
+	} catch {
+		return null;
+	}
+}
+
+export async function getStandardSiteDocumentAtUri(
+	slug: string,
+	key: StandardSitePublicationKey = STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+) {
+	const config = buildPublicationConfig(key);
+	if (!config.identifier) return null;
+	const did = await resolveAtprotoDid(config.identifier).catch(() => null);
 	if (!did || !slug) return null;
 	return `at://${did}/${STANDARD_SITE_DOCUMENT_COLLECTION}/${slug}`;
 }
@@ -708,25 +951,163 @@ async function buildLeafletBlocksFromHtml(
 	return blocks;
 }
 
-export function createPublicationRecord(event: Pick<RequestEvent, 'url'>, profile: SiteProfile) {
-	const origin = getOrigin(event);
+function createCustomContent(
+	config: StandardSitePublicationConfig,
+	text: string,
+	leafletBlocks?: LeafletBlock[]
+) {
+	const blocks = leafletBlocks?.length ? leafletBlocks : createLeafletTextBlocks(text);
+	const items = blocks
+		.map((item) => {
+			const block = item.block;
+			if (block.$type === 'pub.leaflet.blocks.image') {
+				return {
+					$type: `${config.blockTypePrefix}.image`,
+					image: (block as { image: AtprotoBlob }).image,
+					...('aspectRatio' in block && block.aspectRatio
+						? {
+								aspectRatio: block.aspectRatio
+							}
+						: {})
+				};
+			}
+			if (block.$type === 'pub.leaflet.blocks.header') {
+				return {
+					$type: `${config.blockTypePrefix}.heading`,
+					level: (block as { level: number }).level,
+					plaintext: block.plaintext
+				};
+			}
+			if (block.$type === 'pub.leaflet.blocks.blockquote') {
+				return {
+					$type: `${config.blockTypePrefix}.blockquote`,
+					plaintext: block.plaintext
+				};
+			}
+			if (block.$type === 'pub.leaflet.blocks.horizontalRule') {
+				return {
+					$type: `${config.blockTypePrefix}.horizontalRule`
+				};
+			}
+			return {
+				$type: `${config.blockTypePrefix}.text`,
+				plaintext: 'plaintext' in block ? block.plaintext : ''
+			};
+		})
+		.filter(Boolean);
+
+	return {
+		$type: config.contentType,
+		items
+	};
+}
+
+function getDocumentPathForPublication(
+	config: StandardSitePublicationConfig,
+	post: BlogPost,
+	isLeafletPublication: boolean
+) {
+	if (isLeafletPublication) return `/${post.slug}`;
+
+	if (config.key === STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY) {
+		try {
+			const source = new URL(post.sourceUrl);
+			const publication = new URL(config.publicationUrl);
+			if (source.hostname === publication.hostname) {
+				return source.pathname || '/';
+			}
+		} catch {
+			// Fall through to local path.
+		}
+	}
+
+	return post.path;
+}
+
+function resolvePublicationAssetUrl(event: Pick<RequestEvent, 'url'>, rawUrl: string | null) {
+	const value = String(rawUrl || '').trim();
+	if (!value) return null;
+
+	try {
+		return new URL(value, event.url.origin).toString();
+	} catch {
+		return null;
+	}
+}
+
+async function uploadPublicationIconBlob(
+	session: AtprotoSession,
+	event: Pick<RequestEvent, 'url'>,
+	config: StandardSitePublicationConfig
+) {
+	const iconUrl = resolvePublicationAssetUrl(event, config.iconUrl);
+	if (!iconUrl) return null;
+
+	try {
+		const response = await fetch(iconUrl, {
+			headers: {
+				accept: 'image/png,image/jpeg,image/webp,image/*,*/*;q=0.8'
+			}
+		});
+
+		if (!response.ok) return null;
+
+		const headerMimeType = String(response.headers.get('content-type') || '')
+			.split(';')[0]
+			.trim()
+			.toLowerCase();
+		const mimeType =
+			headerMimeType && headerMimeType.startsWith('image/')
+				? headerMimeType
+				: inferImageMimeType(iconUrl);
+		const buffer = await response.arrayBuffer();
+		if (!buffer.byteLength) return null;
+
+		const blob = await uploadBlob(session, buffer, mimeType);
+		return {
+			...blob,
+			$type: blob.$type || 'blob'
+		};
+	} catch (error) {
+		console.warn(
+			`[standard-site] Unable to upload ${config.label} publication icon:`,
+			error instanceof Error ? error.message : error
+		);
+		return null;
+	}
+}
+
+export function createPublicationRecord(
+	config: StandardSitePublicationConfig,
+	iconBlob?: AtprotoBlob | null
+) {
+	const now = new Date().toISOString();
 
 	return {
 		$type: STANDARD_SITE_PUBLICATION_COLLECTION,
-		url: `${origin}/`,
-		name: profile.displayName,
-		description: profile.bio,
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString()
+		url: config.publicationUrl,
+		name: config.name,
+		description: config.description,
+		...(iconBlob ? { icon: iconBlob } : {}),
+		basicTheme: {
+			$type: 'site.standard.theme.basic',
+			...config.basicTheme
+		},
+		preferences: config.preferences,
+		createdAt: now,
+		updatedAt: now
 	};
 }
 
 export async function ensurePublicationRecord(
 	event: Pick<RequestEvent, 'url'>,
-	profile: SiteProfile
+	profile: SiteProfile,
+	key: StandardSitePublicationKey = getPublicationKeyForHost(event.url.hostname)
 ) {
-	const { session, record } = await findPreferredPublicationRecord(event);
-	const publicationRecord = createPublicationRecord(event, profile);
+	const config = buildPublicationConfig(key, event, profile);
+	const { session, record } = await findPreferredPublicationRecord(event, key);
+	const iconBlob = await uploadPublicationIconBlob(session, event, config);
+	const publicationRecord = createPublicationRecord(config, iconBlob);
 	const rkey = record?.uri ? getRecordKey(record.uri) : STANDARD_SITE_PUBLICATION_RKEY;
 	const result = await putRecord(
 		session,
@@ -741,13 +1122,19 @@ export async function ensurePublicationRecord(
 	};
 }
 
-export async function getPublicationRecordStatus(event?: Pick<RequestEvent, 'url'>) {
+export async function getPublicationRecordStatus(
+	event?: Pick<RequestEvent, 'url'>,
+	key: StandardSitePublicationKey = event
+		? getPublicationKeyForHost(event.url.hostname)
+		: STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+) {
 	try {
-		const session = await createSession();
+		const config = buildPublicationConfig(key, event);
+		const session = await createSession(key);
 		const payload = await listRecords(session, STANDARD_SITE_PUBLICATION_COLLECTION);
 		const records = payload.records || [];
 		if (event) {
-			const origin = getOrigin(event);
+			const origin = normalizePublicationUrl(config.publicationUrl);
 			return (
 				records.find((record) => normalizeUrl(String(record.value?.url || '')) === origin) ||
 				records[0] ||
@@ -763,15 +1150,16 @@ export async function getPublicationRecordStatus(event?: Pick<RequestEvent, 'url
 export function createDocumentRecord(
 	event: Pick<RequestEvent, 'url'>,
 	post: BlogPost,
+	config: StandardSitePublicationConfig,
 	publicationAtUri: string,
 	coverImageBlob?: UploadedLeafletImage | null,
 	documentPathOverride?: string,
 	leafletBlocksOverride?: LeafletBlock[]
 ) {
-	const origin = getOrigin(event);
 	const text = stripHtml(stripImagesFromHtml(post.html));
 	const isLeafletPublication = isLeafletPublicationAtUri(publicationAtUri);
-	const documentPath = documentPathOverride || (isLeafletPublication ? `/${post.slug}` : post.path);
+	const documentPath =
+		documentPathOverride || getDocumentPathForPublication(config, post, isLeafletPublication);
 	const compatibleContent =
 		leafletBlocksOverride && leafletBlocksOverride.length
 			? {
@@ -790,31 +1178,23 @@ export function createDocumentRecord(
 		$type: STANDARD_SITE_DOCUMENT_COLLECTION,
 		site: publicationAtUri,
 		path: documentPath,
-		...(isLeafletPublication ? {} : { url: `${origin}${post.path}` }),
 		sourceUrl: post.sourceUrl,
 		ghostPostId: post.id,
 		title: post.title,
 		description: post.excerpt || toExcerpt(text),
-		...(compatibleContent
-			? {
-					content: compatibleContent
-				}
-			: isLeafletPublication
-				? {
-						content: {
-							$type: 'pub.leaflet.content',
-							pages: [
-								{
-									id: crypto.randomUUID(),
-									$type: 'pub.leaflet.pages.linearDocument',
-									blocks: createLeafletTextBlocks(text)
-								}
-							]
+		content: isLeafletPublication
+			? compatibleContent || {
+					$type: 'pub.leaflet.content',
+					pages: [
+						{
+							id: crypto.randomUUID(),
+							$type: 'pub.leaflet.pages.linearDocument',
+							blocks: createLeafletTextBlocks(text)
 						}
-					}
-				: {}),
+					]
+				}
+			: createCustomContent(config, text, leafletBlocksOverride),
 		textContent: text,
-		text,
 		...(coverImageBlob
 			? {
 					coverImage: {
@@ -860,23 +1240,45 @@ async function uploadCoverImageBlob(session: AtprotoSession, post: BlogPost) {
 	return await uploadLeafletImage(session, buffer, mimeType);
 }
 
+async function writeSyncedMetadataToGhost(
+	post: BlogPost,
+	documentAtUri: string,
+	publicationAtUri: string
+) {
+	try {
+		await writeStandardSiteMetadataToGhost(post, {
+			documentAtUri,
+			publicationAtUri,
+			syncedAt: new Date().toISOString()
+		});
+	} catch (error) {
+		console.warn(
+			'[standard-site] Unable to write Standard.site metadata back to Ghost:',
+			error instanceof Error ? error.message : error
+		);
+	}
+}
+
 export async function syncGhostPostToStandardSite(
 	event: Pick<RequestEvent, 'url'>,
 	post: BlogPost,
-	profile: SiteProfile
+	profile: SiteProfile,
+	options: { publicationKey?: StandardSitePublicationKey } = {}
 ) {
-	const session = await createSession();
+	const publicationKey = options.publicationKey || STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY;
+	const config = buildPublicationConfig(publicationKey, event, profile);
+	const session = await createSession(publicationKey);
 	const origin = getOrigin(event);
 	const allDocumentsPayload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
 	const allDocuments = allDocumentsPayload.records || [];
 	const matchingExistingRecords = allDocuments.filter((record) =>
 		matchesGhostPostRecord(record, post, origin)
 	);
-	const preferredPublicationAtUri = await getPreferredDocumentPublicationAtUri(event);
+	const preferredPublicationAtUri = await getPreferredDocumentPublicationAtUri(event, publicationKey);
 	const publicationAtUri = preferredPublicationAtUri;
 	const isLeafletPublication = isLeafletPublicationAtUri(publicationAtUri);
 
-	const publicationResult = await ensurePublicationRecord(event, profile);
+	const publicationResult = await ensurePublicationRecord(event, profile, publicationKey);
 	let coverImageBlob: UploadedLeafletImage | null = null;
 	let leafletBlocks: LeafletBlock[] | undefined;
 	if (post.coverImage) {
@@ -935,6 +1337,7 @@ export async function syncGhostPostToStandardSite(
 				const updatedRecord = createDocumentRecord(
 					event,
 					post,
+					config,
 					publicationAtUri,
 					coverImageBlob,
 					String(existingLeafletRecord.value?.path || '') || `/${oldRkey}`,
@@ -946,9 +1349,11 @@ export async function syncGhostPostToStandardSite(
 					oldRkey,
 					updatedRecord
 				);
+				const resultUri = result.uri || existingLeafletRecord.uri;
+				await writeSyncedMetadataToGhost(post, resultUri, publicationResult.uri);
 				return {
 					...result,
-					uri: result.uri || existingLeafletRecord.uri,
+					uri: resultUri,
 					publicationUri: publicationResult.uri
 				};
 			}
@@ -957,6 +1362,7 @@ export async function syncGhostPostToStandardSite(
 		const provisionalRecord = createDocumentRecord(
 			event,
 			post,
+			config,
 			publicationAtUri,
 			coverImageBlob,
 			undefined,
@@ -979,6 +1385,7 @@ export async function syncGhostPostToStandardSite(
 		const finalizedRecord = createDocumentRecord(
 			event,
 			post,
+			config,
 			publicationAtUri,
 			coverImageBlob,
 			`/${createdRkey}`,
@@ -990,9 +1397,14 @@ export async function syncGhostPostToStandardSite(
 			createdRkey,
 			finalizedRecord
 		);
+		const resultUri =
+			result.uri ||
+			created.uri ||
+			`at://${session.did}/${STANDARD_SITE_DOCUMENT_COLLECTION}/${createdRkey}`;
+		await writeSyncedMetadataToGhost(post, resultUri, publicationResult.uri);
 		return {
 			...result,
-			uri: result.uri || created.uri,
+			uri: resultUri,
 			publicationUri: publicationResult.uri
 		};
 	}
@@ -1001,7 +1413,7 @@ export async function syncGhostPostToStandardSite(
 		session,
 		STANDARD_SITE_DOCUMENT_COLLECTION,
 		post.slug,
-		createDocumentRecord(event, post, publicationAtUri, coverImageBlob, undefined, leafletBlocks)
+		createDocumentRecord(event, post, config, publicationAtUri, coverImageBlob, undefined, leafletBlocks)
 	);
 
 	for (const duplicate of matchingExistingRecords) {
@@ -1010,21 +1422,25 @@ export async function syncGhostPostToStandardSite(
 		await deleteRecord(session, STANDARD_SITE_DOCUMENT_COLLECTION, duplicateRkey);
 	}
 
+	const resultUri = result.uri || `at://${session.did}/${STANDARD_SITE_DOCUMENT_COLLECTION}/${post.slug}`;
+	await writeSyncedMetadataToGhost(post, resultUri, publicationResult.uri);
+
 	return {
 		...result,
-		uri: result.uri || `at://${session.did}/${STANDARD_SITE_DOCUMENT_COLLECTION}/${post.slug}`,
+		uri: resultUri,
 		publicationUri: publicationResult.uri
 	};
 }
 
 export async function getStandardSiteDocumentStatus(
 	event: Pick<RequestEvent, 'url'>,
-	post: BlogPost
+	post: BlogPost,
+	key: StandardSitePublicationKey = STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY
 ) {
 	if (!post?.slug) return null;
 
 	try {
-		const session = await createSession();
+		const session = await createSession(key);
 		const payload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
 		const records = payload.records || [];
 		const origin = getOrigin(event);
@@ -1049,7 +1465,8 @@ export async function getStandardSiteDocumentStatus(
 
 export async function getStandardSiteDocumentStatuses(
 	event: Pick<RequestEvent, 'url'>,
-	posts: BlogPost[]
+	posts: BlogPost[],
+	key: StandardSitePublicationKey = STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY
 ) {
 	const relevantPosts = posts.filter((post) => post?.slug);
 	if (!relevantPosts.length)
@@ -1059,7 +1476,7 @@ export async function getStandardSiteDocumentStatuses(
 		>();
 
 	try {
-		const session = await createSession();
+		const session = await createSession(key);
 		const payload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
 		const records = payload.records || [];
 		const origin = getOrigin(event);
@@ -1095,8 +1512,10 @@ export async function getStandardSiteDocumentStatuses(
 }
 
 export async function cleanupDuplicateAfterwordPublications(event: Pick<RequestEvent, 'url'>) {
-	const session = await createSession();
-	const origin = normalizeUrl(getOrigin(event));
+	const key = STANDARD_SITE_AFTERWORD_PUBLICATION_KEY;
+	const config = buildPublicationConfig(key, event);
+	const session = await createSession(key);
+	const origin = normalizeUrl(config.publicationUrl);
 	const payload = await listRecords(session, STANDARD_SITE_PUBLICATION_COLLECTION);
 	const records = payload.records || [];
 	const matchingOriginRecords = records.filter(
@@ -1120,9 +1539,10 @@ export async function cleanupDuplicateAfterwordPublications(event: Pick<RequestE
 
 export async function migrateGhostBackedStandardSiteDocuments(
 	event: Pick<RequestEvent, 'url'>,
-	profile: SiteProfile
+	profile: SiteProfile,
+	key: StandardSitePublicationKey = STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY
 ) {
-	const [session, posts] = await Promise.all([createSession(), getBlogPosts()]);
+	const [session, posts] = await Promise.all([createSession(key), getBlogPosts()]);
 	const payload = await listRecords(session, STANDARD_SITE_DOCUMENT_COLLECTION);
 	const records = payload.records || [];
 	const origin = getOrigin(event);
@@ -1132,7 +1552,7 @@ export async function migrateGhostBackedStandardSiteDocuments(
 
 	const results: Array<{ slug: string; title: string; uri?: string }> = [];
 	for (const post of ghostBackedPosts) {
-		const result = await syncGhostPostToStandardSite(event, post, profile);
+		const result = await syncGhostPostToStandardSite(event, post, profile, { publicationKey: key });
 		results.push({ slug: post.slug, title: post.title, uri: result.uri });
 	}
 

@@ -2,13 +2,18 @@ import { json } from '@sveltejs/kit';
 import { requireAdminAccess } from '$lib/server/admin';
 import { getBlogPostBySlug } from '$lib/server/ghost';
 import { getSiteProfile } from '$lib/server/profile';
-import { syncGhostPostToStandardSite } from '$lib/server/standard-site';
+import {
+	STANDARD_SITE_AFTERWORD_PUBLICATION_KEY,
+	STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY,
+	syncGhostPostToStandardSite
+} from '$lib/server/standard-site';
 
 export async function POST(event) {
 	await requireAdminAccess(event);
 
 	const body = await event.request.json().catch(() => null);
 	const slug = String(body?.slug || '').trim();
+	const publicationKey = String(body?.publicationKey || STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY);
 
 	if (!slug) {
 		return json({ ok: false, error: 'A Ghost post slug is required.' }, { status: 400 });
@@ -21,7 +26,13 @@ export async function POST(event) {
 	}
 
 	try {
-		const result = await syncGhostPostToStandardSite(event, post, profile);
+		const targetPublicationKey =
+			publicationKey === STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+				? STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+				: STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY;
+		const result = await syncGhostPostToStandardSite(event, post, profile, {
+			publicationKey: targetPublicationKey
+		});
 		return json({
 			ok: true,
 			slug,

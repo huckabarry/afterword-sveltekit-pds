@@ -486,21 +486,36 @@ function buildStandardSiteMetaTag(name: string, value: string) {
 	return `<meta name="${name}" content="${escapeHtmlAttribute(value)}">`;
 }
 
+function buildStandardSiteLinkTag(rel: string, value: string) {
+	return `<link rel="${rel}" href="${escapeHtmlAttribute(value)}">`;
+}
+
 function mergeAfterwordStandardSiteHead(existingHead: string, metadata: GhostStandardSiteWriteback) {
 	const markers = [
 		'afterword:standard-site-document',
 		'afterword:standard-site-publication',
 		'afterword:leaflet-url',
-		'afterword:last-synced-at'
+		'afterword:last-synced-at',
+		'rel="site.standard.document"',
+		"rel='site.standard.document'",
+		'rel="site.standard.publication"',
+		"rel='site.standard.publication'"
 	];
 	const lines = String(existingHead || '')
 		.split('\n')
 		.map((line) => line.trimEnd())
 		.filter((line) => {
 			const normalized = line.toLowerCase();
-			return !markers.some((marker) => normalized.includes(`name="${marker}"`));
+			return !markers.some((marker) => {
+				if (marker.startsWith('rel=')) {
+					return normalized.includes(marker);
+				}
+				return normalized.includes(`name="${marker}"`);
+			});
 		});
 
+	lines.push(buildStandardSiteLinkTag('site.standard.document', metadata.documentAtUri));
+	lines.push(buildStandardSiteLinkTag('site.standard.publication', metadata.publicationAtUri));
 	lines.push(buildStandardSiteMetaTag('afterword:standard-site-document', metadata.documentAtUri));
 	lines.push(buildStandardSiteMetaTag('afterword:standard-site-publication', metadata.publicationAtUri));
 	lines.push(

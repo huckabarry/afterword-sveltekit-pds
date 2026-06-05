@@ -48,6 +48,9 @@
 </script>
 
 <svelte:head>
+	{#if data.standardSitePublicationAtUri}
+		<link rel="site.standard.publication" href={data.standardSitePublicationAtUri} />
+	{/if}
 	{#if isSimpleSite}
 		<style>
 			:root {

@@ -2,6 +2,8 @@ import { fail } from '@sveltejs/kit';
 import { getBlogPostBySlug, getBlogPostsByAnyTag } from '$lib/server/ghost';
 import { getSiteProfile } from '$lib/server/profile';
 import {
+	STANDARD_SITE_AFTERWORD_PUBLICATION_KEY,
+	STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY,
 	cleanupDuplicateAfterwordPublications,
 	ensurePublicationRecord,
 	getStandardSitePublicationAtUri,
@@ -15,7 +17,7 @@ export const load: PageServerLoad = async (event) => {
 	await requireAdminSession(event);
 
 	const [publicationAtUri, posts] = await Promise.all([
-		getStandardSitePublicationAtUri(),
+		getStandardSitePublicationAtUri(event, STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY),
 		getBlogPostsByAnyTag(['field-notes', 'urbanism'])
 	]);
 
@@ -34,6 +36,10 @@ export const load: PageServerLoad = async (event) => {
 
 	return {
 		publicationAtUri,
+		afterwordPublicationAtUri: await getStandardSitePublicationAtUri(
+			event,
+			STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+		),
 		posts: postStatuses
 	};
 };
@@ -44,11 +50,36 @@ export const actions: Actions = {
 
 		try {
 			const profile = await getSiteProfile(event);
-			const result = await ensurePublicationRecord(event, profile);
+			const result = await ensurePublicationRecord(
+				event,
+				profile,
+				STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY
+			);
+			return {
+				success: true,
+				message: 'Low Velocity publication record synced.',
+				uri: result.uri
+			};
+		} catch (err) {
+			return fail(500, {
+				error: err instanceof Error ? err.message : 'Unable to sync publication record.'
+			});
+		}
+	},
+	syncAfterwordPublication: async (event) => {
+		await requireAdminSession(event);
+
+		try {
+			const profile = await getSiteProfile(event);
+			const result = await ensurePublicationRecord(
+				event,
+				profile,
+				STANDARD_SITE_AFTERWORD_PUBLICATION_KEY
+			);
 			const cleanup = await cleanupDuplicateAfterwordPublications(event);
 			return {
 				success: true,
-				message: `Publication record synced.${cleanup.deletedCount ? ` Removed ${cleanup.deletedCount} duplicate Afterword publication record${cleanup.deletedCount === 1 ? '' : 's'}.` : ''}`,
+				message: `Afterword publication record synced.${cleanup.deletedCount ? ` Removed ${cleanup.deletedCount} duplicate Afterword publication record${cleanup.deletedCount === 1 ? '' : 's'}.` : ''}`,
 				uri: result.uri
 			};
 		} catch (err) {
@@ -79,10 +110,12 @@ export const actions: Actions = {
 				});
 			}
 
-			const result = await syncGhostPostToStandardSite(event, post, profile);
+			const result = await syncGhostPostToStandardSite(event, post, profile, {
+				publicationKey: STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY
+			});
 			return {
 				success: true,
-				message: `Synced "${post.title}" to Standard Site.`,
+				message: `Synced "${post.title}" to Low Velocity.`,
 				slug,
 				uri: result.uri
 			};
@@ -98,12 +131,15 @@ export const actions: Actions = {
 
 		try {
 			const profile = await getSiteProfile(event);
-			await ensurePublicationRecord(event, profile);
-			const cleanup = await cleanupDuplicateAfterwordPublications(event);
-			const migration = await migrateGhostBackedStandardSiteDocuments(event, profile);
+			await ensurePublicationRecord(event, profile, STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY);
+			const migration = await migrateGhostBackedStandardSiteDocuments(
+				event,
+				profile,
+				STANDARD_SITE_LOWVELOCITY_PUBLICATION_KEY
+			);
 			return {
 				success: true,
-				message: `Migrated ${migration.count} Ghost-backed standard.site documents to your Afterword publication.${cleanup.deletedCount ? ` Removed ${cleanup.deletedCount} duplicate Afterword publication record${cleanup.deletedCount === 1 ? '' : 's'}.` : ''}`
+				message: `Migrated ${migration.count} Ghost-backed standard.site documents to Low Velocity.`
 			};
 		} catch (err) {
 			return fail(500, {

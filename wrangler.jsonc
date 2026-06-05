@@ -7,7 +7,15 @@
 		"ATPROTO_REPO": "did:plc:vt4k6d3e5rjw65cuzaf3nufq",
 		"STANDARD_SITE_LOGIN_IDENTIFIER": "afterword.blog",
 		"STANDARD_SITE_IDENTIFIER": "afterword.blog",
-		"STANDARD_SITE_PDS_URL": "https://eurosky.social"
+		"STANDARD_SITE_PDS_URL": "https://eurosky.social",
+		"STANDARD_SITE_PUBLICATION_URL": "https://afterword.blog",
+		"LOWVELOCITY_STANDARD_SITE_LOGIN_IDENTIFIER": "lowvelocity.org",
+		"LOWVELOCITY_STANDARD_SITE_IDENTIFIER": "lowvelocity.org",
+		"LOWVELOCITY_STANDARD_SITE_PDS_URL": "https://enoki.us-east.host.bsky.network",
+		"LOWVELOCITY_STANDARD_SITE_PUBLICATION_URL": "https://lowvelocity.org",
+		"LOWVELOCITY_STANDARD_SITE_NAME": "Low Velocity",
+		"LOWVELOCITY_STANDARD_SITE_DESCRIPTION": "Urban planning, housing, transportation, and civic life.",
+		"LOWVELOCITY_STANDARD_SITE_ICON_URL": "https://lowvelocity.org/favicon.png"
 	},
 	"d1_databases": [
 		{
