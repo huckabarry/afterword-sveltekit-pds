@@ -49,7 +49,11 @@ jobs:
           fi
 
           dry_run="${DRY_RUN_INPUT:-false}"
-          update_existing="${UPDATE_EXISTING_INPUT:-false}"
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            update_existing="true"
+          else
+            update_existing="${UPDATE_EXISTING_INPUT:-false}"
+          fi
           batch_size="${BATCH_SIZE_INPUT:-10}"
           offset=0
 
